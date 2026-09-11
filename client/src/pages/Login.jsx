@@ -31,17 +31,21 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout>
-      <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
-      <p className="mt-2 text-center text-sm text-white/80">Log in to your account</p>
-
+    <AuthLayout
+      header={
+        <>
+          <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
+          <h1 className="mt-2 text-3xl font-bold text-gray-900">Log In</h1>
+        </>
+      }
+    >
       {error && (
-        <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="username" className="block text-sm font-medium text-white">
             Username
@@ -54,7 +58,7 @@ export default function Login() {
             value={form.username}
             onChange={handleChange}
             className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-            placeholder="yourusername"
+            placeholder="username"
           />
         </div>
 
@@ -70,7 +74,7 @@ export default function Login() {
             value={form.password}
             onChange={handleChange}
             className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-            placeholder="••••••••"
+            placeholder="••••••••••"
           />
         </div>
 

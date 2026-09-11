@@ -77,11 +77,15 @@ export default function Register() {
   // Step 1: pick a role before showing any form fields
   if (!role) {
     return (
-      <AuthLayout>
-        <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
-        <p className="mt-2 text-center text-sm text-white/80">How will you use AniSave?</p>
-
-        <div className="mt-6 space-y-3">
+      <AuthLayout
+        header={
+          <>
+            <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
+            <h1 className="mt-2 text-2xl font-bold text-gray-900">How will you use AniSave?</h1>
+          </>
+        }
+      >
+        <div className="space-y-3">
           <button
             type="button"
             onClick={() => setRole("buyer")}
@@ -116,33 +120,28 @@ export default function Register() {
 
   // Step 2: fill up the form for the chosen role
   return (
-    <AuthLayout maxWidth="max-w-lg">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="AniSave" className="h-16 w-16" />
-          <div>
-            <h1 className="text-lg font-bold text-white">AniSave</h1>
-            <p className="text-sm text-white/80">
-              Signing up as a <span className="font-semibold capitalize text-white">{role}</span>
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={changeRole}
-          className="text-sm font-medium text-white/80 hover:text-white"
-        >
-          Change
-        </button>
-      </div>
-
+    <AuthLayout
+      maxWidth="max-w-lg"
+      header={
+        <>
+          <img src={logo} alt="AniSave" className="mx-auto h-24 w-24" />
+          <h1 className="mt-2 text-2xl font-bold text-gray-900">AniSave</h1>
+          <p className="text-sm text-gray-700">
+            Signing up as a <span className="font-semibold capitalize">{role}</span>{" "}
+            <button type="button" onClick={changeRole} className="underline hover:text-gray-900">
+              (Change)
+            </button>
+          </p>
+        </>
+      }
+    >
       {error && (
-        <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
           {error}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-white">
             Full Name
