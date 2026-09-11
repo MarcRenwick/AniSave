@@ -53,7 +53,7 @@ export default function Login() {
             required
             value={form.username}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             placeholder="yourusername"
           />
         </div>
@@ -69,7 +69,7 @@ export default function Login() {
             required
             value={form.password}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             placeholder="••••••••"
           />
         </div>

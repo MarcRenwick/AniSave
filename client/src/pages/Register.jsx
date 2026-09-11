@@ -154,7 +154,7 @@ export default function Register() {
             required
             value={form.name}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
           />
         </div>
 
@@ -170,7 +170,7 @@ export default function Register() {
             minLength={3}
             value={form.username}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             placeholder="Used to log in"
           />
         </div>
@@ -186,7 +186,7 @@ export default function Register() {
             required
             value={form.email}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
           />
           <p className="mt-1 text-xs text-white/70">Used for account recovery, not for logging in.</p>
         </div>
@@ -205,7 +205,7 @@ export default function Register() {
               maxLength={12}
               value={form.password}
               onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+              className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             />
           </div>
           <div>
@@ -221,7 +221,7 @@ export default function Register() {
               maxLength={12}
               value={form.confirmPassword}
               onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+              className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             />
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function Register() {
             placeholder="e.g. Dagupan City"
             value={form.location}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
           />
         </div>
 
@@ -258,7 +258,7 @@ export default function Register() {
                 required
                 value={form.farmName}
                 onChange={handleChange}
-                className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+                className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
               />
             </div>
             <div>
@@ -272,7 +272,7 @@ export default function Register() {
                 value={form.farmDescription}
                 onChange={handleChange}
                 placeholder="Crops you grow, farm size, etc."
-                className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
+                className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
               />
             </div>
             <p className="text-xs text-white/80">
