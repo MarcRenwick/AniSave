@@ -30,13 +30,19 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
-  const [role, setRole] = useState("buyer");
+  const [role, setRole] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const changeRole = () => {
+    setError("");
+    setForm(initialForm);
+    setRole(null);
   };
 
   const handleSubmit = async (e) => {
@@ -66,31 +72,65 @@ export default function Register() {
     }
   };
 
+  // Step 1: pick a role before showing any form fields
+  if (!role) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-green-50 px-4">
+        <div className="w-full max-w-sm rounded-xl bg-white p-8 text-center shadow-md">
+          <h1 className="text-2xl font-bold text-green-700">AniSave</h1>
+          <p className="mt-1 text-sm text-gray-500">How will you use AniSave?</p>
+
+          <div className="mt-6 space-y-3">
+            <button
+              type="button"
+              onClick={() => setRole("buyer")}
+              className="w-full rounded-lg border border-gray-200 p-4 text-left transition hover:border-green-600 hover:bg-green-50"
+            >
+              <span className="block font-semibold text-gray-900">I&apos;m a Buyer</span>
+              <span className="block text-sm text-gray-500">
+                Browse and order fresh produce from local farmers
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole("farmer")}
+              className="w-full rounded-lg border border-gray-200 p-4 text-left transition hover:border-green-600 hover:bg-green-50"
+            >
+              <span className="block font-semibold text-gray-900">I&apos;m a Farmer</span>
+              <span className="block text-sm text-gray-500">
+                List your crops and sell directly to buyers
+              </span>
+            </button>
+          </div>
+
+          <p className="mt-6 text-sm text-gray-500">
+            Already have an account?{" "}
+            <Link to="/login" className="font-medium text-green-700 hover:underline">
+              Log in
+            </Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: fill up the form for the chosen role
   return (
     <div className="flex min-h-screen items-center justify-center bg-green-50 px-4 py-10">
       <div className="w-full max-w-md rounded-xl bg-white p-8 shadow-md">
-        <h1 className="text-center text-2xl font-bold text-green-700">AniSave</h1>
-        <p className="mt-1 text-center text-sm text-gray-500">Create your account</p>
-
-        {/* Role toggle */}
-        <div className="mt-6 grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1">
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-green-700">AniSave</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Signing up as a <span className="font-medium capitalize text-green-700">{role}</span>
+            </p>
+          </div>
           <button
             type="button"
-            onClick={() => setRole("buyer")}
-            className={`rounded-md py-2 text-sm font-medium transition ${
-              role === "buyer" ? "bg-white text-green-700 shadow" : "text-gray-500"
-            }`}
+            onClick={changeRole}
+            className="text-sm font-medium text-gray-500 hover:text-green-700"
           >
-            I&apos;m a Buyer
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole("farmer")}
-            className={`rounded-md py-2 text-sm font-medium transition ${
-              role === "farmer" ? "bg-white text-green-700 shadow" : "text-gray-500"
-            }`}
-          >
-            I&apos;m a Farmer
+            Change
           </button>
         </div>
 
