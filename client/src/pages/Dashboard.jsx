@@ -1,4 +1,5 @@
 import { useAuth } from "../context/AuthContext";
+import logo from "../assets/logo.png";
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
@@ -7,7 +8,10 @@ export default function Dashboard() {
     <div className="min-h-screen bg-green-50 px-4 py-10">
       <div className="mx-auto max-w-2xl rounded-xl bg-white p-8 shadow-md">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-green-700">Welcome, {user?.name}</h1>
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="AniSave" className="h-10 w-10" />
+            <h1 className="text-xl font-bold text-green-700">Welcome, {user?.name}</h1>
+          </div>
           <button
             onClick={logout}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
