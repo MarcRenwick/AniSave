@@ -9,7 +9,7 @@ export default function Dashboard() {
       <div className="mx-auto max-w-2xl rounded-xl bg-white p-8 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="AniSave" className="h-10 w-10" />
+            <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
             <h1 className="text-xl font-bold text-green-700">Welcome, {user?.name}</h1>
           </div>
           <button

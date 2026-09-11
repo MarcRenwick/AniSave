@@ -34,7 +34,7 @@ export default function Login() {
     <AuthLayout
       header={
         <>
-          <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
+          <img src={logo} alt="AniSave" className="mx-auto h-32 w-32 rounded-full" />
           <h1 className="mt-2 text-3xl font-bold text-gray-900">Log In</h1>
         </>
       }

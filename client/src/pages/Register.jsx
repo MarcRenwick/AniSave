@@ -80,7 +80,7 @@ export default function Register() {
       <AuthLayout
         header={
           <>
-            <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
+            <img src={logo} alt="AniSave" className="mx-auto h-32 w-32 rounded-full" />
             <h1 className="mt-2 text-2xl font-bold text-gray-900">How will you use AniSave?</h1>
           </>
         }
@@ -124,7 +124,7 @@ export default function Register() {
       maxWidth="max-w-lg"
       header={
         <>
-          <img src={logo} alt="AniSave" className="mx-auto h-24 w-24" />
+          <img src={logo} alt="AniSave" className="mx-auto h-24 w-24 rounded-full" />
           <h1 className="mt-2 text-2xl font-bold text-gray-900">AniSave</h1>
           <p className="text-sm text-gray-700">
             Signing up as a <span className="font-semibold capitalize">{role}</span>{" "}

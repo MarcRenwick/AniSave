@@ -1,6 +1,6 @@
 import background from "../assets/background.jpg";
 
-export default function AuthLayout({ header, children, maxWidth = "max-w-md" }) {
+export default function AuthLayout({ header, children, maxWidth = "max-w-[26rem]" }) {
   return (
     <div
       className="relative flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10"
