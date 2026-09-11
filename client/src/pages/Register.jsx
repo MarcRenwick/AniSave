@@ -79,13 +79,13 @@ export default function Register() {
     return (
       <AuthLayout>
         <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
-        <p className="mt-2 text-center text-sm text-gray-500">How will you use AniSave?</p>
+        <p className="mt-2 text-center text-sm text-white/80">How will you use AniSave?</p>
 
         <div className="mt-6 space-y-3">
           <button
             type="button"
             onClick={() => setRole("buyer")}
-            className="w-full rounded-lg border border-gray-200 p-4 text-left transition hover:border-green-600 hover:bg-green-50"
+            className="w-full rounded-lg border border-transparent bg-white p-4 text-left transition hover:bg-green-50"
           >
             <span className="block font-semibold text-gray-900">I&apos;m a Buyer</span>
             <span className="block text-sm text-gray-500">
@@ -95,7 +95,7 @@ export default function Register() {
           <button
             type="button"
             onClick={() => setRole("farmer")}
-            className="w-full rounded-lg border border-gray-200 p-4 text-left transition hover:border-green-600 hover:bg-green-50"
+            className="w-full rounded-lg border border-transparent bg-white p-4 text-left transition hover:bg-green-50"
           >
             <span className="block font-semibold text-gray-900">I&apos;m a Farmer</span>
             <span className="block text-sm text-gray-500">
@@ -104,9 +104,9 @@ export default function Register() {
           </button>
         </div>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-white/80">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-green-700 hover:underline">
+          <Link to="/login" className="font-medium text-white hover:underline">
             Log in
           </Link>
         </p>
@@ -121,16 +121,16 @@ export default function Register() {
         <div className="flex items-center gap-3">
           <img src={logo} alt="AniSave" className="h-16 w-16" />
           <div>
-            <h1 className="text-lg font-bold text-green-700">AniSave</h1>
-            <p className="text-sm text-gray-500">
-              Signing up as a <span className="font-medium capitalize text-green-700">{role}</span>
+            <h1 className="text-lg font-bold text-white">AniSave</h1>
+            <p className="text-sm text-white/80">
+              Signing up as a <span className="font-semibold capitalize text-white">{role}</span>
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={changeRole}
-          className="text-sm font-medium text-gray-500 hover:text-green-700"
+          className="text-sm font-medium text-white/80 hover:text-white"
         >
           Change
         </button>
@@ -144,7 +144,7 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="name" className="block text-sm font-medium text-white">
             Full Name
           </label>
           <input
@@ -154,12 +154,12 @@ export default function Register() {
             required
             value={form.name}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
           />
         </div>
 
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="username" className="block text-sm font-medium text-white">
             Username
           </label>
           <input
@@ -170,13 +170,13 @@ export default function Register() {
             minLength={3}
             value={form.username}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
             placeholder="Used to log in"
           />
         </div>
 
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="email" className="block text-sm font-medium text-white">
             Email
           </label>
           <input
@@ -186,14 +186,14 @@ export default function Register() {
             required
             value={form.email}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
           />
-          <p className="mt-1 text-xs text-gray-400">Used for account recovery, not for logging in.</p>
+          <p className="mt-1 text-xs text-white/70">Used for account recovery, not for logging in.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-medium text-white">
               Password
             </label>
             <input
@@ -205,11 +205,11 @@ export default function Register() {
               maxLength={12}
               value={form.password}
               onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
             />
           </div>
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">
               Confirm
             </label>
             <input
@@ -221,16 +221,16 @@ export default function Register() {
               maxLength={12}
               value={form.confirmPassword}
               onChange={handleChange}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+              className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
             />
           </div>
         </div>
-        <p className="-mt-2 text-xs text-gray-400">
+        <p className="-mt-2 text-xs text-white/70">
           6-12 characters, with at least 1 capital letter and 1 special character.
         </p>
 
         <div>
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="location" className="block text-sm font-medium text-white">
             Location
           </label>
           <input
@@ -241,14 +241,14 @@ export default function Register() {
             placeholder="e.g. Dagupan City"
             value={form.location}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
           />
         </div>
 
         {role === "farmer" && (
-          <div className="space-y-4 rounded-md border border-green-100 bg-green-50 p-4">
+          <div className="space-y-4 rounded-md border border-white/30 bg-white/10 p-4">
             <div>
-              <label htmlFor="farmName" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="farmName" className="block text-sm font-medium text-white">
                 Farm Name
               </label>
               <input
@@ -258,11 +258,11 @@ export default function Register() {
                 required
                 value={form.farmName}
                 onChange={handleChange}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+                className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
               />
             </div>
             <div>
-              <label htmlFor="farmDescription" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="farmDescription" className="block text-sm font-medium text-white">
                 Farm Details
               </label>
               <textarea
@@ -272,10 +272,10 @@ export default function Register() {
                 value={form.farmDescription}
                 onChange={handleChange}
                 placeholder="Crops you grow, farm size, etc."
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+                className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
               />
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-white/80">
               Farmer accounts are reviewed by an admin before you can list products.
             </p>
           </div>
@@ -284,15 +284,15 @@ export default function Register() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-green-700 py-2 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-60"
+          className="w-full rounded-md bg-white py-2 text-sm font-semibold text-[#54b04f] transition hover:bg-green-50 disabled:opacity-60"
         >
           {submitting ? "Creating account..." : "Create Account"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-white/80">
         Already have an account?{" "}
-        <Link to="/login" className="font-medium text-green-700 hover:underline">
+        <Link to="/login" className="font-medium text-white hover:underline">
           Log in
         </Link>
       </p>

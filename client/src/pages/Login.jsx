@@ -33,7 +33,7 @@ export default function Login() {
   return (
     <AuthLayout>
       <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
-      <p className="mt-2 text-center text-sm text-gray-500">Log in to your account</p>
+      <p className="mt-2 text-center text-sm text-white/80">Log in to your account</p>
 
       {error && (
         <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
@@ -43,7 +43,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="username" className="block text-sm font-medium text-white">
             Username
           </label>
           <input
@@ -53,13 +53,13 @@ export default function Login() {
             required
             value={form.username}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
             placeholder="yourusername"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="password" className="block text-sm font-medium text-white">
             Password
           </label>
           <input
@@ -69,7 +69,7 @@ export default function Login() {
             required
             value={form.password}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600"
+            className="mt-1 w-full rounded-md border border-transparent px-3 py-2 text-sm focus:border-white focus:outline-none focus:ring-1 focus:ring-white"
             placeholder="••••••••"
           />
         </div>
@@ -77,15 +77,15 @@ export default function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-green-700 py-2 text-sm font-semibold text-white transition hover:bg-green-800 disabled:opacity-60"
+          className="w-full rounded-md bg-white py-2 text-sm font-semibold text-[#54b04f] transition hover:bg-green-50 disabled:opacity-60"
         >
           {submitting ? "Logging in..." : "Log In"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-white/80">
         Don&apos;t have an account?{" "}
-        <Link to="/register" className="font-medium text-green-700 hover:underline">
+        <Link to="/register" className="font-medium text-white hover:underline">
           Sign up
         </Link>
       </p>
