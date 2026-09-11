@@ -32,7 +32,7 @@ export default function Login() {
 
   return (
     <AuthLayout>
-      <img src={logo} alt="AniSave" className="mx-auto h-20 w-20" />
+      <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
       <p className="mt-2 text-center text-sm text-gray-500">Log in to your account</p>
 
       {error && (

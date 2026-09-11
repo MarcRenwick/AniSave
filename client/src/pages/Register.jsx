@@ -78,7 +78,7 @@ export default function Register() {
   if (!role) {
     return (
       <AuthLayout>
-        <img src={logo} alt="AniSave" className="mx-auto h-20 w-20" />
+        <img src={logo} alt="AniSave" className="mx-auto h-32 w-32" />
         <p className="mt-2 text-center text-sm text-gray-500">How will you use AniSave?</p>
 
         <div className="mt-6 space-y-3">
@@ -116,10 +116,10 @@ export default function Register() {
 
   // Step 2: fill up the form for the chosen role
   return (
-    <AuthLayout maxWidth="max-w-md">
+    <AuthLayout maxWidth="max-w-lg">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="AniSave" className="h-12 w-12" />
+          <img src={logo} alt="AniSave" className="h-16 w-16" />
           <div>
             <h1 className="text-lg font-bold text-green-700">AniSave</h1>
             <p className="text-sm text-gray-500">
