@@ -49,7 +49,7 @@ export default function ForgotPassword() {
       await resetPassword(email, code, password);
       navigate("/login");
     } catch (err) {
-      setError(err.response?.data?.message || "That verification code is invalid or has expired.");
+      setError(err.response?.data?.message || "That OTP is invalid or has expired.");
     } finally {
       setSubmitting(false);
     }
@@ -61,7 +61,7 @@ export default function ForgotPassword() {
         <>
           <img src={logo} alt="AniSave" className="mx-auto h-32 w-32 rounded-full" />
           <h1 className="mt-2 text-2xl font-bold text-gray-900">
-            {step === "request" ? "Forgot Password" : "Enter Code"}
+            {step === "request" ? "Forgot Password" : "Enter OTP"}
           </h1>
         </>
       }
@@ -73,7 +73,7 @@ export default function ForgotPassword() {
       {step === "request" ? (
         <>
           <p className="text-center text-sm text-white/80">
-            Enter your account email and we&apos;ll send you a 6-digit verification code.
+            Enter your account email and we&apos;ll send you a 6-digit OTP.
           </p>
 
           <form onSubmit={handleRequestCode} className="mt-6 space-y-4">
@@ -96,21 +96,21 @@ export default function ForgotPassword() {
               disabled={submitting}
               className="w-full rounded-md bg-white py-2 text-sm font-semibold text-[#54b04f] transition hover:bg-green-50 disabled:opacity-60"
             >
-              {submitting ? "Sending..." : "Send Verification Code"}
+              {submitting ? "Sending..." : "Send OTP"}
             </button>
           </form>
         </>
       ) : (
         <>
           <p className="text-center text-sm text-white/80">
-            We sent a code to <span className="font-medium">{email}</span>. Enter it below with your
+            We sent an OTP to <span className="font-medium">{email}</span>. Enter it below with your
             new password.
           </p>
 
           <form onSubmit={handleResetPassword} className="mt-6 space-y-4">
             <div>
               <label htmlFor="code" className="block text-sm font-medium text-white">
-                Verification Code
+                OTP
               </label>
               <input
                 id="code"

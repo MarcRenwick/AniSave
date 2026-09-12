@@ -99,7 +99,7 @@ const getMe = asyncHandler(async (req, res) => {
   res.json(req.user);
 });
 
-// @desc    Email a 6-digit verification code to reset a password
+// @desc    Email a 6-digit OTP to reset a password
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = asyncHandler(async (req, res) => {
@@ -121,27 +121,27 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
     await sendEmail({
       to: user.email,
-      subject: "Your AniSave password reset code",
+      subject: "Your AniSave OTP for password reset",
       html: `
         <p>Hi ${user.name},</p>
-        <p>Someone requested a password reset for your AniSave account. Enter this code in the app to continue. It expires in 15 minutes.</p>
+        <p>Someone requested a password reset for your AniSave account. Enter this OTP in the app to continue. It expires in 15 minutes.</p>
         <h2 style="letter-spacing: 6px;">${code}</h2>
         <p>If you didn't request this, you can safely ignore this email.</p>
       `,
     });
   }
 
-  res.json({ message: "If that email is registered, a verification code has been sent." });
+  res.json({ message: "If that email is registered, an OTP has been sent." });
 });
 
-// @desc    Reset password using the emailed verification code
+// @desc    Reset password using the emailed OTP
 // @route   POST /api/auth/reset-password
 // @access  Public
 const resetPassword = asyncHandler(async (req, res) => {
   const { email, code, password } = req.body;
   if (!email || !code || !password) {
     res.status(400);
-    throw new Error("Email, verification code and new password are required");
+    throw new Error("Email, OTP and new password are required");
   }
 
   const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
@@ -154,7 +154,7 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   if (!user) {
     res.status(400);
-    throw new Error("That verification code is invalid or has expired");
+    throw new Error("That OTP is invalid or has expired");
   }
 
   user.password = password;
