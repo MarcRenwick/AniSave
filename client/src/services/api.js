@@ -30,4 +30,9 @@ export const updateProduct = (id, formData) =>
 export const restockProduct = (id, amount) => api.patch(`/products/${id}/restock`, { amount });
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
+export const getFarmerOrders = () => api.get("/orders/farmer");
+export const getBuyerOrders = () => api.get("/orders/buyer");
+export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });
+export const updateOrderStatus = (id, status) => api.patch(`/orders/${id}/status`, { status });
+
 export default api;

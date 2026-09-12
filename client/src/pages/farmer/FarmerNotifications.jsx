@@ -1,18 +1,21 @@
 import { useState } from "react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
-import { notifications, categoryLabels } from "../../data/notifications";
-
-const tabs = [
-  { key: "all", label: "All" },
-  ...Object.entries(categoryLabels).map(([key, label]) => ({
-    key,
-    label: `${label} (${notifications.filter((n) => n.category === key).length})`,
-  })),
-];
+import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
+import { categoryLabels } from "../../utils/notifications";
 
 export default function FarmerNotifications() {
+  const { notifications, loading } = useFarmerNotifications();
   const [filter, setFilter] = useState("all");
+
+  const tabs = [
+    { key: "all", label: "All" },
+    ...Object.entries(categoryLabels).map(([key, label]) => ({
+      key,
+      label: `${label} (${notifications.filter((n) => n.category === key).length})`,
+    })),
+  ];
+
   const visible = filter === "all" ? notifications : notifications.filter((n) => n.category === filter);
 
   return (
@@ -46,29 +49,29 @@ export default function FarmerNotifications() {
           <div className="bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white">Select</div>
 
           <div className="p-4">
-            {visible.length > 0 ? (
+            {loading && <p className="text-sm text-gray-500">Loading notifications...</p>}
+
+            {!loading && visible.length > 0 && (
               <div className="grid grid-cols-3 gap-4">
                 {visible.map((note) => (
                   <div key={note.id} className="overflow-hidden rounded-lg border border-gray-200">
                     <div className={`px-3 py-1.5 text-sm font-semibold text-white ${note.color}`}>
                       {note.title}
                     </div>
-                    <div className="flex flex-col items-center gap-3 p-4">
+                    <div className="flex flex-col items-center gap-3 p-4 text-center">
                       <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white ${note.color}`}>
                         <note.icon className="h-5 w-5" />
                       </span>
-                      <div className="w-full space-y-1.5">
-                        <div className="h-1.5 w-full rounded bg-gray-200" />
-                        <div className="h-1.5 w-full rounded bg-gray-200" />
-                        <div className="h-1.5 w-3/4 rounded bg-gray-200" />
-                      </div>
+                      <p className="text-xs text-gray-600">{note.description}</p>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : null}
+            )}
 
-            <p className="mt-6 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
+            {!loading && (
+              <p className="mt-6 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
+            )}
           </div>
         </div>
       </div>

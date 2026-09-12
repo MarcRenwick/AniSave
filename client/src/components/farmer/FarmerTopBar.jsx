@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, CircleUserRound, X } from "lucide-react";
-import { notifications } from "../../data/notifications";
+import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
 
 export default function FarmerTopBar({ children }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
   const navigate = useNavigate();
+  const { notifications } = useFarmerNotifications();
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +38,9 @@ export default function FarmerTopBar({ children }) {
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5 text-white" />
-            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+            {notifications.length > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+            )}
           </button>
           <CircleUserRound className="h-9 w-9 rounded-full bg-white text-[#2f8f66]" />
         </div>
@@ -56,6 +59,9 @@ export default function FarmerTopBar({ children }) {
               </button>
             </div>
             <div className="max-h-96 divide-y divide-gray-100 overflow-y-auto">
+              {notifications.length === 0 && (
+                <p className="px-4 py-6 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
+              )}
               {notifications.map((note) => (
                 <button
                   key={note.id}
