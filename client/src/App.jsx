@@ -12,6 +12,7 @@ import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 import FarmerSettings from "./pages/farmer/FarmerSettings";
 import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
+import ProductDetail from "./pages/buyer/ProductDetail";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminRegister from "./pages/AdminRegister";
@@ -78,6 +79,7 @@ export default function App() {
           {/* Public - browsing the marketplace doesn't require an account */}
           <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
           <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
+          <Route path="/buyer/products/:id" element={<ProductDetail />} />
           <Route
             path="/buyer/settings"
             element={

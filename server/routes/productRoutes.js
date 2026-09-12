@@ -3,6 +3,7 @@ const {
   createProduct,
   getMyProducts,
   getAllProducts,
+  getProductById,
   updateProduct,
   restockProduct,
   deleteProduct,
@@ -15,13 +16,16 @@ const router = express.Router();
 // Public - marketplace browsing works for guests too
 router.get("/", getAllProducts);
 
-// Everything else is farmer-only, unchanged from before
-router.use(protect, authorize("farmer"));
+// Farmer-only - "/mine" must be registered before the public "/:id" route
+// below, since Express would otherwise match GET /products/mine against
+// "/:id" first and try to look up a product literally named "mine".
+router.get("/mine", protect, authorize("farmer"), getMyProducts);
+router.post("/", protect, authorize("farmer"), upload.single("image"), createProduct);
+router.put("/:id", protect, authorize("farmer"), upload.single("image"), updateProduct);
+router.patch("/:id/restock", protect, authorize("farmer"), restockProduct);
+router.delete("/:id", protect, authorize("farmer"), deleteProduct);
 
-router.post("/", upload.single("image"), createProduct);
-router.get("/mine", getMyProducts);
-router.put("/:id", upload.single("image"), updateProduct);
-router.patch("/:id/restock", restockProduct);
-router.delete("/:id", deleteProduct);
+// Public - single product detail
+router.get("/:id", getProductById);
 
 module.exports = router;

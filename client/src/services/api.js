@@ -32,6 +32,7 @@ export const confirmAccountDeletion = (code) => api.post("/auth/delete-account/c
 export const getMyProducts = () => api.get("/products/mine");
 export const getAllProducts = (params) => api.get("/products", { params });
 export const getFarmerProfile = (id) => api.get(`/farmers/${id}`);
+export const getProduct = (id) => api.get(`/products/${id}`);
 export const createProduct = (formData) =>
   api.post("/products", formData, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateProduct = (id, formData) =>

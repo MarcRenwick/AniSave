@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
+const Order = require("../models/Order");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 
 // @desc    Create a product for the logged-in farmer
@@ -38,7 +39,7 @@ const getMyProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products
 // @access  Public (guests can browse)
 const getAllProducts = asyncHandler(async (req, res) => {
-  const { category, location, minPrice, maxPrice, farmer } = req.query;
+  const { category, location, minPrice, maxPrice, farmer, search } = req.query;
 
   const filter = { stock: { $gt: 0 } };
   if (category) filter.category = category;
@@ -51,12 +52,37 @@ const getAllProducts = asyncHandler(async (req, res) => {
   if (location) {
     filter.location = { $regex: location, $options: "i" };
   }
+  if (search) {
+    filter.title = { $regex: search, $options: "i" };
+  }
 
   const products = await Product.find(filter)
     .populate("farmer", "name farmName location rating isVerified")
     .sort({ createdAt: -1 });
 
   res.json(products);
+});
+
+// @desc    Get a single product's public detail
+// @route   GET /api/products/:id
+// @access  Public
+const getProductById = asyncHandler(async (req, res) => {
+  const product = await Product.findById(req.params.id).populate(
+    "farmer",
+    "name farmName location rating isVerified"
+  );
+
+  if (!product) {
+    res.status(404);
+    throw new Error("Product not found");
+  }
+
+  const sales = await Order.aggregate([
+    { $match: { product: product._id } },
+    { $group: { _id: null, totalSold: { $sum: "$quantity" } } },
+  ]);
+
+  res.json({ ...product.toObject(), sold: sales[0]?.totalSold || 0 });
 });
 
 const findOwnedProduct = async (id, farmerId) => {
@@ -134,6 +160,7 @@ module.exports = {
   createProduct,
   getMyProducts,
   getAllProducts,
+  getProductById,
   updateProduct,
   restockProduct,
   deleteProduct,
