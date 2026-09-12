@@ -9,6 +9,7 @@ const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const farmerRoutes = require("./routes/farmerRoutes");
 
 connectDB();
 
@@ -23,6 +24,7 @@ app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/farmers", farmerRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

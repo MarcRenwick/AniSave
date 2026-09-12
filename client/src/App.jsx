@@ -10,6 +10,8 @@ import FarmerProducts from "./pages/farmer/FarmerProducts";
 import FarmerOrders from "./pages/farmer/FarmerOrders";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 import FarmerSettings from "./pages/farmer/FarmerSettings";
+import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
+import FarmerProfile from "./pages/buyer/FarmerProfile";
 
 export default function App() {
   return (
@@ -68,6 +70,10 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* Public - browsing the marketplace doesn't require an account */}
+          <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
+          <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

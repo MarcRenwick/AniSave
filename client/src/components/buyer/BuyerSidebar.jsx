@@ -1,19 +1,14 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutGrid, Package, ShoppingBag, Settings, LogOut } from "lucide-react";
+import { Store, LogIn, UserPlus, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
 
-const navItems = [
-  { to: "/farmer/dashboard", label: "Dashboard", icon: LayoutGrid },
-  { to: "/farmer/products", label: "Products", icon: Package },
-  { to: "/farmer/orders", label: "Orders", icon: ShoppingBag },
-  { to: "/farmer/settings", label: "Settings", icon: Settings },
-];
+const navItems = [{ to: "/buyer/marketplace", label: "Marketplace", icon: Store }];
 
-export default function FarmerSidebar() {
-  const { logout } = useAuth();
+export default function BuyerSidebar() {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
@@ -28,7 +23,7 @@ export default function FarmerSidebar() {
         <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
         <div className="leading-tight">
           <p className="font-semibold">AniSave</p>
-          <p className="text-xs text-white/80">Farmer Portal</p>
+          <p className="text-xs text-white/80">{user ? "Buyer" : "Browsing as Guest"}</p>
         </div>
       </div>
 
@@ -49,14 +44,35 @@ export default function FarmerSidebar() {
         ))}
       </nav>
 
-      <button
-        type="button"
-        onClick={() => setConfirmingLogout(true)}
-        className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
-      >
-        <LogOut className="h-5 w-5" />
-        Log out
-      </button>
+      <div className="mt-auto flex flex-col gap-2">
+        {user ? (
+          <button
+            type="button"
+            onClick={() => setConfirmingLogout(true)}
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
+          >
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+        ) : (
+          <>
+            <NavLink
+              to="/login"
+              className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
+            >
+              <LogIn className="h-5 w-5" />
+              Log In
+            </NavLink>
+            <NavLink
+              to="/register"
+              className="flex items-center gap-3 rounded-lg bg-[#8ee6b0] px-4 py-3 text-sm font-medium text-[#1f5c42] transition hover:bg-[#7ad89e]"
+            >
+              <UserPlus className="h-5 w-5" />
+              Sign Up
+            </NavLink>
+          </>
+        )}
+      </div>
 
       {confirmingLogout && (
         <LogoutConfirmModal onClose={() => setConfirmingLogout(false)} onConfirm={handleLogout} />

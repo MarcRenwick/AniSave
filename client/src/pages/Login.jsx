@@ -23,7 +23,9 @@ export default function Login() {
     setSubmitting(true);
     try {
       const user = await login(form.username, form.password);
-      navigate(user.role === "farmer" ? "/farmer/dashboard" : "/dashboard");
+      if (user.role === "farmer") navigate("/farmer/dashboard");
+      else if (user.role === "buyer") navigate("/buyer/marketplace");
+      else navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {

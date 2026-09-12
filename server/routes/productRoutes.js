@@ -2,6 +2,7 @@ const express = require("express");
 const {
   createProduct,
   getMyProducts,
+  getAllProducts,
   updateProduct,
   restockProduct,
   deleteProduct,
@@ -11,6 +12,10 @@ const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
+// Public - marketplace browsing works for guests too
+router.get("/", getAllProducts);
+
+// Everything else is farmer-only, unchanged from before
 router.use(protect, authorize("farmer"));
 
 router.post("/", upload.single("image"), createProduct);

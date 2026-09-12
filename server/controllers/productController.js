@@ -34,6 +34,31 @@ const getMyProducts = asyncHandler(async (req, res) => {
   res.json(products);
 });
 
+// @desc    Browse all farmers' in-stock products (marketplace)
+// @route   GET /api/products
+// @access  Public (guests can browse)
+const getAllProducts = asyncHandler(async (req, res) => {
+  const { category, location, minPrice, maxPrice, farmer } = req.query;
+
+  const filter = { stock: { $gt: 0 } };
+  if (category) filter.category = category;
+  if (farmer) filter.farmer = farmer;
+  if (minPrice || maxPrice) {
+    filter.price = {};
+    if (minPrice) filter.price.$gte = Number(minPrice);
+    if (maxPrice) filter.price.$lte = Number(maxPrice);
+  }
+  if (location) {
+    filter.location = { $regex: location, $options: "i" };
+  }
+
+  const products = await Product.find(filter)
+    .populate("farmer", "name farmName location rating isVerified")
+    .sort({ createdAt: -1 });
+
+  res.json(products);
+});
+
 const findOwnedProduct = async (id, farmerId) => {
   const product = await Product.findById(id);
   if (!product) return { error: { status: 404, message: "Product not found" } };
@@ -105,4 +130,11 @@ const deleteProduct = asyncHandler(async (req, res) => {
   res.json({ message: "Product deleted" });
 });
 
-module.exports = { createProduct, getMyProducts, updateProduct, restockProduct, deleteProduct };
+module.exports = {
+  createProduct,
+  getMyProducts,
+  getAllProducts,
+  updateProduct,
+  restockProduct,
+  deleteProduct,
+};

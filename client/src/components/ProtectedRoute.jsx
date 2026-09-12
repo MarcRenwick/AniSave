@@ -7,7 +7,13 @@ export default function ProtectedRoute({ children, role }) {
   if (!user) return <Navigate to="/login" replace />;
 
   if (role && user.role !== role) {
-    return <Navigate to={user.role === "farmer" ? "/farmer/dashboard" : "/dashboard"} replace />;
+    const home =
+      user.role === "farmer"
+        ? "/farmer/dashboard"
+        : user.role === "buyer"
+          ? "/buyer/marketplace"
+          : "/dashboard";
+    return <Navigate to={home} replace />;
   }
 
   return children;
