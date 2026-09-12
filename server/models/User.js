@@ -71,6 +71,15 @@ const userSchema = new mongoose.Schema(
         return this.role !== "farmer";
       },
     },
+
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
   { timestamps: true, validateModifiedOnly: true }
 );

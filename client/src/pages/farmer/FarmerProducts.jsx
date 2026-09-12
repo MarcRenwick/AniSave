@@ -72,22 +72,32 @@ export default function FarmerProducts() {
       </FarmerTopBar>
 
       <div className="p-8">
-        <div className="flex gap-3">
-          {filters.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition ${
-                filter === key
-                  ? "bg-[#2f8f66] text-white"
-                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {key !== "all" && <Leaf className="h-4 w-4" />}
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between">
+          <div className="flex gap-3">
+            {filters.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition ${
+                  filter === key
+                    ? "bg-[#2f8f66] text-white"
+                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {key !== "all" && <Leaf className="h-4 w-4" />}
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setModal({ type: "create" })}
+            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56]"
+          >
+            Create new <Plus className="h-4 w-4" />
+          </button>
         </div>
 
         {loading && <p className="mt-6 text-sm text-gray-500">Loading your products...</p>}
@@ -114,16 +124,6 @@ export default function FarmerProducts() {
             ))}
           </div>
         )}
-
-        <div className="mt-6 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setModal({ type: "create" })}
-            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56]"
-          >
-            Create new <Plus className="h-4 w-4" />
-          </button>
-        </div>
       </div>
 
       {modal?.type === "details" && <ProductDetailsModal product={modal.product} onClose={closeModal} />}

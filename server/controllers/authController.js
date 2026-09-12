@@ -1,6 +1,8 @@
+const crypto = require("crypto");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const sendEmail = require("../utils/sendEmail");
 
 // @desc    Register a new user (farmer or buyer)
 // @route   POST /api/auth/register
@@ -97,4 +99,71 @@ const getMe = asyncHandler(async (req, res) => {
   res.json(req.user);
 });
 
-module.exports = { registerUser, loginUser, getMe };
+// @desc    Request a password reset link by email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required");
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+
+  // Always respond the same way whether or not the email exists, so this
+  // endpoint can't be used to check which emails are registered.
+  if (user) {
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    user.resetPasswordToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+    await user.save();
+
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
+
+    await sendEmail({
+      to: user.email,
+      subject: "Reset your AniSave password",
+      html: `
+        <p>Hi ${user.name},</p>
+        <p>Someone requested a password reset for your AniSave account. Click the link below to set a new password. This link expires in 15 minutes.</p>
+        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>If you didn't request this, you can safely ignore this email.</p>
+      `,
+    });
+  }
+
+  res.json({ message: "If that email is registered, a reset link has been sent." });
+});
+
+// @desc    Reset password using a token from the emailed link
+// @route   POST /api/auth/reset-password/:token
+// @access  Public
+const resetPassword = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+  if (!password) {
+    res.status(400);
+    throw new Error("A new password is required");
+  }
+
+  const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpires: { $gt: Date.now() },
+  }).select("+resetPasswordToken +resetPasswordExpires");
+
+  if (!user) {
+    res.status(400);
+    throw new Error("This reset link is invalid or has expired");
+  }
+
+  user.password = password;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  await user.save();
+
+  res.json({ message: "Password has been reset. You can now log in." });
+});
+
+module.exports = { registerUser, loginUser, getMe, forgotPassword, resetPassword };
