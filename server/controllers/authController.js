@@ -99,7 +99,7 @@ const getMe = asyncHandler(async (req, res) => {
   res.json(req.user);
 });
 
-// @desc    Request a password reset link by email
+// @desc    Email a 6-digit verification code to reset a password
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = asyncHandler(async (req, res) => {
@@ -114,52 +114,51 @@ const forgotPassword = asyncHandler(async (req, res) => {
   // Always respond the same way whether or not the email exists, so this
   // endpoint can't be used to check which emails are registered.
   if (user) {
-    const rawToken = crypto.randomBytes(32).toString("hex");
-    user.resetPasswordToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordCode = crypto.createHash("sha256").update(code).digest("hex");
     user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
-
     await sendEmail({
       to: user.email,
-      subject: "Reset your AniSave password",
+      subject: "Your AniSave password reset code",
       html: `
         <p>Hi ${user.name},</p>
-        <p>Someone requested a password reset for your AniSave account. Click the link below to set a new password. This link expires in 15 minutes.</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
+        <p>Someone requested a password reset for your AniSave account. Enter this code in the app to continue. It expires in 15 minutes.</p>
+        <h2 style="letter-spacing: 6px;">${code}</h2>
         <p>If you didn't request this, you can safely ignore this email.</p>
       `,
     });
   }
 
-  res.json({ message: "If that email is registered, a reset link has been sent." });
+  res.json({ message: "If that email is registered, a verification code has been sent." });
 });
 
-// @desc    Reset password using a token from the emailed link
-// @route   POST /api/auth/reset-password/:token
+// @desc    Reset password using the emailed verification code
+// @route   POST /api/auth/reset-password
 // @access  Public
 const resetPassword = asyncHandler(async (req, res) => {
-  const { password } = req.body;
-  if (!password) {
+  const { email, code, password } = req.body;
+  if (!email || !code || !password) {
     res.status(400);
-    throw new Error("A new password is required");
+    throw new Error("Email, verification code and new password are required");
   }
 
-  const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+  const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
 
   const user = await User.findOne({
-    resetPasswordToken: hashedToken,
+    email: email.toLowerCase(),
+    resetPasswordCode: hashedCode,
     resetPasswordExpires: { $gt: Date.now() },
-  }).select("+resetPasswordToken +resetPasswordExpires");
+  }).select("+resetPasswordCode +resetPasswordExpires");
 
   if (!user) {
     res.status(400);
-    throw new Error("This reset link is invalid or has expired");
+    throw new Error("That verification code is invalid or has expired");
   }
 
   user.password = password;
-  user.resetPasswordToken = undefined;
+  user.resetPasswordCode = undefined;
   user.resetPasswordExpires = undefined;
   await user.save();
 

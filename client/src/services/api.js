@@ -22,7 +22,7 @@ export const registerUser = (data) => api.post("/auth/register", data);
 export const loginUser = (data) => api.post("/auth/login", data);
 export const getCurrentUser = () => api.get("/auth/me");
 export const forgotPassword = (email) => api.post("/auth/forgot-password", { email });
-export const resetPassword = (token, password) => api.post(`/auth/reset-password/${token}`, { password });
+export const resetPassword = (email, code, password) => api.post("/auth/reset-password", { email, code, password });
 
 export const getMyProducts = () => api.get("/products/mine");
 export const createProduct = (formData) =>

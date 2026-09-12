@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema(
       },
     },
 
-    resetPasswordToken: {
+    resetPasswordCode: {
       type: String,
       select: false,
     },
