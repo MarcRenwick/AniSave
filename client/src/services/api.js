@@ -48,4 +48,7 @@ export const getAdminUsers = (role) => api.get("/admin/users", { params: role ? 
 export const banUser = (id) => api.patch(`/admin/users/${id}/ban`);
 export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
 
+export const requestAdminOtp = (email) => api.post("/admin-auth/request-otp", { email });
+export const registerAdmin = (data) => api.post("/admin-auth/register", data);
+
 export default api;

@@ -14,6 +14,7 @@ import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminRegister from "./pages/AdminRegister";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/admin/register" element={<AdminRegister />} />
           <Route
             path="/dashboard"
             element={
