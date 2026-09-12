@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/AuthLayout";
+import PasswordInput from "../components/PasswordInput";
 import logo from "../assets/logo.png";
 import { getPasswordError } from "../utils/password";
 
@@ -182,10 +183,9 @@ export default function Register() {
             <label htmlFor="password" className="block text-sm font-medium text-white">
               Password
             </label>
-            <input
+            <PasswordInput
               id="password"
               name="password"
-              type="password"
               required
               minLength={6}
               maxLength={12}
@@ -198,10 +198,9 @@ export default function Register() {
             <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">
               Confirm
             </label>
-            <input
+            <PasswordInput
               id="confirmPassword"
               name="confirmPassword"
-              type="password"
               required
               minLength={6}
               maxLength={12}

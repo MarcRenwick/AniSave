@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AuthLayout from "../components/AuthLayout";
+import PasswordInput from "../components/PasswordInput";
 import logo from "../assets/logo.png";
 
 export default function Login() {
@@ -66,10 +67,9 @@ export default function Login() {
           <label htmlFor="password" className="block text-sm font-medium text-white">
             Password
           </label>
-          <input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             required
             value={form.password}
             onChange={handleChange}

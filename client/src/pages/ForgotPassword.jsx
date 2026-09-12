@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
+import PasswordInput from "../components/PasswordInput";
 import logo from "../assets/logo.png";
 import { forgotPassword, resetPassword } from "../services/api";
 import { getPasswordError } from "../utils/password";
@@ -129,9 +130,8 @@ export default function ForgotPassword() {
               <label htmlFor="password" className="block text-sm font-medium text-white">
                 New Password
               </label>
-              <input
+              <PasswordInput
                 id="password"
-                type="password"
                 required
                 minLength={6}
                 maxLength={12}
@@ -145,9 +145,8 @@ export default function ForgotPassword() {
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">
                 Confirm New Password
               </label>
-              <input
+              <PasswordInput
                 id="confirmPassword"
-                type="password"
                 required
                 minLength={6}
                 maxLength={12}
