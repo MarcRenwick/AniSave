@@ -1,8 +1,11 @@
 const crypto = require("crypto");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const Product = require("../models/Product");
+const Order = require("../models/Order");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
+const { deleteImageFile } = require("../utils/fileUtils");
 
 // @desc    Register a new user (farmer or buyer)
 // @route   POST /api/auth/register
@@ -32,7 +35,7 @@ const registerUser = asyncHandler(async (req, res) => {
   const usernameTaken = await User.findOne({ username: username.toLowerCase() });
   if (usernameTaken) {
     res.status(400);
-    throw new Error("Username is already taken");
+    throw new Error("Username is already exist");
   }
 
   const emailTaken = await User.findOne({ email: email.toLowerCase() });
@@ -165,4 +168,122 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json({ message: "Password has been reset. You can now log in." });
 });
 
-module.exports = { registerUser, loginUser, getMe, forgotPassword, resetPassword };
+// @desc    Update the logged-in user's profile info
+// @route   PUT /api/auth/profile
+// @access  Private
+const updateProfile = asyncHandler(async (req, res) => {
+  const { name, location, farmName, farmDescription } = req.body;
+
+  if (name !== undefined) req.user.name = name;
+  if (location !== undefined) req.user.location = location;
+  if (req.user.role === "farmer") {
+    if (farmName !== undefined) req.user.farmName = farmName;
+    if (farmDescription !== undefined) req.user.farmDescription = farmDescription;
+  }
+
+  await req.user.save();
+
+  res.json({
+    _id: req.user._id,
+    name: req.user.name,
+    username: req.user.username,
+    email: req.user.email,
+    role: req.user.role,
+    location: req.user.location,
+    farmName: req.user.farmName,
+    farmDescription: req.user.farmDescription,
+    isVerified: req.user.isVerified,
+  });
+});
+
+// @desc    Change the logged-in user's password
+// @route   PUT /api/auth/change-password
+// @access  Private
+const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    res.status(400);
+    throw new Error("Current password and new password are required");
+  }
+
+  const user = await User.findById(req.user._id).select("+password");
+
+  if (!(await user.matchPassword(currentPassword))) {
+    res.status(401);
+    throw new Error("Current password is incorrect");
+  }
+
+  user.password = newPassword;
+  await user.save();
+
+  res.json({ message: "Password changed successfully." });
+});
+
+// @desc    Email a 6-digit OTP to confirm account deletion
+// @route   POST /api/auth/delete-account/request-otp
+// @access  Private
+const requestAccountDeletion = asyncHandler(async (req, res) => {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  req.user.deleteAccountCode = crypto.createHash("sha256").update(code).digest("hex");
+  req.user.deleteAccountExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  await req.user.save();
+
+  await sendEmail({
+    to: req.user.email,
+    subject: "Confirm deleting your AniSave account",
+    html: `
+      <p>Hi ${req.user.name},</p>
+      <p>Enter this OTP in the app to permanently delete your AniSave account. This cannot be undone. It expires in 15 minutes.</p>
+      <h2 style="letter-spacing: 6px;">${code}</h2>
+      <p>If you didn't request this, you can safely ignore this email - your account will not be deleted.</p>
+    `,
+  });
+
+  res.json({ message: "An OTP has been sent to your email." });
+});
+
+// @desc    Confirm and permanently delete the logged-in user's account
+// @route   POST /api/auth/delete-account/confirm
+// @access  Private
+const confirmAccountDeletion = asyncHandler(async (req, res) => {
+  const { code } = req.body;
+  if (!code) {
+    res.status(400);
+    throw new Error("OTP is required");
+  }
+
+  const user = await User.findById(req.user._id).select("+deleteAccountCode +deleteAccountExpires");
+  const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
+
+  if (
+    !user.deleteAccountCode ||
+    user.deleteAccountCode !== hashedCode ||
+    !user.deleteAccountExpires ||
+    user.deleteAccountExpires < Date.now()
+  ) {
+    res.status(400);
+    throw new Error("That OTP is invalid or has expired");
+  }
+
+  // Cascade delete - remove everything that references this account so
+  // nothing is left orphaned behind.
+  const products = await Product.find({ farmer: user._id });
+  products.forEach((product) => deleteImageFile(product.image));
+  await Product.deleteMany({ farmer: user._id });
+  await Order.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
+  await user.deleteOne();
+
+  res.json({ message: "Your account has been permanently deleted." });
+});
+
+module.exports = {
+  registerUser,
+  loginUser,
+  getMe,
+  forgotPassword,
+  resetPassword,
+  updateProfile,
+  changePassword,
+  requestAccountDeletion,
+  confirmAccountDeletion,
+};

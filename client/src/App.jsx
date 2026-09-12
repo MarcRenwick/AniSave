@@ -9,6 +9,7 @@ import FarmerDashboard from "./pages/farmer/FarmerDashboard";
 import FarmerProducts from "./pages/farmer/FarmerProducts";
 import FarmerOrders from "./pages/farmer/FarmerOrders";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
+import FarmerSettings from "./pages/farmer/FarmerSettings";
 
 export default function App() {
   return (
@@ -56,6 +57,14 @@ export default function App() {
             element={
               <ProtectedRoute role="farmer">
                 <FarmerNotifications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/settings"
+            element={
+              <ProtectedRoute role="farmer">
+                <FarmerSettings />
               </ProtectedRoute>
             }
           />

@@ -39,8 +39,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Merges partial updates (e.g. from editing profile info) into the stored
+  // user so the UI reflects them immediately, without touching the token.
+  const updateUser = (updates) => {
+    setUser((prev) => {
+      const next = { ...prev, ...updates };
+      localStorage.setItem("anisave_user", JSON.stringify(next));
+      return next;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

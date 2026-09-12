@@ -1,17 +1,21 @@
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutGrid, Package, ShoppingBag, LogOut } from "lucide-react";
+import { LayoutGrid, Package, ShoppingBag, Settings, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
+import LogoutConfirmModal from "./LogoutConfirmModal";
 
 const navItems = [
   { to: "/farmer/dashboard", label: "Dashboard", icon: LayoutGrid },
   { to: "/farmer/products", label: "Products", icon: Package },
   { to: "/farmer/orders", label: "Orders", icon: ShoppingBag },
+  { to: "/farmer/settings", label: "Settings", icon: Settings },
 ];
 
 export default function FarmerSidebar() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -47,12 +51,16 @@ export default function FarmerSidebar() {
 
       <button
         type="button"
-        onClick={handleLogout}
+        onClick={() => setConfirmingLogout(true)}
         className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
       >
         <LogOut className="h-5 w-5" />
         Log out
       </button>
+
+      {confirmingLogout && (
+        <LogoutConfirmModal onClose={() => setConfirmingLogout(false)} onConfirm={handleLogout} />
+      )}
     </aside>
   );
 }

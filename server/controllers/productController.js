@@ -1,15 +1,6 @@
-const path = require("path");
-const fs = require("fs");
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
-
-const imagePath = (file) => (file ? `/uploads/${file.filename}` : undefined);
-
-const deleteImageFile = (imageUrl) => {
-  if (!imageUrl) return;
-  const filePath = path.join(__dirname, "..", imageUrl);
-  fs.unlink(filePath, () => {});
-};
+const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 
 // @desc    Create a product for the logged-in farmer
 // @route   POST /api/products

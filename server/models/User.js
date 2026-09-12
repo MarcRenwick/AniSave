@@ -80,6 +80,15 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+
+    deleteAccountCode: {
+      type: String,
+      select: false,
+    },
+    deleteAccountExpires: {
+      type: Date,
+      select: false,
+    },
   },
   { timestamps: true, validateModifiedOnly: true }
 );
