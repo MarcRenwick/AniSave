@@ -1,42 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Bell, CircleUserRound, X, FileText, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
-
-const notifications = [
-  {
-    icon: FileText,
-    color: "bg-blue-500",
-    title: "New Order",
-    description: "Marian Salcedo ordered 5kg of tomatoes",
-  },
-  {
-    icon: AlertTriangle,
-    color: "bg-red-500",
-    title: "Presyo Tumaas",
-    description: "The price of tomatoes increased by 10% this week",
-  },
-  {
-    icon: CheckCircle2,
-    color: "bg-green-500",
-    title: "Done Order",
-    description: "You've completed an order",
-  },
-  {
-    icon: Clock,
-    color: "bg-yellow-500",
-    title: "Ready Order",
-    description: "Your order is prepared and ready for pickup",
-  },
-  {
-    icon: AlertTriangle,
-    color: "bg-red-500",
-    title: "Presyo Tumaas",
-    description: "The price of cabbage increased by 5% this week",
-  },
-];
+import { useNavigate } from "react-router-dom";
+import { Bell, CircleUserRound, X } from "lucide-react";
+import { notifications } from "../../data/notifications";
 
 export default function FarmerTopBar({ children }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -48,6 +18,11 @@ export default function FarmerTopBar({ children }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
+  const goToNotifications = () => {
+    setOpen(false);
+    navigate("/farmer/notifications");
+  };
 
   return (
     <div className="relative flex items-center justify-between border-b border-gray-200 px-8 py-6">
@@ -81,8 +56,13 @@ export default function FarmerTopBar({ children }) {
               </button>
             </div>
             <div className="max-h-96 divide-y divide-gray-100 overflow-y-auto">
-              {notifications.map((note, i) => (
-                <div key={i} className="flex items-start gap-3 px-4 py-3">
+              {notifications.map((note) => (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={goToNotifications}
+                  className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-gray-50"
+                >
                   <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${note.color}`}>
                     <note.icon className="h-4 w-4" />
                   </span>
@@ -90,7 +70,7 @@ export default function FarmerTopBar({ children }) {
                     <p className="font-semibold text-gray-900">{note.title}</p>
                     <p className="text-gray-500">{note.description}</p>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

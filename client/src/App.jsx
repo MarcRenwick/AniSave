@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import FarmerDashboard from "./pages/farmer/FarmerDashboard";
 import FarmerProducts from "./pages/farmer/FarmerProducts";
 import FarmerOrders from "./pages/farmer/FarmerOrders";
+import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 
 export default function App() {
   return (
@@ -45,6 +46,14 @@ export default function App() {
             element={
               <ProtectedRoute role="farmer">
                 <FarmerOrders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/notifications"
+            element={
+              <ProtectedRoute role="farmer">
+                <FarmerNotifications />
               </ProtectedRoute>
             }
           />
