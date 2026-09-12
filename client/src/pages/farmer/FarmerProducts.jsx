@@ -1,15 +1,20 @@
 import { useState } from "react";
-import { MoreHorizontal, Plus, Leaf } from "lucide-react";
+import { Plus, Leaf } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
+import ProductCard from "../../components/farmer/products/ProductCard";
+import ProductDetailsModal from "../../components/farmer/products/ProductDetailsModal";
+import RestockModal from "../../components/farmer/products/RestockModal";
+import ProductFormModal from "../../components/farmer/products/ProductFormModal";
+import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmModal";
 
-const products = [
-  { emoji: "🥦", nameFil: "Brokoli", nameEn: "Broccoli", stock: 50, category: "vegetable" },
-  { emoji: "🍅", nameFil: "Kamatis", nameEn: "Tomato", stock: 40, category: "vegetable" },
-  { emoji: "🍆", nameFil: "Talong", nameEn: "Eggplant", stock: 50, category: "vegetable" },
-  { emoji: "🎃", nameFil: "Kalabasa", nameEn: "Pumpkin", stock: 80, category: "vegetable" },
-  { emoji: "🥕", nameFil: "Karot", nameEn: "Carrot", stock: 60, category: "vegetable" },
-  { emoji: "🥔", nameFil: "Patatas", nameEn: "Potato", stock: 80, category: "vegetable" },
+const initialProducts = [
+  { id: 1, image: "🥦", title: "Brokoli / Broccoli", stock: 50, price: 100, category: "vegetable", location: "Dagupan City Random Street #1234" },
+  { id: 2, image: "🍅", title: "Kamatis / Tomato", stock: 40, price: 60, category: "vegetable", location: "Dagupan City Random Street #1234" },
+  { id: 3, image: "🍆", title: "Talong / Eggplant", stock: 50, price: 70, category: "vegetable", location: "Dagupan City Random Street #1234" },
+  { id: 4, image: "🎃", title: "Kalabasa / Pumpkin", stock: 80, price: 40, category: "vegetable", location: "Dagupan City Random Street #1234" },
+  { id: 5, image: "🥕", title: "Karot / Carrot", stock: 60, price: 50, category: "vegetable", location: "Dagupan City Random Street #1234" },
+  { id: 6, image: "🥔", title: "Patatas / Potato", stock: 80, price: 45, category: "vegetable", location: "Dagupan City Random Street #1234" },
 ];
 
 const filters = [
@@ -19,8 +24,34 @@ const filters = [
 ];
 
 export default function FarmerProducts() {
+  const [products, setProducts] = useState(initialProducts);
   const [filter, setFilter] = useState("all");
+  const [modal, setModal] = useState(null); // { type: "details" | "restock" | "edit" | "delete" | "create", product? }
+
   const visible = filter === "all" ? products : products.filter((p) => p.category === filter);
+  const closeModal = () => setModal(null);
+
+  const handleConfirmRestock = (amount) => {
+    setProducts((prev) =>
+      prev.map((p) => (p.id === modal.product.id ? { ...p, stock: p.stock + amount } : p))
+    );
+    closeModal();
+  };
+
+  const handleSubmitEdit = (fields) => {
+    setProducts((prev) => prev.map((p) => (p.id === modal.product.id ? { ...p, ...fields } : p)));
+    closeModal();
+  };
+
+  const handleConfirmDelete = () => {
+    setProducts((prev) => prev.filter((p) => p.id !== modal.product.id));
+    closeModal();
+  };
+
+  const handleSubmitCreate = (fields) => {
+    setProducts((prev) => [...prev, { id: Date.now(), isNew: true, ...fields }]);
+    closeModal();
+  };
 
   return (
     <FarmerLayout>
@@ -50,42 +81,45 @@ export default function FarmerProducts() {
 
         <div className="mt-6 grid grid-cols-3 gap-6">
           {visible.map((product) => (
-            <div key={product.nameEn} className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <div className="relative flex h-32 items-center justify-center bg-white text-6xl">
-                {product.emoji}
-                <button
-                  type="button"
-                  className="absolute right-2 top-2 rounded-full p-1 text-gray-400 hover:bg-gray-100"
-                  aria-label="Product options"
-                >
-                  <MoreHorizontal className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="space-y-2 bg-[#2f8f66] px-4 py-3 text-white">
-                <p className="text-sm font-semibold">
-                  {product.nameFil} / {product.nameEn}
-                </p>
-                <p className="text-xs text-white/90">Current Stock: {product.stock} kg</p>
-                <button
-                  type="button"
-                  className="w-full rounded-md bg-white py-1.5 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
-                >
-                  Restock
-                </button>
-              </div>
-            </div>
+            <ProductCard
+              key={product.id}
+              product={product}
+              onViewDetails={(p) => setModal({ type: "details", product: p })}
+              onRestock={(p) => setModal({ type: "restock", product: p })}
+              onEdit={(p) => setModal({ type: "edit", product: p })}
+              onDelete={(p) => setModal({ type: "delete", product: p })}
+            />
           ))}
         </div>
 
         <div className="mt-6 flex justify-end">
           <button
             type="button"
+            onClick={() => setModal({ type: "create" })}
             className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56]"
           >
             Create new <Plus className="h-4 w-4" />
           </button>
         </div>
       </div>
+
+      {modal?.type === "details" && <ProductDetailsModal product={modal.product} onClose={closeModal} />}
+
+      {modal?.type === "restock" && (
+        <RestockModal product={modal.product} onClose={closeModal} onConfirm={handleConfirmRestock} />
+      )}
+
+      {modal?.type === "edit" && (
+        <ProductFormModal mode="edit" product={modal.product} onClose={closeModal} onSubmit={handleSubmitEdit} />
+      )}
+
+      {modal?.type === "delete" && (
+        <DeleteConfirmModal product={modal.product} onClose={closeModal} onConfirm={handleConfirmDelete} />
+      )}
+
+      {modal?.type === "create" && (
+        <ProductFormModal mode="create" onClose={closeModal} onSubmit={handleSubmitCreate} />
+      )}
     </FarmerLayout>
   );
 }
