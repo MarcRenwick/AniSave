@@ -25,6 +25,7 @@ export default function Login() {
       const user = await login(form.username, form.password);
       if (user.role === "farmer") navigate("/farmer/dashboard");
       else if (user.role === "buyer") navigate("/buyer/marketplace");
+      else if (user.role === "admin") navigate("/admin/users");
       else navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");

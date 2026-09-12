@@ -84,6 +84,11 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid username or password");
   }
 
+  if (user.isBanned) {
+    res.status(403);
+    throw new Error("This account has been banned. Contact support for more information.");
+  }
+
   res.json({
     _id: user._id,
     name: user.name,

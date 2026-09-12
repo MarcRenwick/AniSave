@@ -72,6 +72,12 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // Set by an admin - a banned user cannot log in
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
+
     resetPasswordCode: {
       type: String,
       select: false,

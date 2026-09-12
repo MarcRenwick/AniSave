@@ -44,4 +44,8 @@ export const getBuyerOrders = () => api.get("/orders/buyer");
 export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });
 export const updateOrderStatus = (id, status) => api.patch(`/orders/${id}/status`, { status });
 
+export const getAdminUsers = (role) => api.get("/admin/users", { params: role ? { role } : {} });
+export const banUser = (id) => api.patch(`/admin/users/${id}/ban`);
+export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
+
 export default api;

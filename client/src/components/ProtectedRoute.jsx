@@ -12,7 +12,9 @@ export default function ProtectedRoute({ children, role }) {
         ? "/farmer/dashboard"
         : user.role === "buyer"
           ? "/buyer/marketplace"
-          : "/dashboard";
+          : user.role === "admin"
+            ? "/admin/users"
+            : "/dashboard";
     return <Navigate to={home} replace />;
   }
 

@@ -13,6 +13,7 @@ import FarmerSettings from "./pages/farmer/FarmerSettings";
 import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
+import AdminUsers from "./pages/admin/AdminUsers";
 
 export default function App() {
   return (
@@ -80,6 +81,15 @@ export default function App() {
             element={
               <ProtectedRoute role="buyer">
                 <BuyerSettings />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute role="admin">
+                <AdminUsers />
               </ProtectedRoute>
             }
           />
