@@ -2,9 +2,9 @@ import FarmerSidebar from "../components/farmer/FarmerSidebar";
 
 export default function FarmerLayout({ children }) {
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex h-screen overflow-hidden bg-gray-100">
       <FarmerSidebar />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
 }
