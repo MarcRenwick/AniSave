@@ -1,6 +1,7 @@
 import { TrendingDown, Coins, Banknote, TrendingUp, Award } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
+import { useAuth } from "../../context/AuthContext";
 
 const demandChart = [
   {
@@ -49,10 +50,12 @@ function CardHeader({ children }) {
 }
 
 export default function FarmerDashboard() {
+  const { user } = useAuth();
+
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-2xl font-semibold text-gray-900">Magandang Araw, Jerome Ruzol! 😏</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Magandang Araw, {user?.name}! 😏</h1>
       </FarmerTopBar>
 
       <div className="grid grid-cols-3 gap-6 p-8">

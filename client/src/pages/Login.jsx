@@ -21,8 +21,8 @@ export default function Login() {
     setError("");
     setSubmitting(true);
     try {
-      await login(form.username, form.password);
-      navigate("/dashboard");
+      const user = await login(form.username, form.password);
+      navigate(user.role === "farmer" ? "/farmer/dashboard" : "/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {

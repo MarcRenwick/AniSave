@@ -1,6 +1,7 @@
-import { NavLink } from "react-router-dom";
-import { LayoutGrid, Package, ShoppingBag } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { LayoutGrid, Package, ShoppingBag, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
+import { useAuth } from "../../context/AuthContext";
 
 const navItems = [
   { to: "/farmer/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -9,6 +10,14 @@ const navItems = [
 ];
 
 export default function FarmerSidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <aside className="flex w-64 shrink-0 flex-col bg-[#2f8f66] px-4 py-6 text-white">
       <div className="flex items-center gap-3 px-2">
@@ -35,6 +44,15 @@ export default function FarmerSidebar() {
           </NavLink>
         ))}
       </nav>
+
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
+      >
+        <LogOut className="h-5 w-5" />
+        Log out
+      </button>
     </aside>
   );
 }

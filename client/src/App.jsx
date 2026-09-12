@@ -24,10 +24,30 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          {/* Farmer portal preview - not wired to real data/auth yet */}
-          <Route path="/farmer/dashboard" element={<FarmerDashboard />} />
-          <Route path="/farmer/products" element={<FarmerProducts />} />
-          <Route path="/farmer/orders" element={<FarmerOrders />} />
+          <Route
+            path="/farmer/dashboard"
+            element={
+              <ProtectedRoute role="farmer">
+                <FarmerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/products"
+            element={
+              <ProtectedRoute role="farmer">
+                <FarmerProducts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/orders"
+            element={
+              <ProtectedRoute role="farmer">
+                <FarmerOrders />
+              </ProtectedRoute>
+            }
+          />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

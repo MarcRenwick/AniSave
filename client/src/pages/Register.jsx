@@ -66,7 +66,7 @@ export default function Register() {
     try {
       const { confirmPassword: _confirmPassword, ...payload } = form;
       await register({ ...payload, role });
-      navigate("/dashboard");
+      navigate(role === "farmer" ? "/farmer/dashboard" : "/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
