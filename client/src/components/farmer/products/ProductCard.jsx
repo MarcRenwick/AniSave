@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, ImageOff } from "lucide-react";
+import { SERVER_URL } from "../../../services/api";
 
-export default function ProductCard({ product, onViewDetails, onRestock, onEdit, onDelete }) {
+export default function ProductCard({ product, isNew, onViewDetails, onRestock, onEdit, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -14,24 +15,26 @@ export default function ProductCard({ product, onViewDetails, onRestock, onEdit,
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
-  const isImageUrl = product.image && product.image.length > 4;
-
   return (
     <div className="relative overflow-hidden rounded-xl bg-white shadow-sm">
       <button
         type="button"
         onClick={() => onViewDetails(product)}
-        className="flex h-32 w-full items-center justify-center bg-white text-6xl"
+        className="flex h-32 w-full items-center justify-center bg-gray-50 text-gray-300"
         title="View details"
       >
-        {isImageUrl ? (
-          <img src={product.image} alt={product.title} className="h-full w-full object-cover" />
+        {product.image ? (
+          <img
+            src={`${SERVER_URL}${product.image}`}
+            alt={product.title}
+            className="h-full w-full object-cover"
+          />
         ) : (
-          product.image
+          <ImageOff className="h-10 w-10" />
         )}
       </button>
 
-      {product.isNew && (
+      {isNew && (
         <span className="absolute left-2 top-2 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
           New
         </span>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Camera } from "lucide-react";
 import Modal from "../../Modal";
+import { SERVER_URL } from "../../../services/api";
 
 const emptyForm = {
   title: "",
@@ -23,7 +24,10 @@ export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
         }
       : emptyForm
   );
-  const [photo, setPhoto] = useState(isEdit ? product.image : null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(
+    isEdit && product.image ? `${SERVER_URL}${product.image}` : null
+  );
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -31,17 +35,22 @@ export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
 
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) setPhoto(URL.createObjectURL(file));
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({
-      ...form,
-      stock: Number(form.stock),
-      price: Number(form.price),
-      image: photo,
-    });
+    const formData = new FormData();
+    formData.append("title", form.title);
+    formData.append("stock", form.stock);
+    formData.append("price", form.price);
+    formData.append("category", form.category);
+    formData.append("location", form.location);
+    if (photoFile) formData.append("image", photoFile);
+    onSubmit(formData);
   };
 
   return (
@@ -50,12 +59,8 @@ export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
         <div>
           <label className="block text-sm font-medium text-gray-700">Upload a photo*</label>
           <label className="mt-1 flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-[#2f8f66]">
-            {photo ? (
-              photo.length <= 4 ? (
-                <span className="text-5xl">{photo}</span>
-              ) : (
-                <img src={photo} alt="Product preview" className="h-full w-full object-cover" />
-              )
+            {photoPreview ? (
+              <img src={photoPreview} alt="Product preview" className="h-full w-full object-cover" />
             ) : (
               <span className="flex flex-col items-center gap-1 text-xs">
                 <Camera className="h-6 w-6" />

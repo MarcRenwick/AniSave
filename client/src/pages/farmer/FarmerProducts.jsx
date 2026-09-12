@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Leaf } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
@@ -7,15 +7,13 @@ import ProductDetailsModal from "../../components/farmer/products/ProductDetails
 import RestockModal from "../../components/farmer/products/RestockModal";
 import ProductFormModal from "../../components/farmer/products/ProductFormModal";
 import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmModal";
-
-const initialProducts = [
-  { id: 1, image: "🥦", title: "Brokoli / Broccoli", stock: 50, price: 100, category: "vegetable", location: "Dagupan City Random Street #1234" },
-  { id: 2, image: "🍅", title: "Kamatis / Tomato", stock: 40, price: 60, category: "vegetable", location: "Dagupan City Random Street #1234" },
-  { id: 3, image: "🍆", title: "Talong / Eggplant", stock: 50, price: 70, category: "vegetable", location: "Dagupan City Random Street #1234" },
-  { id: 4, image: "🎃", title: "Kalabasa / Pumpkin", stock: 80, price: 40, category: "vegetable", location: "Dagupan City Random Street #1234" },
-  { id: 5, image: "🥕", title: "Karot / Carrot", stock: 60, price: 50, category: "vegetable", location: "Dagupan City Random Street #1234" },
-  { id: 6, image: "🥔", title: "Patatas / Potato", stock: 80, price: 45, category: "vegetable", location: "Dagupan City Random Street #1234" },
-];
+import {
+  getMyProducts,
+  createProduct,
+  updateProduct,
+  restockProduct,
+  deleteProduct,
+} from "../../services/api";
 
 const filters = [
   { key: "all", label: "All" },
@@ -24,32 +22,45 @@ const filters = [
 ];
 
 export default function FarmerProducts() {
-  const [products, setProducts] = useState(initialProducts);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [modal, setModal] = useState(null); // { type: "details" | "restock" | "edit" | "delete" | "create", product? }
+  const [justAddedId, setJustAddedId] = useState(null);
+
+  useEffect(() => {
+    getMyProducts()
+      .then(({ data }) => setProducts(data))
+      .catch(() => setError("Could not load your products. Is the server running?"))
+      .finally(() => setLoading(false));
+  }, []);
 
   const visible = filter === "all" ? products : products.filter((p) => p.category === filter);
   const closeModal = () => setModal(null);
 
-  const handleConfirmRestock = (amount) => {
-    setProducts((prev) =>
-      prev.map((p) => (p.id === modal.product.id ? { ...p, stock: p.stock + amount } : p))
-    );
+  const handleConfirmRestock = async (amount) => {
+    const { data } = await restockProduct(modal.product._id, amount);
+    setProducts((prev) => prev.map((p) => (p._id === data._id ? data : p)));
     closeModal();
   };
 
-  const handleSubmitEdit = (fields) => {
-    setProducts((prev) => prev.map((p) => (p.id === modal.product.id ? { ...p, ...fields } : p)));
+  const handleSubmitEdit = async (formData) => {
+    const { data } = await updateProduct(modal.product._id, formData);
+    setProducts((prev) => prev.map((p) => (p._id === data._id ? data : p)));
     closeModal();
   };
 
-  const handleConfirmDelete = () => {
-    setProducts((prev) => prev.filter((p) => p.id !== modal.product.id));
+  const handleConfirmDelete = async () => {
+    await deleteProduct(modal.product._id);
+    setProducts((prev) => prev.filter((p) => p._id !== modal.product._id));
     closeModal();
   };
 
-  const handleSubmitCreate = (fields) => {
-    setProducts((prev) => [...prev, { id: Date.now(), isNew: true, ...fields }]);
+  const handleSubmitCreate = async (formData) => {
+    const { data } = await createProduct(formData);
+    setProducts((prev) => [data, ...prev]);
+    setJustAddedId(data._id);
     closeModal();
   };
 
@@ -79,18 +90,30 @@ export default function FarmerProducts() {
           ))}
         </div>
 
-        <div className="mt-6 grid grid-cols-3 gap-6">
-          {visible.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onViewDetails={(p) => setModal({ type: "details", product: p })}
-              onRestock={(p) => setModal({ type: "restock", product: p })}
-              onEdit={(p) => setModal({ type: "edit", product: p })}
-              onDelete={(p) => setModal({ type: "delete", product: p })}
-            />
-          ))}
-        </div>
+        {loading && <p className="mt-6 text-sm text-gray-500">Loading your products...</p>}
+        {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+
+        {!loading && !error && visible.length === 0 && (
+          <p className="mt-6 text-sm text-gray-500">
+            No products yet. Click &ldquo;Create new&rdquo; to add your first one.
+          </p>
+        )}
+
+        {!loading && !error && visible.length > 0 && (
+          <div className="mt-6 grid grid-cols-3 gap-6">
+            {visible.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                isNew={product._id === justAddedId}
+                onViewDetails={(p) => setModal({ type: "details", product: p })}
+                onRestock={(p) => setModal({ type: "restock", product: p })}
+                onEdit={(p) => setModal({ type: "edit", product: p })}
+                onDelete={(p) => setModal({ type: "delete", product: p })}
+              />
+            ))}
+          </div>
+        )}
 
         <div className="mt-6 flex justify-end">
           <button
