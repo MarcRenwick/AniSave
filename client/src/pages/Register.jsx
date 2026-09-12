@@ -170,7 +170,6 @@ export default function Register() {
             value={form.username}
             onChange={handleChange}
             className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-            placeholder="Used to log in"
           />
         </div>
 
