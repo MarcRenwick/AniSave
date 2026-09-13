@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Package, ImageOff, Star, ShoppingBasket } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
+import AddToCartModal from "../../components/buyer/AddToCartModal";
 import { getProduct, createOrder, SERVER_URL } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -20,6 +21,7 @@ export default function ProductDetail() {
   const [buying, setBuying] = useState(false);
   const [buyMessage, setBuyMessage] = useState("");
   const [buyError, setBuyError] = useState("");
+  const [showAddToCart, setShowAddToCart] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -36,10 +38,11 @@ export default function ProductDetail() {
     setQuantity((q) => Math.min(product.stock, Math.max(1, q + delta)));
   };
 
-  const handleAddToCart = () => {
-    addToCart(product, quantity);
+  const handleConfirmAddToCart = (qty) => {
+    addToCart(product, qty);
+    setShowAddToCart(false);
     setBuyError("");
-    setBuyMessage("Added to cart!");
+    setBuyMessage(`Added ${qty}kg to cart!`);
   };
 
   const handleBuyNow = async () => {
@@ -103,7 +106,7 @@ export default function ProductDetail() {
               <div className="mt-4 flex gap-3">
                 <button
                   type="button"
-                  onClick={handleAddToCart}
+                  onClick={() => setShowAddToCart(true)}
                   disabled={product.stock === 0}
                   className="flex flex-1 items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-3 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
                 >
@@ -188,6 +191,14 @@ export default function ProductDetail() {
         </div>
         )}
       </div>
+
+      {showAddToCart && product && (
+        <AddToCartModal
+          product={product}
+          onClose={() => setShowAddToCart(false)}
+          onConfirm={handleConfirmAddToCart}
+        />
+      )}
     </BuyerLayout>
   );
 }

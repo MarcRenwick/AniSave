@@ -44,6 +44,14 @@ export function CartProvider({ children }) {
 
   const removeFromCart = (productId) => persist(items.filter((i) => i.productId !== productId));
 
+  // Removes several items in one update - looping removeFromCart would only
+  // keep the last removal, since each call reads the same stale `items`
+  // closure from this render.
+  const removeItems = (productIds) => {
+    const ids = new Set(productIds);
+    persist(items.filter((i) => !ids.has(i.productId)));
+  };
+
   const updateQuantity = (productId, quantity) =>
     persist(
       items.map((i) =>
@@ -58,7 +66,7 @@ export function CartProvider({ children }) {
 
   return (
     <CartContext.Provider
-      value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, count, total }}
+      value={{ items, addToCart, removeFromCart, removeItems, updateQuantity, clearCart, count, total }}
     >
       {children}
     </CartContext.Provider>
