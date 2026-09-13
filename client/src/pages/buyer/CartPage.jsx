@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Trash2, ImageOff } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
+import CartCheckoutModal from "../../components/buyer/CartCheckoutModal";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { createOrder, SERVER_URL } from "../../services/api";
@@ -14,6 +15,7 @@ export default function CartPage() {
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState("");
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
   const toggleSelected = (productId) => {
     setSelected((prev) => {
@@ -53,6 +55,7 @@ export default function CartPage() {
         updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
       }
       removeItems(placedIds);
+      setShowCheckoutModal(false);
       navigate("/buyer/marketplace");
     } catch (err) {
       if (placedIds.length > 0) removeItems(placedIds);
@@ -90,10 +93,6 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="mt-6 space-y-4">
-            {error && (
-              <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-            )}
-
             <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
               <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
                 <input
@@ -181,15 +180,16 @@ export default function CartPage() {
             {user?.role === "buyer" ? (
               <button
                 type="button"
-                onClick={handleCheckout}
-                disabled={checkingOut || selectedItems.length === 0}
+                onClick={() => {
+                  setError("");
+                  setShowCheckoutModal(true);
+                }}
+                disabled={selectedItems.length === 0}
                 className="w-full rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
               >
-                {checkingOut
-                  ? "Placing Orders..."
-                  : selectedItems.length === 0
-                    ? "Select items to checkout"
-                    : `Checkout (${selectedItems.length})`}
+                {selectedItems.length === 0
+                  ? "Select items to checkout"
+                  : `Checkout (${selectedItems.length})`}
               </button>
             ) : (
               <Link
@@ -202,6 +202,17 @@ export default function CartPage() {
           </div>
         )}
       </div>
+
+      {showCheckoutModal && (
+        <CartCheckoutModal
+          items={selectedItems}
+          total={selectedTotal}
+          onClose={() => setShowCheckoutModal(false)}
+          onConfirm={handleCheckout}
+          confirming={checkingOut}
+          error={error}
+        />
+      )}
     </BuyerLayout>
   );
 }

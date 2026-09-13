@@ -16,6 +16,7 @@ import FarmerProfile from "./pages/buyer/FarmerProfile";
 import ProductDetail from "./pages/buyer/ProductDetail";
 import CartPage from "./pages/buyer/CartPage";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
+import BuyerOrders from "./pages/buyer/BuyerOrders";
 import BuyerWallet from "./pages/buyer/BuyerWallet";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminTopUps from "./pages/admin/AdminTopUps";
@@ -91,6 +92,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="buyer">
                   <BuyerSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/orders"
+              element={
+                <ProtectedRoute role="buyer">
+                  <BuyerOrders />
                 </ProtectedRoute>
               }
             />

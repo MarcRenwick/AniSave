@@ -96,4 +96,37 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
-module.exports = { createOrder, getFarmerOrders, getBuyerOrders, updateOrderStatus };
+// @desc    Cancel a buyer's own order, while the farmer hasn't accepted it yet
+// @route   PATCH /api/orders/:id/cancel
+// @access  Private (buyer, owner only)
+const cancelOrder = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+  if (order.buyer.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("You do not own this order");
+  }
+  if (order.status !== "new") {
+    res.status(400);
+    throw new Error("This order has already been accepted by the farmer and can no longer be cancelled");
+  }
+
+  order.status = "cancelled";
+  await order.save();
+
+  req.user.walletBalance += order.total;
+  await req.user.save();
+
+  const product = await Product.findById(order.product);
+  if (product) {
+    product.stock += order.quantity;
+    await product.save();
+  }
+
+  res.json(order);
+});
+
+module.exports = { createOrder, getFarmerOrders, getBuyerOrders, updateOrderStatus, cancelOrder };

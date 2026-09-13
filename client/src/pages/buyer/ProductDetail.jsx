@@ -4,7 +4,8 @@ import { ArrowLeft, Package, ImageOff, Star, ShoppingBasket } from "lucide-react
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import AddToCartModal from "../../components/buyer/AddToCartModal";
-import { getProduct, createOrder, SERVER_URL } from "../../services/api";
+import CheckoutModal from "../../components/buyer/CheckoutModal";
+import { getProduct, SERVER_URL } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 
@@ -17,49 +18,29 @@ export default function ProductDetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [quantity, setQuantity] = useState(1);
-  const [buying, setBuying] = useState(false);
   const [buyMessage, setBuyMessage] = useState("");
-  const [buyError, setBuyError] = useState("");
   const [showAddToCart, setShowAddToCart] = useState(false);
+  const [showCheckout, setShowCheckout] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     getProduct(id)
-      .then(({ data }) => {
-        setProduct(data);
-        setQuantity(data.stock > 0 ? 1 : 0);
-      })
+      .then(({ data }) => setProduct(data))
       .catch(() => setError("Could not load this product."))
       .finally(() => setLoading(false));
   }, [id]);
 
-  const adjustQuantity = (delta) => {
-    setQuantity((q) => Math.min(product.stock, Math.max(1, q + delta)));
-  };
-
   const handleConfirmAddToCart = (qty) => {
     addToCart(product, qty);
     setShowAddToCart(false);
-    setBuyError("");
     setBuyMessage(`Added ${qty}kg to cart!`);
   };
 
-  const handleBuyNow = async () => {
-    setBuyError("");
-    setBuyMessage("");
-    setBuying(true);
-    try {
-      const { data: order } = await createOrder(product._id, quantity);
-      setBuyMessage("Order placed! The farmer has been notified.");
-      setProduct((p) => ({ ...p, stock: p.stock - quantity }));
-      updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
-      setQuantity(1);
-    } catch (err) {
-      setBuyError(err.response?.data?.message || "Could not place the order. Please try again.");
-    } finally {
-      setBuying(false);
-    }
+  const handleCheckoutSuccess = (order, qty) => {
+    setBuyMessage("Order placed! The farmer has been notified.");
+    setProduct((p) => ({ ...p, stock: p.stock - qty }));
+    updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
+    setShowCheckout(false);
   };
 
   return (
@@ -99,9 +80,6 @@ export default function ProductDetail() {
                 {buyMessage}
               </div>
             )}
-            {buyError && (
-              <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{buyError}</div>
-            )}
 
             {user?.role === "buyer" ? (
               <div className="mt-4 flex gap-3">
@@ -116,11 +94,11 @@ export default function ProductDetail() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleBuyNow}
-                  disabled={buying || product.stock === 0}
+                  onClick={() => setShowCheckout(true)}
+                  disabled={product.stock === 0}
                   className="flex-1 rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
                 >
-                  {product.stock === 0 ? "Out of Stock" : buying ? "Placing Order..." : "Buy Now"}
+                  {product.stock === 0 ? "Out of Stock" : "Buy Now"}
                 </button>
               </div>
             ) : (
@@ -167,25 +145,8 @@ export default function ProductDetail() {
                 </dd>
               </div>
               <div>
-                <dt className="text-gray-500">Quantity</dt>
-                <dd className="mt-1 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => adjustQuantity(-1)}
-                    className="h-8 w-8 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-                  >
-                    −
-                  </button>
-                  <span className="w-8 text-center font-medium text-gray-900">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => adjustQuantity(1)}
-                    className="h-8 w-8 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-                  >
-                    +
-                  </button>
-                  <span className="text-xs text-gray-400">{product.stock} kilos Available</span>
-                </dd>
+                <dt className="text-gray-500">Available Stock</dt>
+                <dd className="font-medium text-gray-900">{product.stock} kilos</dd>
               </div>
             </dl>
           </div>
@@ -198,6 +159,14 @@ export default function ProductDetail() {
           product={product}
           onClose={() => setShowAddToCart(false)}
           onConfirm={handleConfirmAddToCart}
+        />
+      )}
+
+      {showCheckout && product && (
+        <CheckoutModal
+          product={product}
+          onClose={() => setShowCheckout(false)}
+          onSuccess={handleCheckoutSuccess}
         />
       )}
     </BuyerLayout>

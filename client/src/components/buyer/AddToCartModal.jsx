@@ -4,7 +4,12 @@ import Modal from "../Modal";
 export default function AddToCartModal({ product, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
 
-  const adjust = (delta) => setQuantity((q) => Math.min(product.stock, Math.max(1, q + delta)));
+  const clamp = (value) => Math.min(product.stock, Math.max(1, value));
+  const adjust = (delta) => setQuantity((q) => clamp(q + delta));
+  const handleTyped = (e) => {
+    const value = Number(e.target.value);
+    setQuantity(!e.target.value || Number.isNaN(value) ? 1 : clamp(Math.floor(value)));
+  };
 
   return (
     <Modal title="Add to Cart" onClose={onClose}>
@@ -20,7 +25,14 @@ export default function AddToCartModal({ product, onClose, onConfirm }) {
         >
           −
         </button>
-        <span className="w-12 text-center text-xl font-semibold text-gray-900">{quantity}</span>
+        <input
+          type="number"
+          min="1"
+          max={product.stock}
+          value={quantity}
+          onChange={handleTyped}
+          className="w-16 rounded-md border border-gray-300 py-1.5 text-center text-xl font-semibold text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+        />
         <button
           type="button"
           onClick={() => adjust(1)}

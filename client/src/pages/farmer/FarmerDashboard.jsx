@@ -80,17 +80,22 @@ export default function FarmerDashboard() {
 
   const topProducts = useMemo(() => {
     const salesByProduct = new Map();
-    orders.forEach((order) => {
-      const key = order.product;
-      const entry = salesByProduct.get(key) || { title: order.productTitle, qty: 0 };
-      entry.qty += order.quantity;
-      salesByProduct.set(key, entry);
-    });
+    orders
+      .filter((order) => order.status !== "cancelled")
+      .forEach((order) => {
+        const key = order.product;
+        const entry = salesByProduct.get(key) || { title: order.productTitle, qty: 0 };
+        entry.qty += order.quantity;
+        salesByProduct.set(key, entry);
+      });
     return [...salesByProduct.values()].sort((a, b) => b.qty - a.qty).slice(0, 6);
   }, [orders]);
 
   const todaysSales = useMemo(
-    () => orders.filter((o) => isToday(o.createdAt)).reduce((sum, o) => sum + o.total, 0),
+    () =>
+      orders
+        .filter((o) => o.status !== "cancelled" && isToday(o.createdAt))
+        .reduce((sum, o) => sum + o.total, 0),
     [orders]
   );
 
