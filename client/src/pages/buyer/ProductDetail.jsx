@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Package, ImageOff, Star } from "lucide-react";
+import { Package, ImageOff, Star, ShoppingBasket } from "lucide-react";
 import BuyerStoreLayout from "../../layouts/BuyerStoreLayout";
 import { getProduct, createOrder, SERVER_URL } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,12 @@ export default function ProductDetail() {
 
   const adjustQuantity = (delta) => {
     setQuantity((q) => Math.min(product.stock, Math.max(1, q + delta)));
+  };
+
+  const handleAddToCart = () => {
+    addToCart(product, quantity);
+    setBuyError("");
+    setBuyMessage("Added to cart!");
   };
 
   const handleBuyNow = async () => {
@@ -79,14 +87,25 @@ export default function ProductDetail() {
             )}
 
             {user?.role === "buyer" ? (
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                disabled={buying || product.stock === 0}
-                className="mt-4 w-full rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
-              >
-                {product.stock === 0 ? "Out of Stock" : buying ? "Placing Order..." : "Buy Now"}
-              </button>
+              <div className="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-3 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                >
+                  <ShoppingBasket className="h-4 w-4" />
+                  Add to Cart
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  disabled={buying || product.stock === 0}
+                  className="flex-1 rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                >
+                  {product.stock === 0 ? "Out of Stock" : buying ? "Placing Order..." : "Buy Now"}
+                </button>
+              </div>
             ) : (
               <Link
                 to="/login"

@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -13,6 +14,7 @@ import FarmerSettings from "./pages/farmer/FarmerSettings";
 import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import ProductDetail from "./pages/buyer/ProductDetail";
+import CartPage from "./pages/buyer/CartPage";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminRegister from "./pages/AdminRegister";
@@ -21,85 +23,88 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/admin/register" element={<AdminRegister />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/farmer/dashboard"
-            element={
-              <ProtectedRoute role="farmer">
-                <FarmerDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/farmer/products"
-            element={
-              <ProtectedRoute role="farmer">
-                <FarmerProducts />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/farmer/orders"
-            element={
-              <ProtectedRoute role="farmer">
-                <FarmerOrders />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/farmer/notifications"
-            element={
-              <ProtectedRoute role="farmer">
-                <FarmerNotifications />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/farmer/settings"
-            element={
-              <ProtectedRoute role="farmer">
-                <FarmerSettings />
-              </ProtectedRoute>
-            }
-          />
+        <CartProvider>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/admin/register" element={<AdminRegister />} />
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/dashboard"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/products"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerProducts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/orders"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/notifications"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerNotifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/settings"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerSettings />
+                </ProtectedRoute>
+              }
+            />
 
-          {/* Public - browsing the marketplace doesn't require an account */}
-          <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
-          <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
-          <Route path="/buyer/products/:id" element={<ProductDetail />} />
-          <Route
-            path="/buyer/settings"
-            element={
-              <ProtectedRoute role="buyer">
-                <BuyerSettings />
-              </ProtectedRoute>
-            }
-          />
+            {/* Public - browsing the marketplace doesn't require an account */}
+            <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
+            <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
+            <Route path="/buyer/products/:id" element={<ProductDetail />} />
+            <Route path="/buyer/cart" element={<CartPage />} />
+            <Route
+              path="/buyer/settings"
+              element={
+                <ProtectedRoute role="buyer">
+                  <BuyerSettings />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route
-            path="/admin/users"
-            element={
-              <ProtectedRoute role="admin">
-                <AdminUsers />
-              </ProtectedRoute>
-            }
-          />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </CartProvider>
       </AuthProvider>
     </BrowserRouter>
   );
