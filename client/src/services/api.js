@@ -52,4 +52,12 @@ export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
 export const requestAdminOtp = (email) => api.post("/admin-auth/request-otp", { email });
 export const registerAdmin = (data) => api.post("/admin-auth/register", data);
 
+export const requestTopUp = (amount) => api.post("/wallet/topup-request", { amount });
+export const getMyTopUpRequests = () => api.get("/wallet/my-requests");
+
+export const getAdminTopUpRequests = (status) =>
+  api.get("/admin/topup-requests", { params: status ? { status } : {} });
+export const approveTopUp = (id) => api.patch(`/admin/topup-requests/${id}/approve`);
+export const rejectTopUp = (id) => api.patch(`/admin/topup-requests/${id}/reject`);
+
 export default api;

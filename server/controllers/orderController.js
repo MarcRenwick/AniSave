@@ -24,6 +24,14 @@ const createOrder = asyncHandler(async (req, res) => {
     throw new Error(`Only ${product.stock}kg of ${product.title} left in stock`);
   }
 
+  const total = product.price * quantity;
+  if (req.user.walletBalance < total) {
+    res.status(400);
+    throw new Error(
+      `Insufficient wallet balance. This order costs ₱${total}, but your balance is ₱${req.user.walletBalance}. Please top up your wallet.`
+    );
+  }
+
   const order = await Order.create({
     buyer: req.user._id,
     farmer: product.farmer,
@@ -31,11 +39,14 @@ const createOrder = asyncHandler(async (req, res) => {
     productTitle: product.title,
     pricePerKilo: product.price,
     quantity,
-    total: product.price * quantity,
+    total,
   });
 
   product.stock -= quantity;
   await product.save();
+
+  req.user.walletBalance -= total;
+  await req.user.save();
 
   res.status(201).json(order);
 });

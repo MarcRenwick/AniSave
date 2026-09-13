@@ -12,6 +12,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const farmerRoutes = require("./routes/farmerRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const adminAuthRoutes = require("./routes/adminAuthRoutes");
+const walletRoutes = require("./routes/walletRoutes");
 
 connectDB();
 
@@ -29,6 +30,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/farmers", farmerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/admin-auth", adminAuthRoutes);
+app.use("/api/wallet", walletRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

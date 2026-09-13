@@ -9,7 +9,7 @@ import { createOrder, SERVER_URL } from "../../services/api";
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { items, updateQuantity, removeFromCart, removeItems } = useCart();
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
   const [checkingOut, setCheckingOut] = useState(false);
@@ -45,13 +45,17 @@ export default function CartPage() {
   const handleCheckout = async () => {
     setError("");
     setCheckingOut(true);
+    const placedIds = [];
     try {
       for (const item of selectedItems) {
-        await createOrder(item.productId, item.quantity);
+        const { data: order } = await createOrder(item.productId, item.quantity);
+        placedIds.push(item.productId);
+        updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
       }
-      removeItems(selectedItems.map((i) => i.productId));
+      removeItems(placedIds);
       navigate("/buyer/marketplace");
     } catch (err) {
+      if (placedIds.length > 0) removeItems(placedIds);
       setError(err.response?.data?.message || "Could not complete checkout. Please try again.");
     } finally {
       setCheckingOut(false);

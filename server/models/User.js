@@ -78,6 +78,13 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Buyer e-wallet - only credited once an admin approves a top-up request
+    walletBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     resetPasswordCode: {
       type: String,
       select: false,

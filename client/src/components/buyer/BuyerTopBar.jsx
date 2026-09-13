@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Search, ShoppingBasket, CircleUserRound } from "lucide-react";
+import { Search, ShoppingBasket, CircleUserRound, Wallet } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 
@@ -30,6 +30,16 @@ export default function BuyerTopBar({ children, search, onSearchChange }) {
       )}
 
       <div className="flex shrink-0 items-center gap-3">
+        {user?.role === "buyer" && (
+          <Link
+            to="/buyer/wallet"
+            className="flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1.5 text-sm font-semibold text-[#2f8f66] hover:bg-green-100"
+          >
+            <Wallet className="h-4 w-4" />
+            ₱{user.walletBalance ?? 0}
+          </Link>
+        )}
+
         <Link
           to="/buyer/cart"
           className="relative rounded-full p-2 text-gray-500 hover:bg-gray-100"

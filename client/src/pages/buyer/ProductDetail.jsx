@@ -11,7 +11,7 @@ import { useCart } from "../../context/CartContext";
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
@@ -50,9 +50,10 @@ export default function ProductDetail() {
     setBuyMessage("");
     setBuying(true);
     try {
-      await createOrder(product._id, quantity);
+      const { data: order } = await createOrder(product._id, quantity);
       setBuyMessage("Order placed! The farmer has been notified.");
       setProduct((p) => ({ ...p, stock: p.stock - quantity }));
+      updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
       setQuantity(1);
     } catch (err) {
       setBuyError(err.response?.data?.message || "Could not place the order. Please try again.");
