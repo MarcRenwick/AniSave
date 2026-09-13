@@ -8,7 +8,7 @@ export default function CancelOrderModal({ order, onClose, onConfirm, cancelling
         <span className="font-medium">
           {order.quantity}kg {order.productTitle}
         </span>{" "}
-        (₱{order.total})? Your wallet will be refunded the full amount.
+        (₱{order.total})? The reserved stock will be released back to the farmer.
       </p>
 
       {error && (

@@ -17,9 +17,7 @@ import ProductDetail from "./pages/buyer/ProductDetail";
 import CartPage from "./pages/buyer/CartPage";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
 import BuyerOrders from "./pages/buyer/BuyerOrders";
-import BuyerWallet from "./pages/buyer/BuyerWallet";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminTopUps from "./pages/admin/AdminTopUps";
 import AdminRegister from "./pages/AdminRegister";
 
 export default function App() {
@@ -103,28 +101,12 @@ export default function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/buyer/wallet"
-              element={
-                <ProtectedRoute role="buyer">
-                  <BuyerWallet />
-                </ProtectedRoute>
-              }
-            />
 
             <Route
               path="/admin/users"
               element={
                 <ProtectedRoute role="admin">
                   <AdminUsers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/topups"
-              element={
-                <ProtectedRoute role="admin">
-                  <AdminTopUps />
                 </ProtectedRoute>
               }
             />

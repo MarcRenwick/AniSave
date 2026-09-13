@@ -10,7 +10,7 @@ import { createOrder, SERVER_URL } from "../../services/api";
 
 export default function CartPage() {
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { items, updateQuantity, removeFromCart, removeItems } = useCart();
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
   const [checkingOut, setCheckingOut] = useState(false);
@@ -50,9 +50,8 @@ export default function CartPage() {
     const placedIds = [];
     try {
       for (const item of selectedItems) {
-        const { data: order } = await createOrder(item.productId, item.quantity);
+        await createOrder(item.productId, item.quantity);
         placedIds.push(item.productId);
-        updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
       }
       removeItems(placedIds);
       setShowCheckoutModal(false);

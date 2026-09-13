@@ -41,11 +41,9 @@ export function AuthProvider({ children }) {
 
   // Merges partial updates (e.g. from editing profile info) into the stored
   // user so the UI reflects them immediately, without touching the token.
-  // `updates` may also be a function of the previous user, for updates that
-  // depend on the latest value (e.g. deducting a purchase from the balance).
   const updateUser = (updates) => {
     setUser((prev) => {
-      const next = { ...prev, ...(typeof updates === "function" ? updates(prev) : updates) };
+      const next = { ...prev, ...updates };
       localStorage.setItem("anisave_user", JSON.stringify(next));
       return next;
     });

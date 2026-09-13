@@ -12,7 +12,7 @@ import { useCart } from "../../context/CartContext";
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
@@ -36,10 +36,9 @@ export default function ProductDetail() {
     setBuyMessage(`Added ${qty}kg to cart!`);
   };
 
-  const handleCheckoutSuccess = (order, qty) => {
+  const handleCheckoutSuccess = (qty) => {
     setBuyMessage("Order placed! The farmer has been notified.");
     setProduct((p) => ({ ...p, stock: p.stock - qty }));
-    updateUser((prev) => ({ walletBalance: prev.walletBalance - order.total }));
     setShowCheckout(false);
   };
 

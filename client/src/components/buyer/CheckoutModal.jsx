@@ -21,8 +21,8 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
     setError("");
     setSubmitting(true);
     try {
-      const { data: order } = await createOrder(product._id, quantity);
-      onSuccess(order, quantity);
+      await createOrder(product._id, quantity);
+      onSuccess(quantity);
     } catch (err) {
       setError(err.response?.data?.message || "Could not place the order. Please try again.");
     } finally {
@@ -77,7 +77,7 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
       <p className="mt-2 text-center text-xs text-gray-400">{product.stock} kilos available</p>
 
       <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-4 py-3">
-        <span className="text-sm text-gray-600">Total</span>
+        <span className="text-sm text-gray-600">Total (Cash on Delivery)</span>
         <span className="text-lg font-bold text-gray-900">₱{total}</span>
       </div>
 

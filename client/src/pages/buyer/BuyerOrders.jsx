@@ -3,7 +3,6 @@ import { FileText, Clock, CheckCircle2, XCircle } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
-import { useAuth } from "../../context/AuthContext";
 import { getBuyerOrders, cancelOrder } from "../../services/api";
 
 const filters = [
@@ -22,7 +21,6 @@ const statusMeta = {
 };
 
 export default function BuyerOrders() {
-  const { updateUser } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,7 +44,6 @@ export default function BuyerOrders() {
     try {
       const { data } = await cancelOrder(target._id);
       setOrders((prev) => prev.map((o) => (o._id === data._id ? data : o)));
-      updateUser((prev) => ({ walletBalance: prev.walletBalance + data.total }));
       setTarget(null);
     } catch (err) {
       setCancelError(err.response?.data?.message || "Could not cancel this order. Please try again.");

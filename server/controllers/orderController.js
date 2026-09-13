@@ -25,12 +25,6 @@ const createOrder = asyncHandler(async (req, res) => {
   }
 
   const total = product.price * quantity;
-  if (req.user.walletBalance < total) {
-    res.status(400);
-    throw new Error(
-      `Insufficient wallet balance. This order costs ₱${total}, but your balance is ₱${req.user.walletBalance}. Please top up your wallet.`
-    );
-  }
 
   const order = await Order.create({
     buyer: req.user._id,
@@ -44,9 +38,6 @@ const createOrder = asyncHandler(async (req, res) => {
 
   product.stock -= quantity;
   await product.save();
-
-  req.user.walletBalance -= total;
-  await req.user.save();
 
   res.status(201).json(order);
 });
@@ -116,9 +107,6 @@ const cancelOrder = asyncHandler(async (req, res) => {
 
   order.status = "cancelled";
   await order.save();
-
-  req.user.walletBalance += order.total;
-  await req.user.save();
 
   const product = await Product.findById(order.product);
   if (product) {

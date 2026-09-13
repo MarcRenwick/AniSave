@@ -62,7 +62,6 @@ const registerUser = asyncHandler(async (req, res) => {
     email: user.email,
     role: user.role,
     isVerified: user.isVerified,
-    walletBalance: user.walletBalance,
     token: generateToken(user._id, user.role),
   });
 });
@@ -97,7 +96,6 @@ const loginUser = asyncHandler(async (req, res) => {
     email: user.email,
     role: user.role,
     isVerified: user.isVerified,
-    walletBalance: user.walletBalance,
     token: generateToken(user._id, user.role),
   });
 });
@@ -200,7 +198,6 @@ const updateProfile = asyncHandler(async (req, res) => {
     farmName: req.user.farmName,
     farmDescription: req.user.farmDescription,
     isVerified: req.user.isVerified,
-    walletBalance: req.user.walletBalance,
   });
 });
 
