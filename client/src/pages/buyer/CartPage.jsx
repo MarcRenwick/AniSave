@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Trash2, ImageOff } from "lucide-react";
-import BuyerStoreLayout from "../../layouts/BuyerStoreLayout";
+import { ArrowLeft, Trash2, ImageOff } from "lucide-react";
+import BuyerLayout from "../../layouts/BuyerLayout";
+import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { createOrder, SERVER_URL } from "../../services/api";
@@ -30,10 +31,22 @@ export default function CartPage() {
   };
 
   return (
-    <BuyerStoreLayout onBack={() => navigate(-1)}>
-      <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
+    <BuyerLayout>
+      <BuyerTopBar>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Marketplace
+        </button>
+      </BuyerTopBar>
 
-      {items.length === 0 ? (
+      <div className="p-8">
+        <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
+
+        {items.length === 0 ? (
         <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">
           <p className="text-sm text-gray-500">Your cart is empty.</p>
           <Link
@@ -127,7 +140,8 @@ export default function CartPage() {
             </Link>
           )}
         </div>
-      )}
-    </BuyerStoreLayout>
+        )}
+      </div>
+    </BuyerLayout>
   );
 }

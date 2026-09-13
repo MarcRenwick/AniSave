@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { Package, ImageOff, Star, ShoppingBasket } from "lucide-react";
-import BuyerStoreLayout from "../../layouts/BuyerStoreLayout";
+import { ArrowLeft, Package, ImageOff, Star, ShoppingBasket } from "lucide-react";
+import BuyerLayout from "../../layouts/BuyerLayout";
+import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import { getProduct, createOrder, SERVER_URL } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -58,11 +59,23 @@ export default function ProductDetail() {
   };
 
   return (
-    <BuyerStoreLayout onBack={() => navigate(-1)}>
-      {loading && <p className="text-sm text-gray-600">Loading...</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+    <BuyerLayout>
+      <BuyerTopBar>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Marketplace
+        </button>
+      </BuyerTopBar>
 
-      {!loading && !error && product && (
+      <div className="p-8">
+        {loading && <p className="text-sm text-gray-600">Loading...</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {!loading && !error && product && (
         <div className="grid grid-cols-2 gap-8 rounded-2xl bg-white p-6 shadow-sm">
           <div>
             <div className="flex h-72 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-gray-300">
@@ -128,6 +141,12 @@ export default function ProductDetail() {
             </div>
 
             <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className="text-gray-500">Sold by</dt>
+                <dd className="font-medium text-gray-900">
+                  {product.farmer?.farmName || product.farmer?.name || "Unknown farmer"}
+                </dd>
+              </div>
               <div className="flex items-center gap-2">
                 <Package className="h-4 w-4 text-gray-400" />
                 <dt className="text-gray-500">Pick up</dt>
@@ -167,7 +186,8 @@ export default function ProductDetail() {
             </dl>
           </div>
         </div>
-      )}
-    </BuyerStoreLayout>
+        )}
+      </div>
+    </BuyerLayout>
   );
 }
