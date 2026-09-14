@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FileText, Clock, CheckCircle2, XCircle } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
@@ -21,6 +22,7 @@ const statusMeta = {
 };
 
 export default function BuyerOrders() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -99,7 +101,11 @@ export default function BuyerOrders() {
                   const meta = statusMeta[o.status];
                   const Icon = meta.icon;
                   return (
-                    <tr key={o._id}>
+                    <tr
+                      key={o._id}
+                      onClick={() => navigate(`/buyer/orders/${o._id}`)}
+                      className="cursor-pointer hover:bg-gray-50"
+                    >
                       <td className="px-4 py-3 font-medium text-gray-900">{o.productTitle}</td>
                       <td className="px-4 py-3 text-gray-600">
                         {o.farmer?.farmName || o.farmer?.name || "—"}
@@ -124,7 +130,8 @@ export default function BuyerOrders() {
                         {o.status === "new" && (
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setCancelError("");
                               setTarget(o);
                             }}

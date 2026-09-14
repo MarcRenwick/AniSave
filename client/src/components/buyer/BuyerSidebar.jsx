@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Store, ClipboardList, Settings, LogIn, UserPlus, LogOut } from "lucide-react";
+import { Home, Store, ClipboardList, Settings, LogIn, UserPlus, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
@@ -11,6 +11,7 @@ export default function BuyerSidebar() {
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
   const navItems = [
+    { to: "/buyer/home", label: "Home", icon: Home },
     { to: "/buyer/marketplace", label: "Marketplace", icon: Store },
     ...(user
       ? [

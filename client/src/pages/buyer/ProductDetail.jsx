@@ -36,10 +36,25 @@ export default function ProductDetail() {
     setBuyMessage(`Added ${qty}kg to cart!`);
   };
 
-  const handleCheckoutSuccess = (qty) => {
-    setBuyMessage("Order placed! The farmer has been notified.");
-    setProduct((p) => ({ ...p, stock: p.stock - qty }));
+  const handleProceedToCheckout = (qty) => {
     setShowCheckout(false);
+    navigate("/buyer/checkout", {
+      state: {
+        items: [
+          {
+            productId: product._id,
+            title: product.title,
+            price: product.price,
+            image: product.image,
+            farmerId: product.farmer?._id,
+            farmerName: product.farmer?.farmName || product.farmer?.name || "Unknown Farmer",
+            location: product.location || product.farmer?.location || "Address not set",
+            quantity: qty,
+          },
+        ],
+        fromCart: false,
+      },
+    });
   };
 
   return (
@@ -165,7 +180,7 @@ export default function ProductDetail() {
         <CheckoutModal
           product={product}
           onClose={() => setShowCheckout(false)}
-          onSuccess={handleCheckoutSuccess}
+          onConfirm={handleProceedToCheckout}
         />
       )}
     </BuyerLayout>

@@ -24,7 +24,7 @@ export default function Login() {
     try {
       const user = await login(form.username, form.password);
       if (user.role === "farmer") navigate("/farmer/dashboard");
-      else if (user.role === "buyer") navigate("/buyer/marketplace");
+      else if (user.role === "buyer") navigate("/buyer/home");
       else if (user.role === "admin") navigate("/admin/users");
       else navigate("/dashboard");
     } catch (err) {

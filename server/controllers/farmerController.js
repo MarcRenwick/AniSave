@@ -1,6 +1,16 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 
+// @desc    List farmers for the buyer-facing home page
+// @route   GET /api/farmers
+// @access  Public
+const getFarmers = asyncHandler(async (req, res) => {
+  const farmers = await User.find({ role: "farmer" })
+    .select("name farmName location rating createdAt")
+    .sort({ createdAt: -1 });
+  res.json(farmers);
+});
+
 // @desc    Get a single farmer's public profile
 // @route   GET /api/farmers/:id
 // @access  Public
@@ -17,4 +27,4 @@ const getFarmerProfile = asyncHandler(async (req, res) => {
   res.json(farmer);
 });
 
-module.exports = { getFarmerProfile };
+module.exports = { getFarmers, getFarmerProfile };

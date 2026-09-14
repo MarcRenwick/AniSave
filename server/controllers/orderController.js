@@ -117,4 +117,34 @@ const cancelOrder = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
-module.exports = { createOrder, getFarmerOrders, getBuyerOrders, updateOrderStatus, cancelOrder };
+// @desc    Get a single order's detail, for tracking
+// @route   GET /api/orders/:id
+// @access  Private (the buyer or farmer on that order only)
+const getOrderById = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id)
+    .populate("farmer", "name farmName location")
+    .populate("product", "image");
+
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+
+  const isBuyer = order.buyer.toString() === req.user._id.toString();
+  const isFarmer = order.farmer._id.toString() === req.user._id.toString();
+  if (!isBuyer && !isFarmer) {
+    res.status(403);
+    throw new Error("You do not have access to this order");
+  }
+
+  res.json(order);
+});
+
+module.exports = {
+  createOrder,
+  getFarmerOrders,
+  getBuyerOrders,
+  getOrderById,
+  updateOrderStatus,
+  cancelOrder,
+};

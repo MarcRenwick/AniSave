@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children, role }) {
       user.role === "farmer"
         ? "/farmer/dashboard"
         : user.role === "buyer"
-          ? "/buyer/marketplace"
+          ? "/buyer/home"
           : user.role === "admin"
             ? "/admin/users"
             : "/dashboard";

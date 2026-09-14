@@ -31,6 +31,7 @@ export const confirmAccountDeletion = (code) => api.post("/auth/delete-account/c
 
 export const getMyProducts = () => api.get("/products/mine");
 export const getAllProducts = (params) => api.get("/products", { params });
+export const getFarmers = () => api.get("/farmers");
 export const getFarmerProfile = (id) => api.get(`/farmers/${id}`);
 export const getProduct = (id) => api.get(`/products/${id}`);
 export const createProduct = (formData) =>
@@ -42,6 +43,7 @@ export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
 export const getFarmerOrders = () => api.get("/orders/farmer");
 export const getBuyerOrders = () => api.get("/orders/buyer");
+export const getOrder = (id) => api.get(`/orders/${id}`);
 export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });
 export const updateOrderStatus = (id, status) => api.patch(`/orders/${id}/status`, { status });
 export const cancelOrder = (id) => api.patch(`/orders/${id}/cancel`);

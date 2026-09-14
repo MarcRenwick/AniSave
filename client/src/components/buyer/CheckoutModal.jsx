@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import Modal from "../Modal";
-import { createOrder, SERVER_URL } from "../../services/api";
+import { SERVER_URL } from "../../services/api";
 
-export default function CheckoutModal({ product, onClose, onSuccess }) {
+export default function CheckoutModal({ product, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
   const clamp = (value) => Math.min(product.stock, Math.max(1, value));
   const adjust = (delta) => setQuantity((q) => clamp(q + delta));
@@ -16,19 +14,6 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
   };
 
   const total = product.price * quantity;
-
-  const handleCheckout = async () => {
-    setError("");
-    setSubmitting(true);
-    try {
-      await createOrder(product._id, quantity);
-      onSuccess(quantity);
-    } catch (err) {
-      setError(err.response?.data?.message || "Could not place the order. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <Modal title="Checkout" onClose={onClose}>
@@ -77,30 +62,24 @@ export default function CheckoutModal({ product, onClose, onSuccess }) {
       <p className="mt-2 text-center text-xs text-gray-400">{product.stock} kilos available</p>
 
       <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-4 py-3">
-        <span className="text-sm text-gray-600">Total (Cash on Delivery)</span>
+        <span className="text-sm text-gray-600">Total (Cash on Pick-up)</span>
         <span className="text-lg font-bold text-gray-900">₱{total}</span>
       </div>
-
-      {error && (
-        <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-      )}
 
       <div className="mt-5 flex gap-3">
         <button
           type="button"
           onClick={onClose}
-          disabled={submitting}
-          className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
         >
           Cancel
         </button>
         <button
           type="button"
-          onClick={handleCheckout}
-          disabled={submitting}
-          className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+          onClick={() => onConfirm(quantity)}
+          className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700"
         >
-          {submitting ? "Placing Order..." : "Checkout"}
+          Proceed to Checkout
         </button>
       </div>
     </Modal>

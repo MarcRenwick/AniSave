@@ -3,19 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Trash2, ImageOff } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
-import CartCheckoutModal from "../../components/buyer/CartCheckoutModal";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
-import { createOrder, SERVER_URL } from "../../services/api";
+import { SERVER_URL } from "../../services/api";
 
 export default function CartPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { items, updateQuantity, removeFromCart, removeItems } = useCart();
+  const { items, updateQuantity, removeFromCart } = useCart();
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
-  const [checkingOut, setCheckingOut] = useState(false);
-  const [error, setError] = useState("");
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
 
   const toggleSelected = (productId) => {
     setSelected((prev) => {
@@ -44,24 +40,8 @@ export default function CartPage() {
   const selectedItems = items.filter((i) => selected.has(i.productId));
   const selectedTotal = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
-  const handleCheckout = async () => {
-    setError("");
-    setCheckingOut(true);
-    const placedIds = [];
-    try {
-      for (const item of selectedItems) {
-        await createOrder(item.productId, item.quantity);
-        placedIds.push(item.productId);
-      }
-      removeItems(placedIds);
-      setShowCheckoutModal(false);
-      navigate("/buyer/marketplace");
-    } catch (err) {
-      if (placedIds.length > 0) removeItems(placedIds);
-      setError(err.response?.data?.message || "Could not complete checkout. Please try again.");
-    } finally {
-      setCheckingOut(false);
-    }
+  const handleProceedToCheckout = () => {
+    navigate("/buyer/checkout", { state: { items: selectedItems, fromCart: true } });
   };
 
   return (
@@ -179,10 +159,7 @@ export default function CartPage() {
             {user?.role === "buyer" ? (
               <button
                 type="button"
-                onClick={() => {
-                  setError("");
-                  setShowCheckoutModal(true);
-                }}
+                onClick={handleProceedToCheckout}
                 disabled={selectedItems.length === 0}
                 className="w-full rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
               >
@@ -201,17 +178,6 @@ export default function CartPage() {
           </div>
         )}
       </div>
-
-      {showCheckoutModal && (
-        <CartCheckoutModal
-          items={selectedItems}
-          total={selectedTotal}
-          onClose={() => setShowCheckoutModal(false)}
-          onConfirm={handleCheckout}
-          confirming={checkingOut}
-          error={error}
-        />
-      )}
     </BuyerLayout>
   );
 }

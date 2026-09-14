@@ -11,12 +11,15 @@ import FarmerProducts from "./pages/farmer/FarmerProducts";
 import FarmerOrders from "./pages/farmer/FarmerOrders";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 import FarmerSettings from "./pages/farmer/FarmerSettings";
+import BuyerHome from "./pages/buyer/BuyerHome";
 import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import ProductDetail from "./pages/buyer/ProductDetail";
 import CartPage from "./pages/buyer/CartPage";
+import Checkout from "./pages/buyer/Checkout";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
 import BuyerOrders from "./pages/buyer/BuyerOrders";
+import OrderDetail from "./pages/buyer/OrderDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminRegister from "./pages/AdminRegister";
 
@@ -80,11 +83,20 @@ export default function App() {
               }
             />
 
-            {/* Public - browsing the marketplace doesn't require an account */}
+            {/* Public - browsing doesn't require an account */}
+            <Route path="/buyer/home" element={<BuyerHome />} />
             <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
             <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
             <Route path="/buyer/products/:id" element={<ProductDetail />} />
             <Route path="/buyer/cart" element={<CartPage />} />
+            <Route
+              path="/buyer/checkout"
+              element={
+                <ProtectedRoute role="buyer">
+                  <Checkout />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/buyer/settings"
               element={
@@ -98,6 +110,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="buyer">
                   <BuyerOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/buyer/orders/:id"
+              element={
+                <ProtectedRoute role="buyer">
+                  <OrderDetail />
                 </ProtectedRoute>
               }
             />

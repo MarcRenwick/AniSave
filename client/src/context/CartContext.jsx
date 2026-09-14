@@ -35,7 +35,9 @@ export function CartProvider({ children }) {
             price: product.price,
             image: product.image,
             stock: product.stock,
+            farmerId: product.farmer?._id,
             farmerName: product.farmer?.farmName || product.farmer?.name,
+            location: product.location || product.farmer?.location,
             quantity,
           },
         ];
