@@ -8,6 +8,10 @@ import { getMyProducts, getFarmerOrders } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 
 const monthColors = ["bg-amber-400", "bg-rose-400", "bg-indigo-400"];
+// Fixed pixel budget for the demand chart: a label row above a bar row, so a
+// bar scaled to 100% never overflows past its label like it used to.
+const DEMAND_LABEL_HEIGHT = 20;
+const DEMAND_BAR_MAX_HEIGHT = 130;
 
 function CardHeader({ children }) {
   return (
@@ -128,20 +132,31 @@ export default function FarmerDashboard() {
           <div className="overflow-hidden rounded-xl bg-white shadow-sm">
             <CardHeader>Analytical Demands this Upcoming Months</CardHeader>
             <div className="p-6">
-              <div className="flex items-end justify-around border-b-2 border-gray-800" style={{ height: "170px" }}>
+              <div
+                className="flex items-end justify-around border-b-2 border-gray-800"
+                style={{ height: `${DEMAND_LABEL_HEIGHT + DEMAND_BAR_MAX_HEIGHT}px` }}
+              >
                 {demandChart.map((month) => (
-                  <div key={month.month} className="flex items-end gap-3" style={{ height: "150px" }}>
+                  <div key={month.month} className="flex items-end gap-4">
                     {month.crops.length === 0 ? (
                       <span className="pb-1 text-xs text-gray-400">No orders</span>
                     ) : (
                       month.crops.map((crop) => (
-                        <div key={crop.label} className="flex h-full flex-col items-center justify-end">
-                          <span className="mb-1 whitespace-nowrap text-[11px] font-medium text-gray-700">
-                            {crop.label}
-                          </span>
+                        <div key={crop.label} className="flex w-16 flex-col items-center">
+                          <div
+                            className="flex w-full items-end justify-center"
+                            style={{ height: `${DEMAND_LABEL_HEIGHT}px` }}
+                          >
+                            <span
+                              className="w-full truncate text-center text-[10px] font-medium text-gray-700"
+                              title={crop.label}
+                            >
+                              {crop.label}
+                            </span>
+                          </div>
                           <div
                             className={`w-9 rounded-t ${month.color}`}
-                            style={{ height: `${crop.pct}%` }}
+                            style={{ height: `${Math.max(6, (crop.pct / 100) * DEMAND_BAR_MAX_HEIGHT)}px` }}
                           />
                         </div>
                       ))
