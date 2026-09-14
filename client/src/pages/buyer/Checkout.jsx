@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, ImageOff } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { createOrder, SERVER_URL } from "../../services/api";
+import useScrollReveal from "../../hooks/useScrollReveal";
 
 function groupByFarmer(items) {
   const groups = new Map();
@@ -31,6 +32,8 @@ export default function Checkout() {
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const rootRef = useRef(null);
+  useScrollReveal(rootRef, { windowScroll: true });
 
   if (items.length === 0) {
     return (
@@ -81,7 +84,7 @@ export default function Checkout() {
   };
 
   return (
-    <div className="min-h-screen bg-[#eaf6ec]">
+    <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
       <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-6 w-6" />

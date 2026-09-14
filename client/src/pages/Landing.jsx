@@ -1,7 +1,9 @@
+import { useRef } from "react";
 import { Link } from "react-router-dom";
 import { Leaf, Users, Truck, Search, ShoppingBasket, Package, ArrowUpRight, Sprout } from "lucide-react";
-import heroImage from "../assets/landing-hero.jpg";
+import heroImage from "../assets/lndingpge.jpg";
 import logo from "../assets/logo.png";
+import useScrollReveal from "../hooks/useScrollReveal";
 
 const steps = [
   { icon: Search, title: "Browse", text: "Explore fresh produce listed directly by local farmers." },
@@ -10,8 +12,11 @@ const steps = [
 ];
 
 export default function Landing() {
+  const rootRef = useRef(null);
+  useScrollReveal(rootRef, { windowScroll: true });
+
   return (
-    <div className="min-h-screen bg-white">
+    <div ref={rootRef} className="min-h-screen bg-white">
       <div id="home" className="relative overflow-hidden">
         <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80" />

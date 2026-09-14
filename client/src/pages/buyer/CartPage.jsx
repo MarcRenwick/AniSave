@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ClipboardList, ImageOff, Trash2 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { SERVER_URL } from "../../services/api";
+import useScrollReveal from "../../hooks/useScrollReveal";
 
 export default function CartPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, updateQuantity, removeFromCart } = useCart();
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
+  const rootRef = useRef(null);
+  useScrollReveal(rootRef, { windowScroll: true });
 
   const toggleSelected = (productId) => {
     setSelected((prev) => {
@@ -42,7 +45,7 @@ export default function CartPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div ref={rootRef} className="min-h-screen bg-gray-100">
       <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-6 w-6" />

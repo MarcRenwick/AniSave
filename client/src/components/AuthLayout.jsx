@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import background from "../assets/background.jpg";
+import background from "../assets/bckgrnd.jpg";
 
 export default function AuthLayout({ header, children, maxWidth = "max-w-[26rem]" }) {
   return (

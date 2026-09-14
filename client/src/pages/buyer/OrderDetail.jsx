@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Check, ImageOff, Star } from "lucide-react";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
 import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
+import useScrollReveal from "../../hooks/useScrollReveal";
 
 // Displayed as 5 conceptual steps, even though the real backend only has
 // 3 statuses - the farmer accepting bundles "Accepted"/"Prepared"/"Ready
@@ -42,6 +43,8 @@ export default function OrderDetail() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [showRate, setShowRate] = useState(false);
+  const rootRef = useRef(null);
+  useScrollReveal(rootRef, { windowScroll: true });
 
   useEffect(() => {
     getOrder(id)
@@ -73,7 +76,7 @@ export default function OrderDetail() {
   const doneCount = order ? doneCountFor(order.status) : 0;
 
   return (
-    <div className="min-h-screen bg-[#eaf6ec]">
+    <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
       <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-5 w-5" />

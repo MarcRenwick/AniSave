@@ -1,1 +1,36 @@
 @import "tailwindcss";
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Fades + slides a page's top-level sections into place as they cross
+     into view, and reverses when they scroll back out - so scrolling
+     either direction re-triggers it. Applied via useScrollReveal(). */
+  .scroll-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 500ms ease, transform 500ms ease;
+  }
+  .scroll-reveal-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* A button "growing" toward the cursor on hover, matching the existing
+     active:scale-* press-feedback convention used across the app. Placed
+     in the base layer so any explicit active:scale-* utility (which lives
+     in Tailwind's utilities layer) still wins while a button is pressed. */
+  button:not(:disabled),
+  [class*="active:scale"] {
+    transition: transform 150ms ease;
+  }
+  button:not(:disabled):hover,
+  [class*="active:scale"]:hover {
+    transform: scale(1.06);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.95);
+  }
+}
