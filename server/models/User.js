@@ -45,6 +45,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    phone: {
+      type: String,
+      trim: true,
+    },
 
     // Farmer-only fields
     farmName: {

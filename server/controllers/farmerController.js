@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const Rating = require("../models/Rating");
 
 // @desc    List farmers for the buyer-facing home page
 // @route   GET /api/farmers
@@ -16,7 +17,7 @@ const getFarmers = asyncHandler(async (req, res) => {
 // @access  Public
 const getFarmerProfile = asyncHandler(async (req, res) => {
   const farmer = await User.findOne({ _id: req.params.id, role: "farmer" }).select(
-    "name farmName farmDescription location rating certifications isVerified createdAt"
+    "name farmName farmDescription location certifications isVerified createdAt"
   );
 
   if (!farmer) {
@@ -24,7 +25,16 @@ const getFarmerProfile = asyncHandler(async (req, res) => {
     throw new Error("Farmer not found");
   }
 
-  res.json(farmer);
+  const ratingStats = await Rating.aggregate([
+    { $match: { farmer: farmer._id } },
+    { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
+  ]);
+
+  res.json({
+    ...farmer.toObject(),
+    rating: ratingStats[0]?.avg || 0,
+    ratingCount: ratingStats[0]?.count || 0,
+  });
 });
 
 module.exports = { getFarmers, getFarmerProfile };

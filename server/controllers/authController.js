@@ -177,10 +177,11 @@ const resetPassword = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/profile
 // @access  Private
 const updateProfile = asyncHandler(async (req, res) => {
-  const { name, location, farmName, farmDescription } = req.body;
+  const { name, location, phone, farmName, farmDescription } = req.body;
 
   if (name !== undefined) req.user.name = name;
   if (location !== undefined) req.user.location = location;
+  if (phone !== undefined) req.user.phone = phone;
   if (req.user.role === "farmer") {
     if (farmName !== undefined) req.user.farmName = farmName;
     if (farmDescription !== undefined) req.user.farmDescription = farmDescription;
@@ -195,6 +196,7 @@ const updateProfile = asyncHandler(async (req, res) => {
     email: req.user.email,
     role: req.user.role,
     location: req.user.location,
+    phone: req.user.phone,
     farmName: req.user.farmName,
     farmDescription: req.user.farmDescription,
     isVerified: req.user.isVerified,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutGrid, Package, ShoppingBag, Settings, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { LayoutGrid, Package, ShoppingBag, CircleUserRound, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
@@ -9,7 +9,7 @@ const navItems = [
   { to: "/farmer/dashboard", label: "Dashboard", icon: LayoutGrid },
   { to: "/farmer/products", label: "Products", icon: Package },
   { to: "/farmer/orders", label: "Orders", icon: ShoppingBag },
-  { to: "/farmer/settings", label: "Settings", icon: Settings },
+  { to: "/farmer/settings", label: "Profile", icon: CircleUserRound },
 ];
 
 function readCollapsed() {
