@@ -35,15 +35,15 @@ export default function Checkout() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-[#eaf6ec]">
-        <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+        <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white">
           <button type="button" onClick={() => navigate(-1)} aria-label="Back">
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-6 w-6" />
           </button>
-          <h1 className="flex-1 pr-6 text-center text-lg font-semibold">Checkout</h1>
+          <h1 className="flex-1 pr-7 text-center text-xl font-semibold">Checkout</h1>
         </div>
-        <div className="mx-auto max-w-xl p-6 text-center">
-          <p className="text-sm text-gray-600">There&apos;s nothing to check out.</p>
-          <Link to="/buyer/home" className="mt-3 inline-block text-sm font-medium text-[#2f8f66] underline">
+        <div className="mx-auto max-w-2xl p-8 text-center">
+          <p className="text-base text-gray-600">There&apos;s nothing to check out.</p>
+          <Link to="/buyer/home" className="mt-3 inline-block text-base font-medium text-[#2f8f66] underline">
             Back to Home
           </Link>
         </div>
@@ -82,26 +82,26 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+      <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-6 w-6" />
         </button>
-        <h1 className="flex-1 pr-6 text-center text-lg font-semibold">Checkout</h1>
+        <h1 className="flex-1 pr-7 text-center text-xl font-semibold">Checkout</h1>
       </div>
 
-      <div className="mx-auto max-w-xl space-y-4 p-4 sm:p-6">
+      <div className="mx-auto max-w-2xl space-y-5 p-5 sm:p-8">
         {groups.map((group) => (
-          <div key={group.key} className="space-y-3">
-            <div className="rounded-xl border-2 border-dashed border-[#2f8f66]/40 bg-white p-4">
-              <p className="text-xs font-semibold uppercase text-[#2f8f66]">Pickup Address</p>
-              <p className="mt-1 text-sm font-medium text-gray-900">{group.location}</p>
+          <div key={group.key} className="space-y-4">
+            <div className="rounded-xl border-2 border-dashed border-[#2f8f66]/40 bg-white p-5">
+              <p className="text-sm font-semibold uppercase text-[#2f8f66]">Pickup Address</p>
+              <p className="mt-1 text-base font-medium text-gray-900">{group.location}</p>
             </div>
 
             <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <div className="border-b border-gray-100 px-4 py-3">
-                <p className="text-sm font-semibold text-gray-900">{group.farmerName}</p>
+              <div className="border-b border-gray-100 px-5 py-4">
+                <p className="text-base font-semibold text-gray-900">{group.farmerName}</p>
               </div>
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 pt-3 text-[11px] font-medium uppercase text-gray-400">
+              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 pt-4 text-xs font-medium uppercase text-gray-400">
                 <span>Product</span>
                 <span>Price/Kilo</span>
                 <span>Qty</span>
@@ -110,10 +110,10 @@ export default function Checkout() {
               {group.items.map((item) => (
                 <div
                   key={item.productId}
-                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-3 border-t border-gray-100 px-4 py-3"
+                  className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-t border-gray-100 px-5 py-4"
                 >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50 text-gray-300">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50 text-gray-300">
                       {item.image ? (
                         <img
                           src={`${SERVER_URL}${item.image}`}
@@ -121,14 +121,14 @@ export default function Checkout() {
                           className="h-full w-full object-cover"
                         />
                       ) : (
-                        <ImageOff className="h-5 w-5" />
+                        <ImageOff className="h-6 w-6" />
                       )}
                     </div>
-                    <span className="truncate text-sm text-gray-900">{item.title}</span>
+                    <span className="truncate text-base text-gray-900">{item.title}</span>
                   </div>
-                  <span className="text-sm text-gray-600">₱{item.price}</span>
-                  <span className="text-sm text-gray-600">{item.quantity}</span>
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-base text-gray-600">₱{item.price}</span>
+                  <span className="text-base text-gray-600">{item.quantity}</span>
+                  <span className="text-base font-semibold text-gray-900">
                     ₱{item.price * item.quantity}
                   </span>
                 </div>
@@ -137,25 +137,25 @@ export default function Checkout() {
           </div>
         ))}
 
-        <div className="flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
-          <span className="text-sm font-medium text-gray-700">Payment Method</span>
-          <span className="text-sm font-semibold text-gray-900">Cash on Pick-up</span>
+        <div className="flex items-center justify-between rounded-xl bg-white px-5 py-4 shadow-sm">
+          <span className="text-base font-medium text-gray-700">Payment Method</span>
+          <span className="text-base font-semibold text-gray-900">Cash on Pick-up</span>
         </div>
 
         <div className="flex items-center justify-between px-1">
-          <span className="text-sm font-medium text-gray-700">Total Payment:</span>
-          <span className="text-xl font-bold text-red-600">₱{total}</span>
+          <span className="text-base font-medium text-gray-700">Total Payment:</span>
+          <span className="text-2xl font-bold text-red-600">₱{total}</span>
         </div>
 
         {error && (
-          <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
+          <div className="rounded-md bg-red-50 px-4 py-3 text-base text-red-600">{error}</div>
         )}
 
         <button
           type="button"
           onClick={handlePlaceOrder}
           disabled={submitting}
-          className="w-full rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+          className="w-full rounded-md bg-red-600 py-4 text-base font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
         >
           {submitting ? "Placing Order..." : "Place Order"}
         </button>

@@ -43,45 +43,45 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+      <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-6 w-6" />
         </button>
-        <h1 className="flex-1 text-center text-lg font-semibold">Shopping Cart</h1>
+        <h1 className="flex-1 text-center text-xl font-semibold">Shopping Cart</h1>
         <Link
           to="/buyer/orders"
-          className="flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1.5 text-xs font-semibold hover:bg-black/30"
+          className="flex items-center gap-2 rounded-full bg-black/20 px-4 py-2 text-sm font-semibold hover:bg-black/30"
         >
-          <ClipboardList className="h-3.5 w-3.5" />
+          <ClipboardList className="h-4 w-4" />
           My Orders
         </Link>
       </div>
 
       {items.length === 0 ? (
-        <div className="p-8 text-center">
-          <p className="text-sm text-gray-500">Your cart is empty.</p>
+        <div className="p-10 text-center">
+          <p className="text-base text-gray-500">Your cart is empty.</p>
           <Link
             to="/buyer/home"
-            className="mt-4 inline-block rounded-md bg-[#2f8f66] px-5 py-2 text-sm font-semibold text-white hover:bg-[#267a56]"
+            className="mt-4 inline-block rounded-md bg-[#2f8f66] px-6 py-2.5 text-base font-semibold text-white hover:bg-[#267a56]"
           >
             Browse Products
           </Link>
         </div>
       ) : (
-        <div className="mx-auto max-w-2xl bg-white">
+        <div className="mx-auto max-w-3xl bg-white">
           {items.map((item) => (
             <div
               key={item.productId}
-              className="flex items-center gap-4 border-b border-gray-200 px-4 py-4"
+              className="flex items-center gap-5 border-b border-gray-200 px-6 py-5"
             >
               <input
                 type="checkbox"
                 checked={selected.has(item.productId)}
                 onChange={() => toggleSelected(item.productId)}
-                className="h-5 w-5 shrink-0 accent-[#2f8f66]"
+                className="h-6 w-6 shrink-0 accent-[#2f8f66]"
               />
 
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-50 text-gray-300">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-50 text-gray-300">
                 {item.image ? (
                   <img
                     src={`${SERVER_URL}${item.image}`}
@@ -89,13 +89,13 @@ export default function CartPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <ImageOff className="h-5 w-5" />
+                  <ImageOff className="h-6 w-6" />
                 )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-gray-900">{item.title}</p>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <p className="truncate text-lg font-semibold text-gray-900">{item.title}</p>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
                   <Link to={`/buyer/products/${item.productId}`} className="hover:underline">
                     View Product
                   </Link>
@@ -105,27 +105,27 @@ export default function CartPage() {
                     onClick={() => handleRemove(item.productId)}
                     className="flex items-center gap-1 hover:text-red-600"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-3.5 w-3.5" />
                     Remove
                   </button>
                 </div>
               </div>
 
               <div className="shrink-0 text-center">
-                <p className="mb-1 text-xs text-gray-400">Quantity</p>
-                <div className="flex items-center gap-2">
+                <p className="mb-1.5 text-sm text-gray-400">Quantity</p>
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                    className="h-7 w-7 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+                    className="h-9 w-9 rounded-md border border-gray-300 text-lg text-gray-600 hover:bg-gray-50"
                   >
                     −
                   </button>
-                  <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                  <span className="w-8 text-center text-base font-medium">{item.quantity}</span>
                   <button
                     type="button"
                     onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                    className="h-7 w-7 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+                    className="h-9 w-9 rounded-md border border-gray-300 text-lg text-gray-600 hover:bg-gray-50"
                   >
                     +
                   </button>
@@ -134,13 +134,13 @@ export default function CartPage() {
             </div>
           ))}
 
-          <div className="flex items-center justify-between px-4 py-4">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <div className="flex items-center justify-between px-6 py-5">
+            <label className="flex items-center gap-2.5 text-base font-medium text-gray-700">
               <input
                 type="checkbox"
                 checked={selected.size === items.length}
                 onChange={toggleSelectAll}
-                className="h-5 w-5 accent-[#2f8f66]"
+                className="h-6 w-6 accent-[#2f8f66]"
               />
               All
             </label>
@@ -150,14 +150,14 @@ export default function CartPage() {
                 type="button"
                 onClick={handleProceedToCheckout}
                 disabled={selectedItems.length === 0}
-                className="rounded-full bg-[#2f8f66] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+                className="rounded-full bg-[#2f8f66] px-8 py-3 text-base font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
               >
                 Check Out ({selectedItems.length})
               </button>
             ) : (
               <Link
                 to="/login"
-                className="rounded-full bg-[#2f8f66] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#267a56]"
+                className="rounded-full bg-[#2f8f66] px-8 py-3 text-base font-semibold text-white hover:bg-[#267a56]"
               >
                 Log in to checkout
               </Link>
