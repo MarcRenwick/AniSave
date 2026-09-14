@@ -15,7 +15,11 @@
   }
   .scroll-reveal-visible {
     opacity: 1;
-    transform: translateY(0);
+    /* "none", not translateY(0) - a non-none transform (even a zero
+       offset) still opens a new stacking context on the element, which
+       trapped absolutely-positioned dropdowns/overlays inside it behind
+       later sibling sections instead of letting them float on top. */
+    transform: none;
   }
 
   /* A button "growing" toward the cursor on hover, matching the existing
