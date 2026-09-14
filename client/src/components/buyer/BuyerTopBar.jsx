@@ -79,7 +79,7 @@ export default function BuyerTopBar({ children, search, onSearchChange, sortOpti
 
       <Link
         to={user ? "/buyer/settings" : "/login"}
-        aria-label={user ? "Settings" : "Log in"}
+        aria-label={user ? "Profile" : "Log in"}
         className="rounded-full p-1 text-gray-400 transition duration-150 hover:bg-gray-100 hover:text-[#2f8f66] active:scale-90"
       >
         <CircleUserRound className="h-7 w-7" />

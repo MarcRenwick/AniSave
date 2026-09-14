@@ -18,7 +18,7 @@ const getFarmers = asyncHandler(async (req, res) => {
 // @access  Public
 const getFarmerProfile = asyncHandler(async (req, res) => {
   const farmer = await User.findOne({ _id: req.params.id, role: "farmer" }).select(
-    "name farmName farmDescription location certifications isVerified createdAt"
+    "name farmName farmDescription location certifications isVerified createdAt lastActiveAt"
   );
 
   if (!farmer) {

@@ -82,6 +82,12 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
+    // Stamped (throttled) on authenticated requests, so a seller's profile
+    // can show a real "last active" time instead of a made-up one
+    lastActiveAt: {
+      type: Date,
+    },
+
     resetPasswordCode: {
       type: String,
       select: false,

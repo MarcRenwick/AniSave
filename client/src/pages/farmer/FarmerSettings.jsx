@@ -19,8 +19,8 @@ import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
-import EditProfileModal from "../../components/farmer/settings/EditProfileModal";
-import ChangePasswordModal from "../../components/farmer/settings/ChangePasswordModal";
+import EditProfileModal from "../../components/settings/EditProfileModal";
+import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../../services/api";
 

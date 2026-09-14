@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Home, ClipboardList, Settings, LogIn, UserPlus, LogOut } from "lucide-react";
+import { Home, ClipboardList, CircleUserRound, LogIn, UserPlus, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
@@ -15,7 +15,7 @@ export default function BuyerSidebar() {
     ...(user
       ? [
           { to: "/buyer/orders", label: "My Orders", icon: ClipboardList },
-          { to: "/buyer/settings", label: "Settings", icon: Settings },
+          { to: "/buyer/settings", label: "Profile", icon: CircleUserRound },
         ]
       : []),
   ];

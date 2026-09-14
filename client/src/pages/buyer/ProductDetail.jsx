@@ -19,6 +19,28 @@ function timeAgo(date) {
   return `${years} year${years === 1 ? "" : "s"} ago`;
 }
 
+// Null when the seller has never been seen since activity tracking started,
+// so the card just omits the line rather than guessing.
+function activeAgo(date) {
+  if (!date) return null;
+  const minutes = Math.floor((Date.now() - new Date(date).getTime()) / 60000);
+  if (minutes < 1) return "Active just now";
+  if (minutes < 60) return `Active ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Active ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `Active ${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-8">
+      <span className="text-gray-500">{label}</span>
+      <span className="font-semibold text-red-600">{value}</span>
+    </div>
+  );
+}
+
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -194,47 +216,41 @@ export default function ProductDetail() {
         )}
 
         {!loading && !error && product && farmerStats && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
-                <UserIcon className="h-7 w-7" />
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-8 rounded-2xl bg-white p-7 shadow-sm">
+            <div className="flex items-center gap-5">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
+                <UserIcon className="h-10 w-10" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">
+                <p className="text-xl font-bold text-gray-900">
                   {farmerStats.farmName || farmerStats.name}
                 </p>
+                {activeAgo(farmerStats.lastActiveAt) && (
+                  <p className="text-sm text-gray-500">{activeAgo(farmerStats.lastActiveAt)}</p>
+                )}
                 <Link
                   to={`/buyer/farmers/${product.farmer._id}`}
-                  className="mt-1 inline-block rounded-md border border-[#2f8f66] px-3 py-1 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                  className="mt-2 inline-block rounded-md border border-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
                 >
                   View Seller
                 </Link>
               </div>
             </div>
 
-            <div className="flex gap-6 text-center">
-              <div>
-                <p className="font-semibold text-gray-900">{farmerStats.ratingCount}</p>
-                <p className="text-xs text-gray-500">Ratings</p>
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{timeAgo(farmerStats.createdAt)}</p>
-                <p className="text-xs text-gray-500">Joined</p>
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">{farmerStats.productCount}</p>
-                <p className="text-xs text-gray-500">Products</p>
-              </div>
+            <div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
+              <Stat label="Ratings" value={farmerStats.ratingCount} />
+              <Stat label="Joined" value={timeAgo(farmerStats.createdAt)} />
+              <Stat label="Products" value={farmerStats.productCount} />
             </div>
           </div>
         )}
 
         {!loading && !error && product && (
           <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="bg-[#2f8f66] px-5 py-3 text-sm font-semibold text-white">
+            <div className="bg-[#2f8f66] px-6 py-3 font-semibold text-white">
               Product Description
             </div>
-            <p className="whitespace-pre-line p-5 text-sm text-gray-700">
+            <p className="whitespace-pre-line p-6 text-sm leading-relaxed text-gray-700">
               {product.description || "No description provided yet."}
             </p>
           </div>

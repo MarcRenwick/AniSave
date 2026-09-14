@@ -1,6 +1,6 @@
 import { useState } from "react";
-import Modal from "../../Modal";
-import { updateProfile } from "../../../services/api";
+import Modal from "../Modal";
+import { updateProfile } from "../../services/api";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
@@ -47,7 +47,7 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
         </div>
         <div>
           <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-            Contact No.
+            Contact Number
           </label>
           <input
             id="phone"
@@ -60,7 +60,7 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
         </div>
         <div>
           <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-            Location
+            Address
           </label>
           <input
             id="location"
