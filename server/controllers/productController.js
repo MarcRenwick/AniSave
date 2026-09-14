@@ -33,7 +33,19 @@ const createProduct = asyncHandler(async (req, res) => {
 // @access  Private (farmer)
 const getMyProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({ farmer: req.user._id }).sort({ createdAt: -1 });
-  res.json(products);
+
+  const ratingStats = await Rating.aggregate([
+    { $match: { farmer: req.user._id } },
+    { $group: { _id: "$product", avg: { $avg: "$stars" }, count: { $sum: 1 } } },
+  ]);
+  const statsByProduct = new Map(ratingStats.map((s) => [s._id.toString(), s]));
+
+  res.json(
+    products.map((p) => {
+      const stats = statsByProduct.get(p._id.toString());
+      return { ...p.toObject(), rating: stats?.avg || 0, ratingCount: stats?.count || 0 };
+    })
+  );
 });
 
 // @desc    Browse all farmers' in-stock products (marketplace)

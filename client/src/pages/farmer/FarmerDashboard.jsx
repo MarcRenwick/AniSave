@@ -1,41 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingDown, Coins, Banknote, TrendingUp, Award } from "lucide-react";
+import { TrendingDown, Coins, Banknote, TrendingUp, Award, Star } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProducts, getFarmerOrders } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 
-const demandChart = [
-  {
-    month: "January",
-    color: "bg-amber-400",
-    crops: [
-      { label: "Peas", pct: 40 },
-      { label: "Broccoli", pct: 55 },
-      { label: "Cabbage", pct: 90 },
-    ],
-  },
-  {
-    month: "February",
-    color: "bg-rose-400",
-    crops: [
-      { label: "Tomato", pct: 45 },
-      { label: "Broccoli", pct: 35 },
-      { label: "Carrot", pct: 90 },
-    ],
-  },
-  {
-    month: "March",
-    color: "bg-indigo-400",
-    crops: [
-      { label: "Peas", pct: 40 },
-      { label: "Pechay", pct: 55 },
-      { label: "Cucumber", pct: 90 },
-    ],
-  },
-];
+const monthColors = ["bg-amber-400", "bg-rose-400", "bg-indigo-400"];
 
 function CardHeader({ children }) {
   return (
@@ -91,6 +63,48 @@ export default function FarmerDashboard() {
     return [...salesByProduct.values()].sort((a, b) => b.qty - a.qty).slice(0, 6);
   }, [orders]);
 
+  // Real month-by-month demand: each of the last 3 calendar months, showing
+  // the farmer's own top-ordered products that month, scaled relative to
+  // that month's own busiest product.
+  const demandChart = useMemo(() => {
+    const now = new Date();
+    const activeOrders = orders.filter((o) => o.status !== "cancelled");
+
+    return [2, 1, 0].map((monthsAgo, idx) => {
+      const target = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+
+      const byProduct = new Map();
+      activeOrders.forEach((order) => {
+        const d = new Date(order.createdAt);
+        if (d.getFullYear() === target.getFullYear() && d.getMonth() === target.getMonth()) {
+          byProduct.set(order.productTitle, (byProduct.get(order.productTitle) || 0) + order.quantity);
+        }
+      });
+
+      const crops = [...byProduct.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+      const maxQty = crops[0]?.[1] || 0;
+
+      return {
+        month: target.toLocaleString(undefined, { month: "long" }),
+        color: monthColors[idx],
+        crops: crops.map(([label, qty]) => ({
+          label,
+          qty,
+          pct: maxQty > 0 ? Math.max(15, Math.round((qty / maxQty) * 100)) : 0,
+        })),
+      };
+    });
+  }, [orders]);
+
+  const topRatedProducts = useMemo(
+    () =>
+      products
+        .filter((p) => p.ratingCount > 0)
+        .sort((a, b) => b.rating - a.rating || b.ratingCount - a.ratingCount)
+        .slice(0, 6),
+    [products]
+  );
+
   const todaysSales = useMemo(
     () =>
       orders
@@ -109,24 +123,29 @@ export default function FarmerDashboard() {
 
       <div className="grid grid-cols-3 gap-6 p-8">
         <div className="col-span-2 space-y-6">
-          {/* Demand chart - sample data; real crop-demand forecasting is a separate feature */}
+          {/* Demand chart - real data: each of the farmer's last 3 months,
+              showing their own top-ordered products that month */}
           <div className="overflow-hidden rounded-xl bg-white shadow-sm">
             <CardHeader>Analytical Demands this Upcoming Months</CardHeader>
             <div className="p-6">
               <div className="flex items-end justify-around border-b-2 border-gray-800" style={{ height: "170px" }}>
                 {demandChart.map((month) => (
                   <div key={month.month} className="flex items-end gap-3" style={{ height: "150px" }}>
-                    {month.crops.map((crop) => (
-                      <div key={crop.label} className="flex h-full flex-col items-center justify-end">
-                        <span className="mb-1 whitespace-nowrap text-[11px] font-medium text-gray-700">
-                          {crop.label}
-                        </span>
-                        <div
-                          className={`w-9 rounded-t ${month.color}`}
-                          style={{ height: `${crop.pct}%` }}
-                        />
-                      </div>
-                    ))}
+                    {month.crops.length === 0 ? (
+                      <span className="pb-1 text-xs text-gray-400">No orders</span>
+                    ) : (
+                      month.crops.map((crop) => (
+                        <div key={crop.label} className="flex h-full flex-col items-center justify-end">
+                          <span className="mb-1 whitespace-nowrap text-[11px] font-medium text-gray-700">
+                            {crop.label}
+                          </span>
+                          <div
+                            className={`w-9 rounded-t ${month.color}`}
+                            style={{ height: `${crop.pct}%` }}
+                          />
+                        </div>
+                      ))
+                    )}
                   </div>
                 ))}
               </div>
@@ -239,6 +258,30 @@ export default function FarmerDashboard() {
                 </ol>
               )}
               <Award className="mt-2 h-8 w-8 shrink-0 text-yellow-500" />
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-500">Top Rated Products</p>
+            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">⭐ Top Ratings</p>
+            <div className="mt-3 flex items-start justify-between gap-2">
+              {loading ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : topRatedProducts.length === 0 ? (
+                <p className="text-sm text-gray-400">No ratings yet</p>
+              ) : (
+                <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-700">
+                  {topRatedProducts.map((p) => (
+                    <li key={p._id}>
+                      {p.title}{" "}
+                      <span className="text-gray-400">
+                        ({p.rating.toFixed(1)}★, {p.ratingCount} rating{p.ratingCount === 1 ? "" : "s"})
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <Star className="mt-2 h-8 w-8 shrink-0 fill-amber-400 text-amber-400" />
             </div>
           </div>
         </div>
