@@ -1,27 +1,31 @@
 import { useEffect, useState } from "react";
-import { FileText, Clock, CheckCircle2, ChevronRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { FileText, Package, Clock, CheckCircle2, ChevronRight, ImageOff } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
-import { getFarmerOrders, updateOrderStatus } from "../../services/api";
+import { getFarmerOrders, SERVER_URL } from "../../services/api";
 
 const columnMeta = {
   new: {
     label: "New",
-    description: "Orders waiting to be processed",
+    description: "Orders waiting for your decision",
     icon: FileText,
     accent: "bg-blue-100 text-blue-700",
     badge: "bg-blue-500",
-    nextStatus: "ready",
-    actionLabel: "Mark Ready",
+  },
+  accepted: {
+    label: "Accepted",
+    description: "Orders you're preparing",
+    icon: Package,
+    accent: "bg-indigo-100 text-indigo-700",
+    badge: "bg-indigo-500",
   },
   ready: {
     label: "Ready",
-    description: "Orders are prepared and ready",
+    description: "Prepared and ready for pickup",
     icon: Clock,
     accent: "bg-yellow-100 text-yellow-700",
     badge: "bg-yellow-500",
-    nextStatus: "done",
-    actionLabel: "Mark Done",
   },
   done: {
     label: "Done",
@@ -29,12 +33,11 @@ const columnMeta = {
     icon: CheckCircle2,
     accent: "bg-green-100 text-green-700",
     badge: "bg-green-500",
-    nextStatus: null,
-    actionLabel: null,
   },
 };
 
 export default function FarmerOrders() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,15 +49,9 @@ export default function FarmerOrders() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleAdvance = async (order) => {
-    const nextStatus = columnMeta[order.status].nextStatus;
-    if (!nextStatus) return;
-    const { data } = await updateOrderStatus(order._id, nextStatus);
-    setOrders((prev) => prev.map((o) => (o._id === data._id ? data : o)));
-  };
-
   const byStatus = {
     new: orders.filter((o) => o.status === "new"),
+    accepted: orders.filter((o) => o.status === "accepted"),
     ready: orders.filter((o) => o.status === "ready"),
     done: orders.filter((o) => o.status === "done"),
   };
@@ -72,7 +69,7 @@ export default function FarmerOrders() {
 
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-4 gap-6">
               {Object.entries(columnMeta).map(([key, { label, description, icon: Icon, accent }]) => (
                 <div key={key} className={`flex items-center justify-between rounded-xl p-5 ${accent}`}>
                   <div>
@@ -88,8 +85,8 @@ export default function FarmerOrders() {
               ))}
             </div>
 
-            <div className="mt-6 grid grid-cols-3 gap-6">
-              {Object.entries(columnMeta).map(([key, { label, badge, actionLabel }]) => (
+            <div className="mt-6 grid grid-cols-4 gap-6">
+              {Object.entries(columnMeta).map(([key, { label, badge }]) => (
                 <div key={key} className="overflow-hidden rounded-xl bg-white shadow-sm">
                   <div className={`flex items-center justify-between px-4 py-2 text-sm font-semibold text-white ${badge}`}>
                     <span>{label}</span>
@@ -100,34 +97,37 @@ export default function FarmerOrders() {
                       <p className="py-4 text-center text-sm text-gray-400">No orders here yet</p>
                     )}
                     {byStatus[key].map((order) => (
-                      <div key={order._id} className="rounded-lg border border-gray-200 p-3">
-                        <p className="truncate text-sm font-medium text-gray-900">{order.buyer?.name}</p>
-                        <p className="text-xs text-gray-400">
-                          {new Date(order.createdAt).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}{" "}
-                          ·{" "}
-                          {new Date(order.createdAt).toLocaleTimeString(undefined, {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {order.quantity}kg {order.productTitle}
-                        </p>
-                        <p className="text-sm font-semibold text-gray-900">Total: ₱{order.total}</p>
-                        {actionLabel && (
-                          <button
-                            type="button"
-                            onClick={() => handleAdvance(order)}
-                            className="mt-2 w-full rounded-md bg-[#2f8f66] py-1.5 text-xs font-semibold text-white hover:bg-[#267a56]"
-                          >
-                            {actionLabel}
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        key={order._id}
+                        type="button"
+                        onClick={() => navigate(`/farmer/orders/${order._id}`)}
+                        className="flex w-full items-center gap-3 rounded-lg border border-gray-200 p-3 text-left transition hover:border-[#2f8f66] hover:shadow-sm"
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50 text-gray-300">
+                          {order.product?.image ? (
+                            <img
+                              src={`${SERVER_URL}${order.product.image}`}
+                              alt={order.productTitle}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <ImageOff className="h-5 w-5" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-900">{order.buyer?.name}</p>
+                          <p className="truncate text-xs text-gray-500">
+                            {order.quantity}kg {order.productTitle}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {new Date(order.createdAt).toLocaleDateString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold text-gray-900">₱{order.total}</p>
+                      </button>
                     ))}
                   </div>
                 </div>

@@ -48,7 +48,8 @@ const createOrder = asyncHandler(async (req, res) => {
 // @access  Private (farmer)
 const getFarmerOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ farmer: req.user._id })
-    .populate("buyer", "name")
+    .populate("buyer", "name location")
+    .populate("product", "image category location")
     .sort({ createdAt: -1 });
   res.json(orders);
 });
@@ -67,14 +68,28 @@ const getBuyerOrders = asyncHandler(async (req, res) => {
   res.json(orders.map((o) => ({ ...o.toObject(), rated: ratedIds.has(o._id.toString()) })));
 });
 
-// @desc    Update an order's status (new -> ready -> done)
+// Which status a farmer may move an order into, from its current status.
+const ALLOWED_TRANSITIONS = {
+  new: ["accepted", "cancelled"],
+  accepted: ["ready"],
+  ready: ["done"],
+};
+const TIMESTAMP_FIELD = {
+  accepted: "acceptedAt",
+  ready: "readyAt",
+  done: "doneAt",
+  cancelled: "cancelledAt",
+};
+
+// @desc    Move an order forward (accept/decline a new order, mark it ready
+//          for pickup, or mark it done), one real step at a time
 // @route   PATCH /api/orders/:id/status
 // @access  Private (farmer, owner only)
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
-  if (!["new", "ready", "done"].includes(status)) {
+  if (!TIMESTAMP_FIELD[status]) {
     res.status(400);
-    throw new Error("Status must be 'new', 'ready' or 'done'");
+    throw new Error("Status must be 'accepted', 'ready', 'done' or 'cancelled'");
   }
 
   const order = await Order.findById(req.params.id);
@@ -87,8 +102,23 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error("You do not own this order");
   }
 
+  if (!ALLOWED_TRANSITIONS[order.status]?.includes(status)) {
+    res.status(400);
+    throw new Error(`This order is '${order.status}' and cannot be moved to '${status}'`);
+  }
+
   order.status = status;
+  order[TIMESTAMP_FIELD[status]] = Date.now();
   await order.save();
+
+  if (status === "cancelled") {
+    const product = await Product.findById(order.product);
+    if (product) {
+      product.stock += order.quantity;
+      await product.save();
+    }
+  }
+
   res.json(order);
 });
 
@@ -128,14 +158,15 @@ const cancelOrder = asyncHandler(async (req, res) => {
 const getOrderById = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
     .populate("farmer", "name farmName location")
-    .populate("product", "image");
+    .populate("buyer", "name location")
+    .populate("product", "image category location");
 
   if (!order) {
     res.status(404);
     throw new Error("Order not found");
   }
 
-  const isBuyer = order.buyer.toString() === req.user._id.toString();
+  const isBuyer = order.buyer._id.toString() === req.user._id.toString();
   const isFarmer = order.farmer._id.toString() === req.user._id.toString();
   if (!isBuyer && !isFarmer) {
     res.status(403);

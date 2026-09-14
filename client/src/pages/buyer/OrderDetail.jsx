@@ -6,25 +6,15 @@ import RateProductModal from "../../components/buyer/RateProductModal";
 import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
 
 const steps = [
-  "Order Placed",
-  "Order Accepted",
-  "Seller is preparing your order",
-  "Ready for Pickup",
-  "Picked Up",
-  "Completed",
+  { key: "new", label: "Order Placed", getDate: (o) => o.createdAt },
+  { key: "accepted", label: "Order Accepted", getDate: (o) => o.acceptedAt },
+  { key: "ready", label: "Ready for Pickup", getDate: (o) => o.readyAt },
+  { key: "done", label: "Completed", getDate: (o) => o.doneAt },
 ];
-
-// Our real order status only has 4 values (new/ready/done/cancelled) - this
-// maps each onto how many of the 6 display steps have genuinely happened.
-function completedStepsFor(status) {
-  if (status === "new") return 1;
-  if (status === "ready") return 4;
-  if (status === "done") return 6;
-  return 0;
-}
 
 const statusTitle = {
   new: "Order Placed",
+  accepted: "Accepted",
   ready: "Ready for Pickup",
   done: "Completed",
   cancelled: "Cancelled",
@@ -69,7 +59,7 @@ export default function OrderDetail() {
   };
 
   const title = order ? statusTitle[order.status] : "Order";
-  const doneCount = order ? completedStepsFor(order.status) : 0;
+  const doneCount = order ? steps.filter((s) => s.getDate(order)).length : 0;
 
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
@@ -94,12 +84,13 @@ export default function OrderDetail() {
               <div className="rounded-xl bg-white p-4 shadow-sm">
                 <p className="mb-4 text-sm font-semibold text-gray-700">Order Status</p>
                 <div className="flex items-start">
-                  {steps.map((label, i) => {
+                  {steps.map((step, i) => {
                     const isDone = i < doneCount;
                     const beforeGreen = i > 0 && i - 1 < doneCount;
                     const afterGreen = i < steps.length - 1 && i < doneCount;
+                    const date = step.getDate(order);
                     return (
-                      <div key={label} className="flex flex-1 flex-col items-center text-center">
+                      <div key={step.key} className="flex flex-1 flex-col items-center text-center">
                         <div className="flex w-full items-center">
                           <div
                             className={`h-0.5 flex-1 ${i === 0 ? "invisible" : beforeGreen ? "bg-[#2f8f66]" : "bg-gray-200"}`}
@@ -115,7 +106,12 @@ export default function OrderDetail() {
                             className={`h-0.5 flex-1 ${i === steps.length - 1 ? "invisible" : afterGreen ? "bg-[#2f8f66]" : "bg-gray-200"}`}
                           />
                         </div>
-                        <p className="mt-2 text-[9px] leading-tight text-gray-500">{label}</p>
+                        <p className="mt-2 text-[10px] leading-tight text-gray-500">{step.label}</p>
+                        {isDone && date && (
+                          <p className="text-[9px] leading-tight text-gray-400">
+                            {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </p>
+                        )}
                       </div>
                     );
                   })}

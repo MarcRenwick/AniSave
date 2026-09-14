@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import FarmerDashboard from "./pages/farmer/FarmerDashboard";
 import FarmerProducts from "./pages/farmer/FarmerProducts";
 import FarmerOrders from "./pages/farmer/FarmerOrders";
+import FarmerOrderDetail from "./pages/farmer/FarmerOrderDetail";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 import FarmerSettings from "./pages/farmer/FarmerSettings";
 import BuyerHome from "./pages/buyer/BuyerHome";
@@ -62,6 +63,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="farmer">
                   <FarmerOrders />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/orders/:id"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerOrderDetail />
                 </ProtectedRoute>
               }
             />
