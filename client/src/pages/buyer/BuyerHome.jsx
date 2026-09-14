@@ -16,6 +16,8 @@ const badges = [
 const sortOptions = [
   { key: "newest", label: "Newest Products" },
   { key: "recommended", label: "Recommended for You" },
+  { key: "nearest", label: "Nearest to You" },
+  { key: "all", label: "All Products" },
 ];
 
 function locationScore(farmerLocation, buyerLocation) {
@@ -84,10 +86,27 @@ export default function BuyerHome() {
     setError("");
 
     if (browsing) {
-      const params = { sort: sort || "newest" };
+      const params = {};
       if (search.trim()) params.search = search.trim();
+      // "recommended" is filtered/ranked server-side (real ratings+sales).
+      // "newest" and "all" both just want the full, unfiltered catalog -
+      // "nearest" starts from that same catalog and is then re-sorted
+      // client-side by comparing each product's own location to the
+      // buyer's, the same way Nearest Farmers already works.
+      if (sort === "recommended") params.sort = "recommended";
+
       getAllProducts(params)
-        .then(({ data }) => setProducts(data))
+        .then(({ data }) => {
+          const ordered =
+            sort === "nearest"
+              ? [...data].sort(
+                  (a, b) =>
+                    locationScore(b.location || b.farmer?.location, user?.location) -
+                    locationScore(a.location || a.farmer?.location, user?.location)
+                )
+              : data;
+          setProducts(ordered);
+        })
         .catch(() => setError("Could not load products. Is the server running?"))
         .finally(() => setLoading(false));
       return;
@@ -193,7 +212,9 @@ export default function BuyerHome() {
             <section>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for You</h2>
               {recommendedProducts.length === 0 ? (
-                <p className="text-sm text-gray-500">No products yet.</p>
+                <p className="text-sm text-gray-500">
+                  No highly-rated products yet - check back once buyers start rating orders.
+                </p>
               ) : (
                 <ProductGrid products={recommendedProducts} navigate={navigate} />
               )}

@@ -96,6 +96,10 @@ const getAllProducts = asyncHandler(async (req, res) => {
           totalSold: { $sum: "$orders.quantity" },
         },
       },
+      // Only genuinely well-reviewed products count as "recommended" - a
+      // product with no ratings (and therefore no completed sales, since a
+      // rating requires one) is excluded rather than just ranked last.
+      { $match: { avgRating: { $gte: 4 } } },
       { $sort: { avgRating: -1, totalSold: -1, createdAt: -1 } },
       { $project: { ratings: 0, orders: 0 } },
     ]);
