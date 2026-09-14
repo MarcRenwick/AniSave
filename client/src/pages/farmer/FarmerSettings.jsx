@@ -78,10 +78,7 @@ export default function FarmerSettings() {
 
   return (
     <FarmerLayout>
-      <FarmerTopBar>
-        <h1 className="text-2xl font-semibold text-gray-900">Profile</h1>
-        <p className="text-sm text-gray-500">View and manage your farmer profile</p>
-      </FarmerTopBar>
+      <FarmerTopBar />
 
       <div className="space-y-6 p-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#2f8f66] to-[#7fd9a4] p-6 text-white">
@@ -141,8 +138,8 @@ export default function FarmerSettings() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="grid grid-cols-5 gap-6">
+          <div className="col-span-2 rounded-xl bg-white p-5 shadow-sm">
             <p className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
               <UserIcon className="h-4 w-4 text-[#2f8f66]" /> Personal Information
             </p>
@@ -192,7 +189,7 @@ export default function FarmerSettings() {
             </dl>
           </div>
 
-          <div className="rounded-xl bg-white p-5 shadow-sm">
+          <div className="col-span-3 rounded-xl bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
               <p className="flex items-center gap-2 font-semibold text-gray-900">
                 <Package className="h-4 w-4 text-[#2f8f66]" /> My Products
@@ -211,15 +208,15 @@ export default function FarmerSettings() {
             ) : products.length === 0 ? (
               <p className="text-sm text-gray-400">You haven&apos;t listed any products yet.</p>
             ) : (
-              <div className="grid grid-cols-3 gap-3">
-                {products.slice(0, 6).map((p) => (
+              <div className="grid grid-cols-4 gap-3">
+                {products.slice(0, 8).map((p) => (
                   <button
                     key={p._id}
                     type="button"
                     onClick={() => navigate("/farmer/products")}
                     className="overflow-hidden rounded-lg bg-gray-50 text-left shadow-sm transition hover:shadow-md"
                   >
-                    <div className="flex h-16 items-center justify-center bg-white text-gray-300">
+                    <div className="flex h-20 items-center justify-center bg-white text-gray-300">
                       {p.image ? (
                         <img
                           src={`${SERVER_URL}${p.image}`}
