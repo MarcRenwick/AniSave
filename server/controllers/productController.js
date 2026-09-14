@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
@@ -52,11 +53,11 @@ const getMyProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products
 // @access  Public (guests can browse)
 const getAllProducts = asyncHandler(async (req, res) => {
-  const { category, location, minPrice, maxPrice, farmer, search } = req.query;
+  const { category, location, minPrice, maxPrice, farmer, search, sort } = req.query;
 
   const filter = { stock: { $gt: 0 } };
   if (category) filter.category = category;
-  if (farmer) filter.farmer = farmer;
+  if (farmer) filter.farmer = new mongoose.Types.ObjectId(farmer);
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);
@@ -67,6 +68,43 @@ const getAllProducts = asyncHandler(async (req, res) => {
   }
   if (search) {
     filter.title = { $regex: search, $options: "i" };
+  }
+
+  // "Recommended" ranks by real signals - average rating, then units sold -
+  // instead of just recency, so it needs to aggregate in the Rating/Order
+  // data rather than a plain find().sort().
+  if (sort === "recommended") {
+    const products = await Product.aggregate([
+      { $match: filter },
+      {
+        $lookup: { from: "ratings", localField: "_id", foreignField: "product", as: "ratings" },
+      },
+      {
+        $lookup: {
+          from: "orders",
+          let: { productId: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$product", "$$productId"] }, status: { $ne: "cancelled" } } },
+          ],
+          as: "orders",
+        },
+      },
+      {
+        $addFields: {
+          avgRating: { $ifNull: [{ $avg: "$ratings.stars" }, 0] },
+          totalSold: { $sum: "$orders.quantity" },
+        },
+      },
+      { $sort: { avgRating: -1, totalSold: -1, createdAt: -1 } },
+      { $project: { ratings: 0, orders: 0 } },
+    ]);
+
+    await Product.populate(products, {
+      path: "farmer",
+      select: "name farmName location rating isVerified",
+    });
+
+    return res.json(products);
   }
 
   const products = await Product.find(filter)

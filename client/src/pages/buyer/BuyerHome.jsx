@@ -13,6 +13,11 @@ const badges = [
   { icon: Award, label: "Guaranteed Best Value" },
 ];
 
+const sortOptions = [
+  { key: "newest", label: "Newest Products" },
+  { key: "recommended", label: "Recommended for You" },
+];
+
 function locationScore(farmerLocation, buyerLocation) {
   if (!buyerLocation || !farmerLocation) return 0;
   const f = farmerLocation.toLowerCase();
@@ -30,7 +35,7 @@ function ProductGrid({ products, navigate }) {
           key={product._id}
           type="button"
           onClick={() => navigate(`/buyer/products/${product._id}`)}
-          className="overflow-hidden rounded-xl bg-white text-left shadow-sm transition hover:shadow-md"
+          className="overflow-hidden rounded-xl bg-white text-left shadow-sm transition duration-150 hover:shadow-md active:scale-[0.97]"
         >
           <div className="flex h-28 items-center justify-center bg-gray-50 text-gray-300">
             {product.image ? (
@@ -61,30 +66,35 @@ export default function BuyerHome() {
   const { user } = useAuth();
 
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("newest");
   const [products, setProducts] = useState([]);
+  const [newestProducts, setNewestProducts] = useState([]);
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    const params = {};
-    if (search.trim()) params.search = search.trim();
+    setError("");
 
-    Promise.all([getAllProducts(params), getFarmers()])
-      .then(([productsRes, farmersRes]) => {
-        setProducts(productsRes.data);
+    if (search.trim()) {
+      getAllProducts({ search: search.trim(), sort })
+        .then(({ data }) => setProducts(data))
+        .catch(() => setError("Could not load products. Is the server running?"))
+        .finally(() => setLoading(false));
+      return;
+    }
+
+    Promise.all([getAllProducts(), getAllProducts({ sort: "recommended" }), getFarmers()])
+      .then(([newestRes, recommendedRes, farmersRes]) => {
+        setNewestProducts(newestRes.data.slice(0, 4));
+        setRecommendedProducts(recommendedRes.data.slice(0, 4));
         setFarmers(farmersRes.data);
       })
       .catch(() => setError("Could not load the home page. Is the server running?"))
       .finally(() => setLoading(false));
-  }, [search]);
-
-  const newestProducts = products.slice(0, 4);
-
-  const recommended = [...products]
-    .sort((a, b) => (b.farmer?.rating || 0) - (a.farmer?.rating || 0))
-    .slice(0, 4);
+  }, [search, sort]);
 
   const nearestFarmers = [...farmers]
     .sort((a, b) => locationScore(b.location, user?.location) - locationScore(a.location, user?.location))
@@ -92,7 +102,13 @@ export default function BuyerHome() {
 
   return (
     <BuyerLayout>
-      <BuyerTopBar search={search} onSearchChange={setSearch}>
+      <BuyerTopBar
+        search={search}
+        onSearchChange={setSearch}
+        sortOptions={search ? sortOptions : undefined}
+        sortValue={sort}
+        onSortChange={setSort}
+      >
         <h1 className="text-2xl font-semibold text-gray-900">Home</h1>
       </BuyerTopBar>
 
@@ -115,7 +131,7 @@ export default function BuyerHome() {
                 <button
                   type="button"
                   onClick={() => document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" })}
-                  className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                  className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
                 >
                   Shop Fresh Produce Now
                 </button>
@@ -141,7 +157,12 @@ export default function BuyerHome() {
 
         {!loading && !error && search && (
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-gray-900">Search Results</h2>
+            <h2 className="mb-3 text-lg font-semibold text-gray-900">
+              Search Results{" "}
+              <span className="text-sm font-normal text-gray-400">
+                · Sorted by {sortOptions.find((o) => o.key === sort)?.label}
+              </span>
+            </h2>
             {products.length === 0 ? (
               <p className="text-sm text-gray-500">No products found.</p>
             ) : (
@@ -163,10 +184,10 @@ export default function BuyerHome() {
 
             <section>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for You</h2>
-              {recommended.length === 0 ? (
+              {recommendedProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
-                <ProductGrid products={recommended} navigate={navigate} />
+                <ProductGrid products={recommendedProducts} navigate={navigate} />
               )}
             </section>
 
@@ -181,7 +202,7 @@ export default function BuyerHome() {
                       key={farmer._id}
                       type="button"
                       onClick={() => navigate(`/buyer/farmers/${farmer._id}`)}
-                      className="flex flex-col items-center gap-2 rounded-xl bg-white p-4 text-center shadow-sm transition hover:shadow-md"
+                      className="flex flex-col items-center gap-2 rounded-xl bg-white p-4 text-center shadow-sm transition duration-150 hover:shadow-md active:scale-[0.97]"
                     >
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
                         <Sprout className="h-6 w-6" />
