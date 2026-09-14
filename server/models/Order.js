@@ -37,13 +37,12 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["new", "accepted", "ready", "done", "cancelled"],
+      enum: ["new", "ready", "done", "cancelled"],
       default: "new",
     },
 
     // Real per-stage timestamps, set as the order progresses - "new" is
     // already covered by createdAt.
-    acceptedAt: { type: Date },
     readyAt: { type: Date },
     doneAt: { type: Date },
     cancelledAt: { type: Date },

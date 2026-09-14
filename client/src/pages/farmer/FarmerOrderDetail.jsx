@@ -18,7 +18,6 @@ const categoryLabels = { vegetable: "Vegetables", fruit: "Fruits" };
 
 const steps = [
   { key: "new", label: "New", getDate: (o) => o.createdAt },
-  { key: "accepted", label: "Accepted", getDate: (o) => o.acceptedAt },
   { key: "ready", label: "Ready for Pickup", getDate: (o) => o.readyAt },
   { key: "done", label: "Picked Up", getDate: (o) => o.doneAt },
 ];
@@ -58,7 +57,6 @@ export default function FarmerOrderDetail() {
       setOrder((prev) => ({
         ...prev,
         status: data.status,
-        acceptedAt: data.acceptedAt,
         readyAt: data.readyAt,
         doneAt: data.doneAt,
         cancelledAt: data.cancelledAt,
@@ -154,7 +152,7 @@ export default function FarmerOrderDetail() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleTransition("accepted")}
+                  onClick={() => handleTransition("ready")}
                   disabled={submitting}
                   className="flex flex-1 items-center justify-center gap-2 rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
                 >
@@ -236,16 +234,6 @@ export default function FarmerOrderDetail() {
                 <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{actionError}</div>
               )}
 
-              {order.status === "accepted" && (
-                <button
-                  type="button"
-                  onClick={() => handleTransition("ready")}
-                  disabled={submitting}
-                  className="w-full rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
-                >
-                  {submitting ? "Updating..." : "Mark as Ready for Pickup"}
-                </button>
-              )}
               {order.status === "ready" && (
                 <button
                   type="button"

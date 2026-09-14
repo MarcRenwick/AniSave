@@ -13,14 +13,13 @@ function readSeen() {
 }
 
 const messages = {
-  accepted: (order) => `Your order for ${order.productTitle} has been accepted by the seller!`,
-  ready: (order) => `Your order for ${order.productTitle} is ready for pickup!`,
+  ready: (order) => `Your order for ${order.productTitle} has been approved by the seller!`,
   done: (order) => `Your order for ${order.productTitle} is complete. Enjoy!`,
 };
 
 // Polls the buyer's own orders once per mount and pops a toast for any
-// order that has newly reached "accepted", "ready" or "done" since the
-// last visit - a lightweight substitute for real-time push notifications.
+// order that has newly reached "ready" or "done" since the last visit -
+// a lightweight substitute for real-time push notifications.
 export function useBuyerOrderNotifications() {
   const { user } = useAuth();
   const [toast, setToast] = useState(null);

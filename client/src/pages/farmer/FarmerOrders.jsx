@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Package, Clock, CheckCircle2, ChevronRight, ImageOff } from "lucide-react";
+import { FileText, Clock, CheckCircle2, ChevronRight, ImageOff } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { getFarmerOrders, SERVER_URL } from "../../services/api";
@@ -12,13 +12,6 @@ const columnMeta = {
     icon: FileText,
     accent: "bg-blue-100 text-blue-700",
     badge: "bg-blue-500",
-  },
-  accepted: {
-    label: "Accepted",
-    description: "Orders you're preparing",
-    icon: Package,
-    accent: "bg-indigo-100 text-indigo-700",
-    badge: "bg-indigo-500",
   },
   ready: {
     label: "Ready",
@@ -51,7 +44,6 @@ export default function FarmerOrders() {
 
   const byStatus = {
     new: orders.filter((o) => o.status === "new"),
-    accepted: orders.filter((o) => o.status === "accepted"),
     ready: orders.filter((o) => o.status === "ready"),
     done: orders.filter((o) => o.status === "done"),
   };
@@ -69,7 +61,7 @@ export default function FarmerOrders() {
 
         {!loading && !error && (
           <>
-            <div className="grid grid-cols-4 gap-6">
+            <div className="grid grid-cols-3 gap-6">
               {Object.entries(columnMeta).map(([key, { label, description, icon: Icon, accent }]) => (
                 <div key={key} className={`flex items-center justify-between rounded-xl p-5 ${accent}`}>
                   <div>
@@ -85,7 +77,7 @@ export default function FarmerOrders() {
               ))}
             </div>
 
-            <div className="mt-6 grid grid-cols-4 gap-6">
+            <div className="mt-6 grid grid-cols-3 gap-6">
               {Object.entries(columnMeta).map(([key, { label, badge }]) => (
                 <div key={key} className="overflow-hidden rounded-xl bg-white shadow-sm">
                   <div className={`flex items-center justify-between px-4 py-2 text-sm font-semibold text-white ${badge}`}>

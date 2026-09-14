@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Package, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { FileText, Clock, CheckCircle2, XCircle } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
@@ -9,7 +9,6 @@ import { getBuyerOrders, cancelOrder } from "../../services/api";
 const filters = [
   { key: "", label: "All" },
   { key: "new", label: "New" },
-  { key: "accepted", label: "Accepted" },
   { key: "ready", label: "Ready" },
   { key: "done", label: "Done" },
   { key: "cancelled", label: "Cancelled" },
@@ -17,7 +16,6 @@ const filters = [
 
 const statusMeta = {
   new: { label: "New", icon: FileText, color: "text-blue-700 bg-blue-100" },
-  accepted: { label: "Accepted", icon: Package, color: "text-indigo-700 bg-indigo-100" },
   ready: { label: "Ready", icon: Clock, color: "text-yellow-700 bg-yellow-100" },
   done: { label: "Done", icon: CheckCircle2, color: "text-green-700 bg-green-100" },
   cancelled: { label: "Cancelled", icon: XCircle, color: "text-red-700 bg-red-100" },

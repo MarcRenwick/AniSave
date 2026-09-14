@@ -70,26 +70,24 @@ const getBuyerOrders = asyncHandler(async (req, res) => {
 
 // Which status a farmer may move an order into, from its current status.
 const ALLOWED_TRANSITIONS = {
-  new: ["accepted", "cancelled"],
-  accepted: ["ready"],
+  new: ["ready", "cancelled"],
   ready: ["done"],
 };
 const TIMESTAMP_FIELD = {
-  accepted: "acceptedAt",
   ready: "readyAt",
   done: "doneAt",
   cancelled: "cancelledAt",
 };
 
-// @desc    Move an order forward (accept/decline a new order, mark it ready
-//          for pickup, or mark it done), one real step at a time
+// @desc    Move an order forward (accept/decline a new order, or mark a
+//          ready order done), one real step at a time
 // @route   PATCH /api/orders/:id/status
 // @access  Private (farmer, owner only)
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   if (!TIMESTAMP_FIELD[status]) {
     res.status(400);
-    throw new Error("Status must be 'accepted', 'ready', 'done' or 'cancelled'");
+    throw new Error("Status must be 'ready', 'done' or 'cancelled'");
   }
 
   const order = await Order.findById(req.params.id);

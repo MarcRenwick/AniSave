@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   User as UserIcon,
@@ -13,6 +13,7 @@ import {
   KeyRound,
   Trash2,
   LogOut,
+  Menu,
 } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
@@ -37,6 +38,19 @@ export default function FarmerSettings() {
   const [showPassword, setShowPassword] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
 
   useEffect(() => {
     setLoading(true);
@@ -78,7 +92,7 @@ export default function FarmerSettings() {
 
   return (
     <FarmerLayout>
-      <FarmerTopBar />
+      <FarmerTopBar showActions={false} />
 
       <div className="space-y-6 p-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#2f8f66] to-[#7fd9a4] p-6 text-white">
@@ -105,35 +119,60 @@ export default function FarmerSettings() {
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col gap-2 rounded-xl bg-black/10 p-2">
+            <div ref={menuRef} className="relative shrink-0">
               <button
                 type="button"
-                onClick={() => setShowEdit(true)}
-                className="flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/10 transition hover:bg-black/20"
+                aria-label="Profile actions"
               >
-                <Pencil className="h-4 w-4" /> Edit Profile
+                <Menu className="h-5 w-5" />
               </button>
-              <button
-                type="button"
-                onClick={() => setShowPassword(true)}
-                className="flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
-              >
-                <KeyRound className="h-4 w-4" /> Change Password
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowDelete(true)}
-                className="flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
-              >
-                <Trash2 className="h-4 w-4" /> Delete Account
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowLogout(true)}
-                className="flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 text-sm font-semibold transition hover:bg-white/25"
-              >
-                <LogOut className="h-4 w-4" /> Log out
-              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-20 mt-2 w-56 overflow-hidden rounded-xl bg-white shadow-xl">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowEdit(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Pencil className="h-4 w-4 text-[#2f8f66]" /> Edit Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowPassword(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <KeyRound className="h-4 w-4 text-[#2f8f66]" /> Change Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowDelete(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4" /> Delete Account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowLogout(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <LogOut className="h-4 w-4 text-[#2f8f66]" /> Log out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -239,16 +278,7 @@ export default function FarmerSettings() {
         </div>
 
         <div className="rounded-xl bg-white p-5 shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="font-semibold text-gray-900">Shop Description</p>
-            <button
-              type="button"
-              onClick={() => setShowEdit(true)}
-              className="flex items-center gap-1 text-xs font-medium text-[#2f8f66] hover:underline"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Edit
-            </button>
-          </div>
+          <p className="mb-2 font-semibold text-gray-900">Shop Description</p>
           <p className="text-sm text-gray-600">
             {user?.farmDescription || "No shop description yet. Tell buyers about your farm!"}
           </p>

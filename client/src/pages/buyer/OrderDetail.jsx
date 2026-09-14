@@ -7,14 +7,12 @@ import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
 
 const steps = [
   { key: "new", label: "Order Placed", getDate: (o) => o.createdAt },
-  { key: "accepted", label: "Order Accepted", getDate: (o) => o.acceptedAt },
   { key: "ready", label: "Ready for Pickup", getDate: (o) => o.readyAt },
   { key: "done", label: "Completed", getDate: (o) => o.doneAt },
 ];
 
 const statusTitle = {
   new: "Order Placed",
-  accepted: "Accepted",
   ready: "Ready for Pickup",
   done: "Completed",
   cancelled: "Cancelled",
