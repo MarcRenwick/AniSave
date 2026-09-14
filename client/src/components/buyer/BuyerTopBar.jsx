@@ -29,7 +29,7 @@ function SortDropdown({ sortOptions, sortValue, onSortChange }) {
       </button>
 
       <div
-        className={`absolute right-0 top-full z-20 mt-2 w-56 origin-top-right overflow-hidden rounded-xl bg-white shadow-xl transition duration-150 ${
+        className={`absolute left-0 top-full z-20 mt-2 w-56 origin-top-left overflow-hidden rounded-xl bg-white shadow-xl transition duration-150 ${
           open ? "scale-100 opacity-100" : "pointer-events-none scale-95 opacity-0"
         }`}
       >
@@ -64,10 +64,6 @@ export default function BuyerTopBar({ children, search, onSearchChange, sortOpti
 
   const actions = (
     <div className="flex shrink-0 items-center gap-3">
-      {sortOptions && (
-        <SortDropdown sortOptions={sortOptions} sortValue={sortValue} onSortChange={onSortChange} />
-      )}
-
       <Link
         to="/buyer/cart"
         className="relative rounded-full p-2 text-gray-500 transition duration-150 hover:bg-gray-100 active:scale-90"
@@ -96,7 +92,10 @@ export default function BuyerTopBar({ children, search, onSearchChange, sortOpti
       <div className="grid grid-cols-3 items-center gap-4 border-b border-gray-200 px-8 py-6">
         <div className="min-w-0">{children}</div>
 
-        <div className="flex justify-center">
+        <div className="flex items-center justify-center gap-3">
+          {sortOptions && (
+            <SortDropdown sortOptions={sortOptions} sortValue={sortValue} onSortChange={onSortChange} />
+          )}
           <div className="relative w-full max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
