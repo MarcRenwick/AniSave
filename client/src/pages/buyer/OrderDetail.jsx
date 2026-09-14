@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Check, ImageOff } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, Star } from "lucide-react";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
+import RateProductModal from "../../components/buyer/RateProductModal";
 import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
 
 const steps = [
@@ -39,6 +40,7 @@ export default function OrderDetail() {
   const [showCancel, setShowCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [showRate, setShowRate] = useState(false);
 
   useEffect(() => {
     getOrder(id)
@@ -59,6 +61,11 @@ export default function OrderDetail() {
     } finally {
       setCancelling(false);
     }
+  };
+
+  const handleRatingSubmitted = (rating) => {
+    setOrder((prev) => ({ ...prev, myRating: rating }));
+    setShowRate(false);
   };
 
   const title = order ? statusTitle[order.status] : "Order";
@@ -143,6 +150,40 @@ export default function OrderDetail() {
               </div>
             </div>
 
+            {order.status === "done" && (
+              <div className="rounded-xl bg-white p-4 shadow-sm">
+                {order.myRating ? (
+                  <>
+                    <p className="text-xs font-semibold uppercase text-gray-400">Your Rating</p>
+                    <div className="mt-1 flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <Star
+                          key={value}
+                          className={`h-5 w-5 ${
+                            value <= order.myRating.stars
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    {order.myRating.comment && (
+                      <p className="mt-2 text-sm text-gray-600">{order.myRating.comment}</p>
+                    )}
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowRate(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-2.5 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                  >
+                    <Star className="h-4 w-4" />
+                    Rate this Product
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3">
               {order.status === "new" && (
                 <button
@@ -173,6 +214,14 @@ export default function OrderDetail() {
           onConfirm={handleConfirmCancel}
           cancelling={cancelling}
           error={cancelError}
+        />
+      )}
+
+      {showRate && order && (
+        <RateProductModal
+          order={order}
+          onClose={() => setShowRate(false)}
+          onSubmitted={handleRatingSubmitted}
         />
       )}
     </div>

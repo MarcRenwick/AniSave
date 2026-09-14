@@ -35,7 +35,7 @@ export default function FarmerProfile() {
           className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Marketplace
+          Back to Home
         </button>
       </BuyerTopBar>
 
@@ -125,7 +125,7 @@ export default function FarmerProfile() {
 
         {!loading && !error && !farmer && (
           <p className="text-sm text-gray-500">
-            Farmer not found. <Link to="/buyer/marketplace" className="text-[#2f8f66] underline">Back to Marketplace</Link>
+            Farmer not found. <Link to="/buyer/home" className="text-[#2f8f66] underline">Back to Home</Link>
           </p>
         )}
       </div>

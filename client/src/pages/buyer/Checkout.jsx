@@ -43,8 +43,8 @@ export default function Checkout() {
         </div>
         <div className="mx-auto max-w-xl p-6 text-center">
           <p className="text-sm text-gray-600">There&apos;s nothing to check out.</p>
-          <Link to="/buyer/marketplace" className="mt-3 inline-block text-sm font-medium text-[#2f8f66] underline">
-            Back to Marketplace
+          <Link to="/buyer/home" className="mt-3 inline-block text-sm font-medium text-[#2f8f66] underline">
+            Back to Home
           </Link>
         </div>
       </div>

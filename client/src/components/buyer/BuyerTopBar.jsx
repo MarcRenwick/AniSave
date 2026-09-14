@@ -21,7 +21,7 @@ export default function BuyerTopBar({ children, search, onSearchChange }) {
             onChange={(e) => onSearchChange?.(e.target.value)}
             readOnly={!onSearchChange}
             onFocus={() => {
-              if (!onSearchChange) navigate("/buyer/marketplace");
+              if (!onSearchChange) navigate("/buyer/home");
             }}
             placeholder="Search"
             className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"

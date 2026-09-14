@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Trash2, ImageOff } from "lucide-react";
-import BuyerLayout from "../../layouts/BuyerLayout";
-import BuyerTopBar from "../../components/buyer/BuyerTopBar";
+import { ArrowLeft, ClipboardList, ImageOff, Trash2 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { SERVER_URL } from "../../services/api";
@@ -38,146 +36,135 @@ export default function CartPage() {
   };
 
   const selectedItems = items.filter((i) => selected.has(i.productId));
-  const selectedTotal = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const handleProceedToCheckout = () => {
     navigate("/buyer/checkout", { state: { items: selectedItems, fromCart: true } });
   };
 
   return (
-    <BuyerLayout>
-      <BuyerTopBar>
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Marketplace
+    <div className="min-h-screen bg-gray-100">
+      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+        <button type="button" onClick={() => navigate(-1)} aria-label="Back">
+          <ArrowLeft className="h-5 w-5" />
         </button>
-      </BuyerTopBar>
+        <h1 className="flex-1 text-center text-lg font-semibold">Shopping Cart</h1>
+        <Link
+          to="/buyer/orders"
+          className="flex items-center gap-1.5 rounded-full bg-black/20 px-3 py-1.5 text-xs font-semibold hover:bg-black/30"
+        >
+          <ClipboardList className="h-3.5 w-3.5" />
+          My Orders
+        </Link>
+      </div>
 
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-gray-900">Your Cart</h1>
-
-        {items.length === 0 ? (
-          <div className="mt-6 rounded-2xl bg-white p-8 text-center shadow-sm">
-            <p className="text-sm text-gray-500">Your cart is empty.</p>
-            <Link
-              to="/buyer/marketplace"
-              className="mt-4 inline-block rounded-md bg-[#2f8f66] px-5 py-2 text-sm font-semibold text-white hover:bg-[#267a56]"
+      {items.length === 0 ? (
+        <div className="p-8 text-center">
+          <p className="text-sm text-gray-500">Your cart is empty.</p>
+          <Link
+            to="/buyer/home"
+            className="mt-4 inline-block rounded-md bg-[#2f8f66] px-5 py-2 text-sm font-semibold text-white hover:bg-[#267a56]"
+          >
+            Browse Products
+          </Link>
+        </div>
+      ) : (
+        <div className="mx-auto max-w-2xl bg-white">
+          {items.map((item) => (
+            <div
+              key={item.productId}
+              className="flex items-center gap-4 border-b border-gray-200 px-4 py-4"
             >
-              Browse the Marketplace
-            </Link>
-          </div>
-        ) : (
-          <div className="mt-6 space-y-4">
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-              <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-3">
-                <input
-                  type="checkbox"
-                  checked={selected.size === items.length}
-                  onChange={toggleSelectAll}
-                  className="h-4 w-4 accent-[#2f8f66]"
-                />
-                <span className="text-sm text-gray-600">
-                  Select all ({selected.size}/{items.length})
-                </span>
+              <input
+                type="checkbox"
+                checked={selected.has(item.productId)}
+                onChange={() => toggleSelected(item.productId)}
+                className="h-5 w-5 shrink-0 accent-[#2f8f66]"
+              />
+
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-50 text-gray-300">
+                {item.image ? (
+                  <img
+                    src={`${SERVER_URL}${item.image}`}
+                    alt={item.title}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <ImageOff className="h-5 w-5" />
+                )}
               </div>
 
-              {items.map((item) => (
-                <div
-                  key={item.productId}
-                  className="flex items-center gap-4 border-b border-gray-100 p-4 last:border-b-0"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.has(item.productId)}
-                    onChange={() => toggleSelected(item.productId)}
-                    className="h-4 w-4 shrink-0 accent-[#2f8f66]"
-                  />
-
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300">
-                    {item.image ? (
-                      <img
-                        src={`${SERVER_URL}${item.image}`}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <ImageOff className="h-6 w-6" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-gray-900">{item.title}</p>
-                    <p className="text-sm text-gray-500">₱{item.price} per kilo</p>
-                    {item.farmerName && <p className="text-xs text-gray-400">{item.farmerName}</p>}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      className="h-7 w-7 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                    <button
-                      type="button"
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      className="h-7 w-7 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <p className="w-20 shrink-0 text-right font-semibold text-gray-900">
-                    ₱{item.price * item.quantity}
-                  </p>
-
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold text-gray-900">{item.title}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Link to={`/buyer/products/${item.productId}`} className="hover:underline">
+                    View Product
+                  </Link>
+                  <span>·</span>
                   <button
                     type="button"
                     onClick={() => handleRemove(item.productId)}
-                    className="shrink-0 rounded-full p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                    aria-label="Remove"
+                    className="flex items-center gap-1 hover:text-red-600"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
+                    Remove
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm">
-              <span className="text-sm text-gray-500">
-                Total ({selectedItems.length} item{selectedItems.length === 1 ? "" : "s"} selected)
-              </span>
-              <span className="text-xl font-bold text-gray-900">₱{selectedTotal}</span>
+              <div className="shrink-0 text-center">
+                <p className="mb-1 text-xs text-gray-400">Quantity</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                    className="h-7 w-7 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                    className="h-7 w-7 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
             </div>
+          ))}
+
+          <div className="flex items-center justify-between px-4 py-4">
+            <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={selected.size === items.length}
+                onChange={toggleSelectAll}
+                className="h-5 w-5 accent-[#2f8f66]"
+              />
+              All
+            </label>
 
             {user?.role === "buyer" ? (
               <button
                 type="button"
                 onClick={handleProceedToCheckout}
                 disabled={selectedItems.length === 0}
-                className="w-full rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                className="rounded-full bg-[#2f8f66] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
               >
-                {selectedItems.length === 0
-                  ? "Select items to checkout"
-                  : `Checkout (${selectedItems.length})`}
+                Check Out ({selectedItems.length})
               </button>
             ) : (
               <Link
                 to="/login"
-                className="block w-full rounded-md bg-red-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-700"
+                className="rounded-full bg-[#2f8f66] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#267a56]"
               >
-                Log in as a buyer to checkout
+                Log in to checkout
               </Link>
             )}
           </div>
-        )}
-      </div>
-    </BuyerLayout>
+        </div>
+      )}
+    </div>
   );
 }

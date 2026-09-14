@@ -12,7 +12,6 @@ import FarmerOrders from "./pages/farmer/FarmerOrders";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 import FarmerSettings from "./pages/farmer/FarmerSettings";
 import BuyerHome from "./pages/buyer/BuyerHome";
-import BuyerMarketplace from "./pages/buyer/BuyerMarketplace";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import ProductDetail from "./pages/buyer/ProductDetail";
 import CartPage from "./pages/buyer/CartPage";
@@ -85,7 +84,6 @@ export default function App() {
 
             {/* Public - browsing doesn't require an account */}
             <Route path="/buyer/home" element={<BuyerHome />} />
-            <Route path="/buyer/marketplace" element={<BuyerMarketplace />} />
             <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
             <Route path="/buyer/products/:id" element={<ProductDetail />} />
             <Route path="/buyer/cart" element={<CartPage />} />

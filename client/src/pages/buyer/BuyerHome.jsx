@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ImageOff, Sprout, Star } from "lucide-react";
+import { ImageOff, Sprout, Star, Leaf, Handshake, ShieldCheck, Award } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
+
+const badges = [
+  { icon: Leaf, label: "100% Farm-Fresh" },
+  { icon: Handshake, label: "Transparent Rates" },
+  { icon: ShieldCheck, label: "Verified Local Farms" },
+  { icon: Award, label: "Guaranteed Best Value" },
+];
 
 function locationScore(farmerLocation, buyerLocation) {
   if (!buyerLocation || !farmerLocation) return 0;
@@ -53,6 +60,7 @@ export default function BuyerHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const [search, setSearch] = useState("");
   const [products, setProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,14 +68,17 @@ export default function BuyerHome() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([getAllProducts(), getFarmers()])
+    const params = {};
+    if (search.trim()) params.search = search.trim();
+
+    Promise.all([getAllProducts(params), getFarmers()])
       .then(([productsRes, farmersRes]) => {
         setProducts(productsRes.data);
         setFarmers(farmersRes.data);
       })
       .catch(() => setError("Could not load the home page. Is the server running?"))
       .finally(() => setLoading(false));
-  }, []);
+  }, [search]);
 
   const newestProducts = products.slice(0, 4);
 
@@ -81,17 +92,67 @@ export default function BuyerHome() {
 
   return (
     <BuyerLayout>
-      <BuyerTopBar search="">
+      <BuyerTopBar search={search} onSearchChange={setSearch}>
         <h1 className="text-2xl font-semibold text-gray-900">Home</h1>
       </BuyerTopBar>
 
-      <div className="space-y-8 p-8">
+      <div className="p-8">
+        {!search && (
+          <div className="mb-8">
+            <div className="relative overflow-hidden rounded-2xl bg-[#2f8f66] p-6 text-white">
+              <div className="max-w-sm">
+                <h2 className="text-2xl font-bold leading-tight">
+                  Fresh Crops.
+                  <br />
+                  Direct Access.
+                  <br />
+                  <span className="text-yellow-300">Honest Prices.</span>
+                </h2>
+                <p className="mt-3 text-sm text-white/90">
+                  Order 100% locally-grown produce straight from verified farmers, with no
+                  middleman markup.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" })}
+                  className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                >
+                  Shop Fresh Produce Now
+                </button>
+              </div>
+              <div className="pointer-events-none absolute -right-2 bottom-2 hidden text-7xl opacity-90 sm:block">
+                🥕🎃🍅
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl bg-white px-4 py-3 text-xs font-medium text-gray-700 shadow-sm">
+              {badges.map(({ icon: Icon, label }) => (
+                <span key={label} className="flex items-center gap-1.5">
+                  <Icon className="h-4 w-4 text-[#2f8f66]" />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {!loading && !error && (
-          <>
-            <section>
+        {!loading && !error && search && (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-gray-900">Search Results</h2>
+            {products.length === 0 ? (
+              <p className="text-sm text-gray-500">No products found.</p>
+            ) : (
+              <ProductGrid products={products} navigate={navigate} />
+            )}
+          </section>
+        )}
+
+        {!loading && !error && !search && (
+          <div className="space-y-8">
+            <section id="home-newest">
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Newest Products</h2>
               {newestProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
@@ -139,7 +200,7 @@ export default function BuyerHome() {
                 </div>
               )}
             </section>
-          </>
+          </div>
         )}
       </div>
     </BuyerLayout>

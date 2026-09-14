@@ -55,4 +55,7 @@ export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
 export const requestAdminOtp = (email) => api.post("/admin-auth/request-otp", { email });
 export const registerAdmin = (data) => api.post("/admin-auth/register", data);
 
+export const createRating = (orderId, stars, comment) =>
+  api.post("/ratings", { orderId, stars, comment });
+
 export default api;

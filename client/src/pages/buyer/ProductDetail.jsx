@@ -66,7 +66,7 @@ export default function ProductDetail() {
           className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Marketplace
+          Back to Home
         </button>
       </BuyerTopBar>
 
@@ -128,8 +128,11 @@ export default function ProductDetail() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{product.title}</h1>
             <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-              <Star className="h-4 w-4 text-gray-300" />
-              No ratings yet · Sold {product.sold || 0}
+              <Star className={`h-4 w-4 ${product.ratingCount > 0 ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
+              {product.ratingCount > 0
+                ? `${product.rating.toFixed(1)} (${product.ratingCount} rating${product.ratingCount === 1 ? "" : "s"})`
+                : "No ratings yet"}{" "}
+              · Sold {product.sold || 0}
             </p>
 
             <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2 text-lg font-semibold text-white">

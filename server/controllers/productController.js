@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
+const Rating = require("../models/Rating");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 
 // @desc    Create a product for the logged-in farmer
@@ -82,7 +83,17 @@ const getProductById = asyncHandler(async (req, res) => {
     { $group: { _id: null, totalSold: { $sum: "$quantity" } } },
   ]);
 
-  res.json({ ...product.toObject(), sold: sales[0]?.totalSold || 0 });
+  const ratingStats = await Rating.aggregate([
+    { $match: { product: product._id } },
+    { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
+  ]);
+
+  res.json({
+    ...product.toObject(),
+    sold: sales[0]?.totalSold || 0,
+    rating: ratingStats[0]?.avg || 0,
+    ratingCount: ratingStats[0]?.count || 0,
+  });
 });
 
 const findOwnedProduct = async (id, farmerId) => {

@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const Rating = require("../models/Rating");
 
 // @desc    Place an order for a product
 // @route   POST /api/orders
@@ -59,7 +60,11 @@ const getBuyerOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ buyer: req.user._id })
     .populate("farmer", "name farmName")
     .sort({ createdAt: -1 });
-  res.json(orders);
+
+  const ratings = await Rating.find({ order: { $in: orders.map((o) => o._id) } }).select("order");
+  const ratedIds = new Set(ratings.map((r) => r.order.toString()));
+
+  res.json(orders.map((o) => ({ ...o.toObject(), rated: ratedIds.has(o._id.toString()) })));
 });
 
 // @desc    Update an order's status (new -> ready -> done)
@@ -137,7 +142,9 @@ const getOrderById = asyncHandler(async (req, res) => {
     throw new Error("You do not have access to this order");
   }
 
-  res.json(order);
+  const myRating = await Rating.findOne({ order: order._id });
+
+  res.json({ ...order.toObject(), myRating });
 });
 
 module.exports = {
