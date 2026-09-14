@@ -9,6 +9,7 @@ const emptyForm = {
   price: "",
   category: "vegetable",
   location: "",
+  description: "",
 };
 
 export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
@@ -21,6 +22,7 @@ export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
           price: product.price,
           category: product.category,
           location: product.location,
+          description: product.description || "",
         }
       : emptyForm
   );
@@ -49,6 +51,7 @@ export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
     formData.append("price", form.price);
     formData.append("category", form.category);
     formData.append("location", form.location);
+    formData.append("description", form.description);
     if (photoFile) formData.append("image", photoFile);
     onSubmit(formData);
   };
@@ -151,6 +154,21 @@ export default function ProductFormModal({ mode, product, onClose, onSubmit }) {
             value={form.location}
             onChange={handleChange}
             placeholder="e.g. Dagupan City Random Street #1234"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+            Product Description
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            rows={3}
+            value={form.description}
+            onChange={handleChange}
+            placeholder="Describe your product - freshness, flavor, best uses, etc."
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
           />
         </div>

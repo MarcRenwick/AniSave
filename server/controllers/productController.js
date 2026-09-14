@@ -9,7 +9,7 @@ const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 // @route   POST /api/products
 // @access  Private (farmer)
 const createProduct = asyncHandler(async (req, res) => {
-  const { title, stock, price, category, location } = req.body;
+  const { title, stock, price, category, location, description } = req.body;
 
   if (!title || stock === undefined || price === undefined || !category) {
     res.status(400);
@@ -23,6 +23,7 @@ const createProduct = asyncHandler(async (req, res) => {
     price,
     category,
     location,
+    description,
     image: imagePath(req.file),
   });
 
@@ -165,12 +166,13 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 
-  const { title, stock, price, category, location } = req.body;
+  const { title, stock, price, category, location, description } = req.body;
   if (title !== undefined) product.title = title;
   if (stock !== undefined) product.stock = stock;
   if (price !== undefined) product.price = price;
   if (category !== undefined) product.category = category;
   if (location !== undefined) product.location = location;
+  if (description !== undefined) product.description = description;
 
   if (req.file) {
     deleteImageFile(product.image);

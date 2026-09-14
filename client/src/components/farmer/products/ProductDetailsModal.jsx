@@ -24,6 +24,12 @@ export default function ProductDetailsModal({ product, onClose }) {
           <dt className="text-gray-500">Location</dt>
           <dd className="font-medium text-gray-900">{product.location}</dd>
         </div>
+        <div>
+          <dt className="text-gray-500">Description</dt>
+          <dd className="whitespace-pre-line font-medium text-gray-900">
+            {product.description || "No description provided yet."}
+          </dd>
+        </div>
       </dl>
     </Modal>
   );

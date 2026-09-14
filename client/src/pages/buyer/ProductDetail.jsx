@@ -1,13 +1,23 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Package, ImageOff, Star, ShoppingBasket } from "lucide-react";
+import { ArrowLeft, Package, ImageOff, Star, ShoppingBasket, User as UserIcon } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import AddToCartModal from "../../components/buyer/AddToCartModal";
 import CheckoutModal from "../../components/buyer/CheckoutModal";
-import { getProduct, SERVER_URL } from "../../services/api";
+import { getProduct, getFarmerProfile, SERVER_URL } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+
+function timeAgo(date) {
+  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
+  if (days < 1) return "Today";
+  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
+  const years = Math.floor(months / 12);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -16,6 +26,7 @@ export default function ProductDetail() {
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState(null);
+  const [farmerStats, setFarmerStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [buyMessage, setBuyMessage] = useState("");
@@ -25,7 +36,13 @@ export default function ProductDetail() {
   useEffect(() => {
     setLoading(true);
     getProduct(id)
-      .then(({ data }) => setProduct(data))
+      .then(({ data }) => {
+        setProduct(data);
+        return data.farmer?._id ? getFarmerProfile(data.farmer._id) : null;
+      })
+      .then((farmerRes) => {
+        if (farmerRes) setFarmerStats(farmerRes.data);
+      })
       .catch(() => setError("Could not load this product."))
       .finally(() => setLoading(false));
   }, [id]);
@@ -143,7 +160,13 @@ export default function ProductDetail() {
               <div>
                 <dt className="text-gray-500">Sold by</dt>
                 <dd className="font-medium text-gray-900">
-                  {product.farmer?.farmName || product.farmer?.name || "Unknown farmer"}
+                  {product.farmer?._id ? (
+                    <Link to={`/buyer/farmers/${product.farmer._id}`} className="hover:underline">
+                      {product.farmer?.farmName || product.farmer?.name || "Unknown farmer"}
+                    </Link>
+                  ) : (
+                    product.farmer?.farmName || product.farmer?.name || "Unknown farmer"
+                  )}
                 </dd>
               </div>
               <div className="flex items-center gap-2">
@@ -168,6 +191,53 @@ export default function ProductDetail() {
             </dl>
           </div>
         </div>
+        )}
+
+        {!loading && !error && product && farmerStats && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
+                <UserIcon className="h-7 w-7" />
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">
+                  {farmerStats.farmName || farmerStats.name}
+                </p>
+                <Link
+                  to={`/buyer/farmers/${product.farmer._id}`}
+                  className="mt-1 inline-block rounded-md border border-[#2f8f66] px-3 py-1 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                >
+                  View Seller
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex gap-6 text-center">
+              <div>
+                <p className="font-semibold text-gray-900">{farmerStats.ratingCount}</p>
+                <p className="text-xs text-gray-500">Ratings</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{timeAgo(farmerStats.createdAt)}</p>
+                <p className="text-xs text-gray-500">Joined</p>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{farmerStats.productCount}</p>
+                <p className="text-xs text-gray-500">Products</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && product && (
+          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div className="bg-[#2f8f66] px-5 py-3 text-sm font-semibold text-white">
+              Product Description
+            </div>
+            <p className="whitespace-pre-line p-5 text-sm text-gray-700">
+              {product.description || "No description provided yet."}
+            </p>
+          </div>
         )}
       </div>
 

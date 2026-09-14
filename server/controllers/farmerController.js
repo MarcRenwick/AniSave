@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 const Rating = require("../models/Rating");
+const Product = require("../models/Product");
 
 // @desc    List farmers for the buyer-facing home page
 // @route   GET /api/farmers
@@ -30,10 +31,13 @@ const getFarmerProfile = asyncHandler(async (req, res) => {
     { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
   ]);
 
+  const productCount = await Product.countDocuments({ farmer: farmer._id });
+
   res.json({
     ...farmer.toObject(),
     rating: ratingStats[0]?.avg || 0,
     ratingCount: ratingStats[0]?.count || 0,
+    productCount,
   });
 });
 

@@ -66,7 +66,10 @@ export default function BuyerHome() {
   const { user } = useAuth();
 
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("newest");
+  // null = no explicit sort chosen yet, so the curated Home view still
+  // shows; picking any option (including "Newest") switches to a single
+  // sorted results grid even with an empty search box.
+  const [sort, setSort] = useState(null);
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
@@ -74,12 +77,16 @@ export default function BuyerHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const browsing = Boolean(search.trim()) || sort !== null;
+
   useEffect(() => {
     setLoading(true);
     setError("");
 
-    if (search.trim()) {
-      getAllProducts({ search: search.trim(), sort })
+    if (browsing) {
+      const params = { sort: sort || "newest" };
+      if (search.trim()) params.search = search.trim();
+      getAllProducts(params)
         .then(({ data }) => setProducts(data))
         .catch(() => setError("Could not load products. Is the server running?"))
         .finally(() => setLoading(false));
@@ -94,6 +101,7 @@ export default function BuyerHome() {
       })
       .catch(() => setError("Could not load the home page. Is the server running?"))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, sort]);
 
   const nearestFarmers = [...farmers]
@@ -105,7 +113,7 @@ export default function BuyerHome() {
       <BuyerTopBar
         search={search}
         onSearchChange={setSearch}
-        sortOptions={search ? sortOptions : undefined}
+        sortOptions={sortOptions}
         sortValue={sort}
         onSortChange={setSort}
       >
@@ -113,7 +121,7 @@ export default function BuyerHome() {
       </BuyerTopBar>
 
       <div className="p-8">
-        {!search && (
+        {!browsing && (
           <div className="mb-8">
             <div className="relative overflow-hidden rounded-2xl bg-[#2f8f66] p-6 text-white">
               <div className="max-w-sm">
@@ -155,12 +163,12 @@ export default function BuyerHome() {
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {!loading && !error && search && (
+        {!loading && !error && browsing && (
           <section>
             <h2 className="mb-3 text-lg font-semibold text-gray-900">
-              Search Results{" "}
+              {search.trim() ? "Search Results" : "All Products"}{" "}
               <span className="text-sm font-normal text-gray-400">
-                · Sorted by {sortOptions.find((o) => o.key === sort)?.label}
+                · Sorted by {sortOptions.find((o) => o.key === (sort || "newest"))?.label}
               </span>
             </h2>
             {products.length === 0 ? (
@@ -171,7 +179,7 @@ export default function BuyerHome() {
           </section>
         )}
 
-        {!loading && !error && !search && (
+        {!loading && !error && !browsing && (
           <div className="space-y-8">
             <section id="home-newest">
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Newest Products</h2>
