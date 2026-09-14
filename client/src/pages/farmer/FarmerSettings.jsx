@@ -95,7 +95,7 @@ export default function FarmerSettings() {
       <FarmerTopBar showActions={false} />
 
       <div className="space-y-6 p-8">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#2f8f66] to-[#7fd9a4] p-6 text-white">
+        <div className="relative rounded-2xl bg-gradient-to-r from-[#2f8f66] to-[#7fd9a4] p-6 text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-white/20">

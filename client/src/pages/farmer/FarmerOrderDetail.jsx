@@ -16,11 +16,23 @@ import { getOrder, updateOrderStatus, SERVER_URL } from "../../services/api";
 
 const categoryLabels = { vegetable: "Vegetables", fruit: "Fruits" };
 
-const steps = [
-  { key: "new", label: "New", getDate: (o) => o.createdAt },
-  { key: "ready", label: "Ready for Pickup", getDate: (o) => o.readyAt },
-  { key: "done", label: "Picked Up", getDate: (o) => o.doneAt },
-];
+// Displayed as 5 conceptual steps, even though the real backend only has
+// 3 statuses - Accept bundles "Accepted"/"Prepared"/"Ready for Pickup"
+// into one real event (readyAt), and Mark as Done covers "Picked Up".
+const steps = ["New", "Accepted", "Prepared", "Ready for Pickup", "Picked Up"];
+
+function doneCountFor(status) {
+  if (status === "new") return 1;
+  if (status === "ready") return 4;
+  if (status === "done") return 5;
+  return 0;
+}
+
+function getStepDate(order, index) {
+  if (index === 0) return order.createdAt;
+  if (index === 4) return order.doneAt;
+  return order.readyAt;
+}
 
 function formatDateTime(date) {
   return new Date(date).toLocaleString(undefined, {
@@ -255,11 +267,11 @@ export default function FarmerOrderDetail() {
             <div className="space-y-4">
               <div className="rounded-xl bg-white p-4 shadow-sm">
                 <p className="mb-3 text-sm font-semibold text-gray-700">Order Status</p>
-                {steps.map((step, i) => {
-                  const date = step.getDate(order);
-                  const done = Boolean(date);
+                {steps.map((label, i) => {
+                  const done = i < doneCountFor(order.status);
+                  const date = done ? getStepDate(order, i) : null;
                   return (
-                    <div key={step.key} className="flex gap-3">
+                    <div key={label} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div
                           className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
@@ -274,9 +286,9 @@ export default function FarmerOrderDetail() {
                       </div>
                       <div className="pb-4">
                         <p className={`text-sm font-medium ${done ? "text-gray-900" : "text-gray-400"}`}>
-                          {step.label}
+                          {label}
                         </p>
-                        {done && <p className="text-xs text-gray-400">{formatDateTime(date)}</p>}
+                        {date && <p className="text-xs text-gray-400">{formatDateTime(date)}</p>}
                       </div>
                     </div>
                   );

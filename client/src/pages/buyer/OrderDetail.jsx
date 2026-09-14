@@ -5,11 +5,24 @@ import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
 import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
 
-const steps = [
-  { key: "new", label: "Order Placed", getDate: (o) => o.createdAt },
-  { key: "ready", label: "Ready for Pickup", getDate: (o) => o.readyAt },
-  { key: "done", label: "Completed", getDate: (o) => o.doneAt },
-];
+// Displayed as 5 conceptual steps, even though the real backend only has
+// 3 statuses - the farmer accepting bundles "Accepted"/"Prepared"/"Ready
+// for Pickup" into one real event (readyAt), and marking done covers
+// "Picked Up".
+const steps = ["Order Placed", "Accepted", "Prepared", "Ready for Pickup", "Picked Up"];
+
+function doneCountFor(status) {
+  if (status === "new") return 1;
+  if (status === "ready") return 4;
+  if (status === "done") return 5;
+  return 0;
+}
+
+function getStepDate(order, index) {
+  if (index === 0) return order.createdAt;
+  if (index === 4) return order.doneAt;
+  return order.readyAt;
+}
 
 const statusTitle = {
   new: "Order Placed",
@@ -57,7 +70,7 @@ export default function OrderDetail() {
   };
 
   const title = order ? statusTitle[order.status] : "Order";
-  const doneCount = order ? steps.filter((s) => s.getDate(order)).length : 0;
+  const doneCount = order ? doneCountFor(order.status) : 0;
 
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
@@ -82,13 +95,13 @@ export default function OrderDetail() {
               <div className="rounded-xl bg-white p-4 shadow-sm">
                 <p className="mb-4 text-sm font-semibold text-gray-700">Order Status</p>
                 <div className="flex items-start">
-                  {steps.map((step, i) => {
+                  {steps.map((label, i) => {
                     const isDone = i < doneCount;
                     const beforeGreen = i > 0 && i - 1 < doneCount;
                     const afterGreen = i < steps.length - 1 && i < doneCount;
-                    const date = step.getDate(order);
+                    const date = isDone ? getStepDate(order, i) : null;
                     return (
-                      <div key={step.key} className="flex flex-1 flex-col items-center text-center">
+                      <div key={label} className="flex flex-1 flex-col items-center text-center">
                         <div className="flex w-full items-center">
                           <div
                             className={`h-0.5 flex-1 ${i === 0 ? "invisible" : beforeGreen ? "bg-[#2f8f66]" : "bg-gray-200"}`}
@@ -104,8 +117,8 @@ export default function OrderDetail() {
                             className={`h-0.5 flex-1 ${i === steps.length - 1 ? "invisible" : afterGreen ? "bg-[#2f8f66]" : "bg-gray-200"}`}
                           />
                         </div>
-                        <p className="mt-2 text-[10px] leading-tight text-gray-500">{step.label}</p>
-                        {isDone && date && (
+                        <p className="mt-2 text-[10px] leading-tight text-gray-500">{label}</p>
+                        {date && (
                           <p className="text-[9px] leading-tight text-gray-400">
                             {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                           </p>
