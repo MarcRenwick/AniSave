@@ -33,7 +33,7 @@ export default function Checkout() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   if (items.length === 0) {
     return (

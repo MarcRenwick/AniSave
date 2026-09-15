@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
 @layer base {
+  /* Every page scrolls the window and always shows its scrollbar, so the bar
+     doesn't vanish on short pages and shift the layout between pages. */
   html {
+    overflow-y: scroll;
     scroll-behavior: smooth;
   }
 

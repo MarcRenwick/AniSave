@@ -36,7 +36,7 @@ export default function ProductRatings() {
   const [likeError, setLikeError] = useState("");
   const [pendingId, setPendingId] = useState(null);
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   useEffect(() => {
     Promise.all([getProduct(id), getProductRatings(id)])

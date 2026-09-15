@@ -13,7 +13,7 @@ const steps = [
 
 export default function Landing() {
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   return (
     <div ref={rootRef} className="min-h-screen bg-white">

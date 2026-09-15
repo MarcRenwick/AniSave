@@ -7,13 +7,11 @@ export default function FarmerLayout({ children }) {
   useScrollReveal(mainRef);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100">
       <FarmerSidebar />
-      {/* min-h-0 so this flex child is allowed to be shorter than its content
-          and actually scroll; without it a page taller than the window grows
-          the child instead, and the scrollbar never appears. overflow-x-hidden
-          keeps a hover-scaled card from producing a stray sideways scrollbar. */}
-      <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-smooth">
+      {/* overflow-x-clip keeps a hover-scaled card from poking out sideways
+          without making this a second scroll container. */}
+      <main ref={mainRef} className="min-w-0 flex-1 overflow-x-clip">
         {children}
       </main>
     </div>

@@ -47,7 +47,7 @@ export default function FarmerSidebar() {
     <aside
       className={`flex ${
         collapsed ? "w-20" : "w-64"
-      } shrink-0 flex-col bg-[#2f8f66] px-4 py-6 text-white transition-all duration-200`}
+      } sticky top-0 h-screen shrink-0 flex-col bg-[#2f8f66] px-4 py-6 text-white transition-all duration-200`}
     >
       <div className={`flex items-center ${collapsed ? "flex-col gap-3" : "justify-between"}`}>
         <div className={`flex items-center gap-3 ${collapsed ? "" : "px-2"}`}>

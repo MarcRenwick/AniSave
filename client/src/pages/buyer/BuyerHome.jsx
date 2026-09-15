@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ImageOff, Sprout, Star, Leaf, Handshake, ShieldCheck, Award } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
+import HomeBanner from "../../components/buyer/HomeBanner";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
 
@@ -19,6 +20,8 @@ const sortOptions = [
   { key: "nearest", label: "Nearest to You" },
   { key: "all", label: "All Products" },
 ];
+
+const FEATURED_SLIDES = 3;
 
 function locationScore(farmerLocation, buyerLocation) {
   if (!buyerLocation || !farmerLocation) return 0;
@@ -132,6 +135,17 @@ export default function BuyerHome() {
     .sort((a, b) => locationScore(b.location, user?.location) - locationScore(a.location, user?.location))
     .slice(0, 4);
 
+  // Real listings for the banner: well-rated ones first, topped up with the
+  // newest, and only ones with a photo to show.
+  const recommendedIds = new Set(recommendedProducts.map((p) => p._id));
+  const featured = [...recommendedProducts, ...newestProducts]
+    .filter((p, i, all) => p.image && all.findIndex((q) => q._id === p._id) === i)
+    .slice(0, FEATURED_SLIDES)
+    .map((product) => ({
+      product,
+      tag: recommendedIds.has(product._id) ? "Top Rated" : "Just Listed",
+    }));
+
   return (
     <BuyerLayout>
       <BuyerTopBar
@@ -147,31 +161,13 @@ export default function BuyerHome() {
       <div className="p-8">
         {!browsing && (
           <div className="mb-8">
-            <div className="relative overflow-hidden rounded-2xl bg-[#2f8f66] p-6 text-white">
-              <div className="max-w-sm">
-                <h2 className="text-2xl font-bold leading-tight">
-                  Fresh Crops.
-                  <br />
-                  Direct Access.
-                  <br />
-                  <span className="text-yellow-300">Honest Prices.</span>
-                </h2>
-                <p className="mt-3 text-sm text-white/90">
-                  Order 100% locally-grown produce straight from verified farmers, with no
-                  middleman markup.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" })}
-                  className="mt-4 rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
-                >
-                  Shop Fresh Produce Now
-                </button>
-              </div>
-              <div className="pointer-events-none absolute -right-2 bottom-2 hidden text-7xl opacity-90 sm:block">
-                🥕🎃🍅
-              </div>
-            </div>
+            <HomeBanner
+              featured={featured}
+              buyerLocation={user?.location}
+              onShop={() => document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" })}
+              onBrowse={setSort}
+              onOpenProduct={(id) => navigate(`/buyer/products/${id}`)}
+            />
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl bg-white px-4 py-3 text-xs font-medium text-gray-700 shadow-sm">
               {badges.map(({ icon: Icon, label }) => (

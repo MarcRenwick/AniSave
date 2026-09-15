@@ -12,7 +12,7 @@ export default function CartPage() {
   const { items, updateQuantity, removeFromCart } = useCart();
   const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   const toggleSelected = (productId) => {
     setSelected((prev) => {

@@ -21,7 +21,7 @@ export default function BuyerTopNav() {
   ];
 
   return (
-    <div className="flex shrink-0 items-center justify-between bg-[#2f8f66] px-8 py-3 text-white">
+    <div className="sticky top-0 z-30 flex shrink-0 items-center justify-between bg-[#2f8f66] px-8 py-3 text-white">
       <Link to="/buyer/home" className="flex items-center gap-2.5">
         <img src={logo} alt="AniSave" className="h-8 w-8 rounded-full" />
         <span className="font-semibold">AniSave</span>

@@ -20,7 +20,7 @@ export default function OrderDetail() {
   const [cancelError, setCancelError] = useState("");
   const [showRate, setShowRate] = useState(false);
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   useEffect(() => {
     getOrder(id)

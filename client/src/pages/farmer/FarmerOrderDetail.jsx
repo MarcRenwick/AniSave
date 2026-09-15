@@ -16,7 +16,7 @@ export default function FarmerOrderDetail() {
   const [actionError, setActionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   useEffect(() => {
     getOrder(id)

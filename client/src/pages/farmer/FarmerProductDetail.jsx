@@ -24,7 +24,7 @@ export default function FarmerProductDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const rootRef = useRef(null);
-  useScrollReveal(rootRef, { windowScroll: true });
+  useScrollReveal(rootRef);
 
   useEffect(() => {
     getProduct(id)
