@@ -19,7 +19,10 @@ export default function useScrollReveal(containerRef, { windowScroll = false } =
           entry.target.classList.toggle("scroll-reveal-visible", entry.isIntersecting);
         });
       },
-      { root: windowScroll ? null : container, threshold: 0.08, rootMargin: "0px 0px -8% 0px" }
+      // threshold 0 (any sliver counts), not a fraction of the target: a
+      // section taller than ~12 screens can never show 8% of itself, and
+      // would sit at opacity 0 forever.
+      { root: windowScroll ? null : container, threshold: 0, rootMargin: "0px 0px -8% 0px" }
     );
 
     const observeChildren = () => {

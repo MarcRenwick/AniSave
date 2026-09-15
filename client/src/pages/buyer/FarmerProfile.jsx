@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, MapPin, BadgeCheck, Star, ImageOff } from "lucide-react";
+import { ArrowLeft, MapPin, BadgeCheck, Star, ImageOff, Clock } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api";
+import { activeAgo } from "../../utils/activity";
 
 export default function FarmerProfile() {
   const { id } = useParams();
@@ -68,8 +69,18 @@ export default function FarmerProfile() {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Star className="h-4 w-4 text-yellow-500" />
-                  {farmer.rating || 0} rating
+                  {farmer.ratingCount > 0
+                    ? `${farmer.rating.toFixed(1)} (${farmer.ratingCount} rating${
+                        farmer.ratingCount === 1 ? "" : "s"
+                      })`
+                    : "No ratings yet"}
                 </span>
+                {activeAgo(farmer.lastActiveAt) && (
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    {activeAgo(farmer.lastActiveAt)}
+                  </span>
+                )}
               </div>
 
               {farmer.farmDescription && (
