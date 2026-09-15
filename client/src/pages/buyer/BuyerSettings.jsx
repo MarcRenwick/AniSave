@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User as UserIcon, Pencil, KeyRound, Trash2 } from "lucide-react";
+import { User as UserIcon, Pencil, KeyRound, Trash2, LogOut } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import DeleteAccountModal from "../../components/buyer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
+import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser } from "../../services/api";
 
@@ -25,6 +26,7 @@ export default function BuyerSettings() {
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
 
   useEffect(() => {
     getCurrentUser()
@@ -34,6 +36,11 @@ export default function BuyerSettings() {
   }, []);
 
   const handleAccountDeleted = () => {
+    logout();
+    navigate("/login");
+  };
+
+  const handleLogout = () => {
     logout();
     navigate("/login");
   };
@@ -87,6 +94,14 @@ export default function BuyerSettings() {
                 <Trash2 className="h-4 w-4" />
                 Delete Account
               </button>
+              <button
+                type="button"
+                onClick={() => setShowLogout(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition duration-150 hover:bg-gray-50 active:scale-[0.98]"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
+              </button>
             </div>
           </div>
         </div>
@@ -105,6 +120,9 @@ export default function BuyerSettings() {
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
       {showDelete && (
         <DeleteAccountModal onClose={() => setShowDelete(false)} onDeleted={handleAccountDeleted} />
+      )}
+      {showLogout && (
+        <LogoutConfirmModal onClose={() => setShowLogout(false)} onConfirm={handleLogout} />
       )}
     </BuyerLayout>
   );
