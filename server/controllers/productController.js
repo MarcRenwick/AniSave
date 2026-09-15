@@ -54,9 +54,13 @@ const getMyProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products
 // @access  Public (guests can browse)
 const getAllProducts = asyncHandler(async (req, res) => {
-  const { category, location, minPrice, maxPrice, farmer, search, sort } = req.query;
+  const { category, location, minPrice, maxPrice, farmer, search, sort, includeOutOfStock } =
+    req.query;
 
-  const filter = { stock: { $gt: 0 } };
+  // Browsing hides sold-out products, but a farmer's own shop page lists its
+  // whole catalogue - a sold-out item there is still pre-orderable.
+  const filter = {};
+  if (includeOutOfStock !== "true") filter.stock = { $gt: 0 };
   if (category) filter.category = category;
   if (farmer) filter.farmer = new mongoose.Types.ObjectId(farmer);
   if (minPrice || maxPrice) {

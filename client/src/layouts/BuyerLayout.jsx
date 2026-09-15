@@ -12,7 +12,7 @@ export default function BuyerLayout({ children }) {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gray-100">
       <BuyerTopNav />
-      <main ref={mainRef} className="flex-1 overflow-y-auto scroll-smooth">
+      <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-smooth">
         {children}
       </main>
       {toast && <Toast message={toast} onClose={dismiss} />}

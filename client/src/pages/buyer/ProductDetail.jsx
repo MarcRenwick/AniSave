@@ -8,17 +8,7 @@ import CheckoutModal from "../../components/buyer/CheckoutModal";
 import { getProduct, getFarmerProfile, SERVER_URL } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
-import { activeAgo } from "../../utils/activity";
-
-function timeAgo(date) {
-  const days = Math.floor((Date.now() - new Date(date).getTime()) / 86400000);
-  if (days < 1) return "Today";
-  if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
-  const years = Math.floor(months / 12);
-  return `${years} year${years === 1 ? "" : "s"} ago`;
-}
+import { activeAgo, timeAgo } from "../../utils/activity";
 
 function Stat({ label, value }) {
   return (

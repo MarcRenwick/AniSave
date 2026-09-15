@@ -110,7 +110,7 @@ export default function FarmerProducts() {
         )}
 
         {!loading && !error && visible.length > 0 && (
-          <div className="mt-6 grid grid-cols-3 gap-6">
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {visible.map((product) => (
               <ProductCard
                 key={product._id}

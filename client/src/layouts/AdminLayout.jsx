@@ -9,7 +9,7 @@ export default function AdminLayout({ children }) {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
       <AdminSidebar />
-      <main ref={mainRef} className="flex-1 overflow-y-auto scroll-smooth">
+      <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-smooth">
         {children}
       </main>
     </div>

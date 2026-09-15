@@ -57,7 +57,15 @@ function SortDropdown({ sortOptions, sortValue, onSortChange }) {
   );
 }
 
-export default function BuyerTopBar({ children, search, onSearchChange, sortOptions, sortValue, onSortChange }) {
+export default function BuyerTopBar({
+  children,
+  search,
+  onSearchChange,
+  sortOptions,
+  sortValue,
+  onSortChange,
+  searchPlaceholder = "Search",
+}) {
   const { user } = useAuth();
   const { count } = useCart();
   const navigate = useNavigate();
@@ -106,7 +114,7 @@ export default function BuyerTopBar({ children, search, onSearchChange, sortOpti
               onFocus={() => {
                 if (!onSearchChange) navigate("/buyer/home");
               }}
-              placeholder="Search"
+              placeholder={searchPlaceholder}
               className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm transition focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
             />
           </div>
