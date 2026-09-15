@@ -46,10 +46,16 @@ function ProductGrid({ products, empty }) {
             ) : (
               <ImageOff className="h-10 w-10" />
             )}
-            {product.stock === 0 && (
+            {product.productType === "preorder" ? (
               <span className="absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                 Pre-order
               </span>
+            ) : (
+              product.stock === 0 && (
+                <span className="absolute left-2 top-2 rounded-full bg-gray-700/80 px-2 py-0.5 text-[10px] font-semibold text-white">
+                  Out of stock
+                </span>
+              )
             )}
           </div>
           <div className="p-3">

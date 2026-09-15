@@ -39,7 +39,7 @@ function ProductGrid({ products, navigate }) {
           onClick={() => navigate(`/buyer/products/${product._id}`)}
           className="overflow-hidden rounded-xl bg-white text-left shadow-sm transition duration-150 hover:shadow-md active:scale-[0.97]"
         >
-          <div className="flex h-28 items-center justify-center bg-gray-50 text-gray-300">
+          <div className="relative flex h-28 items-center justify-center bg-gray-50 text-gray-300">
             {product.image ? (
               <img
                 src={`${SERVER_URL}${product.image}`}
@@ -48,6 +48,11 @@ function ProductGrid({ products, navigate }) {
               />
             ) : (
               <ImageOff className="h-8 w-8" />
+            )}
+            {product.productType === "preorder" && (
+              <span className="absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">
+                Pre-order
+              </span>
             )}
           </div>
           <div className="bg-[#2f8f66] px-3 py-2 text-white">

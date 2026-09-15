@@ -33,6 +33,8 @@ const ratingSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Buyers who marked this review helpful, at most once each.
+    likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true }
 );

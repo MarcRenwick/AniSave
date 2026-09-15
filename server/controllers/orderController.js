@@ -7,7 +7,7 @@ const Rating = require("../models/Rating");
 // @route   POST /api/orders
 // @access  Private (buyer)
 const createOrder = asyncHandler(async (req, res) => {
-  const { productId, quantity, preorder } = req.body;
+  const { productId, quantity } = req.body;
 
   if (!productId || !quantity || quantity <= 0) {
     res.status(400);
@@ -20,10 +20,10 @@ const createOrder = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  // Short stock is only allowed through if the buyer deliberately chose to
-  // pre-order, so an ordinary order still fails the way it always has.
-  const isPreOrder = product.stock < quantity;
-  if (isPreOrder && !preorder) {
+  // Only a listing the farmer put up For Pre-Order takes pre-orders - an
+  // ordinary listing still needs the stock to actually be there.
+  const isPreOrder = product.productType === "preorder";
+  if (!isPreOrder && product.stock < quantity) {
     res.status(400);
     throw new Error(`Only ${product.stock}kg of ${product.title} left in stock`);
   }

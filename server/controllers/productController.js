@@ -5,29 +5,55 @@ const Order = require("../models/Order");
 const Rating = require("../models/Rating");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 
+const MAX_IMAGES = 5;
+const PRODUCT_TYPES = ["sale", "preorder"];
+
+// multer has already written a request's files to disk by the time the
+// request is rejected, so they have to be removed again explicitly.
+const discardUploads = (req) =>
+  (req.files || []).forEach((file) => deleteImageFile(imagePath(file)));
+
 // @desc    Create a product for the logged-in farmer
 // @route   POST /api/products
 // @access  Private (farmer)
 const createProduct = asyncHandler(async (req, res) => {
-  const { title, stock, price, category, location, description } = req.body;
+  const { title, stock, price, category, location, description, productType } = req.body;
 
   if (!title || stock === undefined || price === undefined || !category) {
+    discardUploads(req);
     res.status(400);
     throw new Error("Title, stock, price and category are required");
   }
+  if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
+    discardUploads(req);
+    res.status(400);
+    throw new Error("Product type must be 'sale' or 'preorder'");
+  }
 
-  const product = await Product.create({
-    farmer: req.user._id,
-    title,
-    stock,
-    price,
-    category,
-    location,
-    description,
-    image: imagePath(req.file),
-  });
+  const images = (req.files || []).map(imagePath);
+  if (images.length === 0) {
+    res.status(400);
+    throw new Error("Add at least one photo of the product");
+  }
 
-  res.status(201).json(product);
+  try {
+    const product = await Product.create({
+      farmer: req.user._id,
+      title,
+      stock,
+      price,
+      category,
+      location,
+      description,
+      productType,
+      images,
+      image: images[0],
+    });
+    res.status(201).json(product);
+  } catch (err) {
+    discardUploads(req);
+    throw err;
+  }
 });
 
 // @desc    Get the logged-in farmer's products
@@ -50,17 +76,20 @@ const getMyProducts = asyncHandler(async (req, res) => {
   );
 });
 
-// @desc    Browse all farmers' in-stock products (marketplace)
+// @desc    Browse all farmers' orderable products (marketplace)
 // @route   GET /api/products
 // @access  Public (guests can browse)
 const getAllProducts = asyncHandler(async (req, res) => {
   const { category, location, minPrice, maxPrice, farmer, search, sort, includeOutOfStock } =
     req.query;
 
-  // Browsing hides sold-out products, but a farmer's own shop page lists its
-  // whole catalogue - a sold-out item there is still pre-orderable.
+  // Browsing hides listings nobody can order right now: a sold-out For Sale
+  // item. A pre-order listing is orderable at any stock level, and a
+  // farmer's own shop page lists the whole catalogue regardless.
   const filter = {};
-  if (includeOutOfStock !== "true") filter.stock = { $gt: 0 };
+  if (includeOutOfStock !== "true") {
+    filter.$or = [{ stock: { $gt: 0 } }, { productType: "preorder" }];
+  }
   if (category) filter.category = category;
   if (farmer) filter.farmer = new mongoose.Types.ObjectId(farmer);
   if (minPrice || maxPrice) {
@@ -137,8 +166,9 @@ const getProductById = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
+  // A cancelled order never left the farm, so it doesn't count as sold.
   const sales = await Order.aggregate([
-    { $match: { product: product._id } },
+    { $match: { product: product._id, status: { $ne: "cancelled" } } },
     { $group: { _id: null, totalSold: { $sum: "$quantity" } } },
   ]);
 
@@ -170,24 +200,84 @@ const findOwnedProduct = async (id, farmerId) => {
 const updateProduct = asyncHandler(async (req, res) => {
   const { product, error } = await findOwnedProduct(req.params.id, req.user._id);
   if (error) {
+    discardUploads(req);
     res.status(error.status);
     throw new Error(error.message);
   }
 
-  const { title, stock, price, category, location, description } = req.body;
+  const { title, stock, price, category, location, description, productType, imageOrder } =
+    req.body;
+
+  if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
+    discardUploads(req);
+    res.status(400);
+    throw new Error("Product type must be 'sale' or 'preorder'");
+  }
+
   if (title !== undefined) product.title = title;
   if (stock !== undefined) product.stock = stock;
   if (price !== undefined) product.price = price;
   if (category !== undefined) product.category = category;
   if (location !== undefined) product.location = location;
   if (description !== undefined) product.description = description;
+  if (productType !== undefined) product.productType = productType;
 
-  if (req.file) {
-    deleteImageFile(product.image);
-    product.image = imagePath(req.file);
+  const uploaded = (req.files || []).map(imagePath);
+  let removedImages = [];
+
+  if (imageOrder === undefined) {
+    discardUploads(req);
+  } else {
+    let slots;
+    try {
+      slots = JSON.parse(imageOrder);
+    } catch {
+      slots = null;
+    }
+    if (!Array.isArray(slots)) {
+      discardUploads(req);
+      res.status(400);
+      throw new Error("imageOrder must be a JSON array");
+    }
+
+    // Each slot is either a photo the product already has, or "new" for the
+    // next uploaded file - so a farmer can replace, drop or reorder photos
+    // and whichever lands first becomes the cover.
+    const current = product.images.length > 0 ? product.images : [product.image].filter(Boolean);
+    let nextUpload = 0;
+    const resolved = [];
+    for (const slot of slots) {
+      if (slot === "new") {
+        if (nextUpload < uploaded.length) resolved.push(uploaded[nextUpload++]);
+      } else if (current.includes(slot)) {
+        // Only a photo this product already owns can be kept, so an edit
+        // can't point the listing at some other file on the server.
+        resolved.push(slot);
+      }
+    }
+    const images = [...new Set(resolved)].slice(0, MAX_IMAGES);
+
+    if (images.length === 0) {
+      discardUploads(req);
+      res.status(400);
+      throw new Error("A product needs at least one photo");
+    }
+
+    uploaded.filter((p) => !images.includes(p)).forEach(deleteImageFile);
+    removedImages = current.filter((p) => !images.includes(p));
+    product.images = images;
+    product.image = images[0];
   }
 
-  await product.save();
+  try {
+    await product.save();
+  } catch (err) {
+    uploaded.filter((p) => product.images.includes(p)).forEach(deleteImageFile);
+    throw err;
+  }
+
+  // Old photos only come off disk once the listing no longer points at them.
+  removedImages.forEach(deleteImageFile);
   res.json(product);
 });
 
@@ -222,8 +312,9 @@ const deleteProduct = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 
-  deleteImageFile(product.image);
+  const photos = new Set([...product.images, product.image].filter(Boolean));
   await product.deleteOne();
+  photos.forEach(deleteImageFile);
   res.json({ message: "Product deleted" });
 });
 

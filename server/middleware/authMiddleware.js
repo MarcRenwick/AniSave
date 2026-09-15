@@ -48,4 +48,19 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+// Attaches req.user when a valid token is sent but lets anonymous requests
+// through, for public pages that show a little more to a signed-in viewer.
+const optionalProtect = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    try {
+      const decoded = jwt.verify(header.split(" ")[1], process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id);
+    } catch {
+      req.user = undefined;
+    }
+  }
+  next();
+});
+
+module.exports = { protect, authorize, optionalProtect };

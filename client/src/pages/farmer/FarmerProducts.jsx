@@ -1,19 +1,12 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Plus, Leaf } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import ProductCard from "../../components/farmer/products/ProductCard";
-import ProductDetailsModal from "../../components/farmer/products/ProductDetailsModal";
 import RestockModal from "../../components/farmer/products/RestockModal";
-import ProductFormModal from "../../components/farmer/products/ProductFormModal";
 import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmModal";
-import {
-  getMyProducts,
-  createProduct,
-  updateProduct,
-  restockProduct,
-  deleteProduct,
-} from "../../services/api";
+import { getMyProducts, restockProduct, deleteProduct } from "../../services/api";
 
 const filters = [
   { key: "all", label: "All" },
@@ -22,12 +15,14 @@ const filters = [
 ];
 
 export default function FarmerProducts() {
+  const navigate = useNavigate();
+  const justAddedId = useLocation().state?.justAddedId;
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
-  const [modal, setModal] = useState(null); // { type: "details" | "restock" | "edit" | "delete" | "create", product? }
-  const [justAddedId, setJustAddedId] = useState(null);
+  const [modal, setModal] = useState(null); // { type: "restock" | "delete", product }
 
   useEffect(() => {
     getMyProducts()
@@ -41,26 +36,13 @@ export default function FarmerProducts() {
 
   const handleConfirmRestock = async (amount) => {
     const { data } = await restockProduct(modal.product._id, amount);
-    setProducts((prev) => prev.map((p) => (p._id === data._id ? data : p)));
-    closeModal();
-  };
-
-  const handleSubmitEdit = async (formData) => {
-    const { data } = await updateProduct(modal.product._id, formData);
-    setProducts((prev) => prev.map((p) => (p._id === data._id ? data : p)));
+    setProducts((prev) => prev.map((p) => (p._id === data._id ? { ...p, ...data } : p)));
     closeModal();
   };
 
   const handleConfirmDelete = async () => {
     await deleteProduct(modal.product._id);
     setProducts((prev) => prev.filter((p) => p._id !== modal.product._id));
-    closeModal();
-  };
-
-  const handleSubmitCreate = async (formData) => {
-    const { data } = await createProduct(formData);
-    setProducts((prev) => [data, ...prev]);
-    setJustAddedId(data._id);
     closeModal();
   };
 
@@ -93,7 +75,7 @@ export default function FarmerProducts() {
 
           <button
             type="button"
-            onClick={() => setModal({ type: "create" })}
+            onClick={() => navigate("/farmer/products/new")}
             className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56]"
           >
             Create new <Plus className="h-4 w-4" />
@@ -116,9 +98,9 @@ export default function FarmerProducts() {
                 key={product._id}
                 product={product}
                 isNew={product._id === justAddedId}
-                onViewDetails={(p) => setModal({ type: "details", product: p })}
+                onViewDetails={(p) => navigate(`/farmer/products/${p._id}`)}
                 onRestock={(p) => setModal({ type: "restock", product: p })}
-                onEdit={(p) => setModal({ type: "edit", product: p })}
+                onEdit={(p) => navigate(`/farmer/products/${p._id}/edit`)}
                 onDelete={(p) => setModal({ type: "delete", product: p })}
               />
             ))}
@@ -126,22 +108,12 @@ export default function FarmerProducts() {
         )}
       </div>
 
-      {modal?.type === "details" && <ProductDetailsModal product={modal.product} onClose={closeModal} />}
-
       {modal?.type === "restock" && (
         <RestockModal product={modal.product} onClose={closeModal} onConfirm={handleConfirmRestock} />
       )}
 
-      {modal?.type === "edit" && (
-        <ProductFormModal mode="edit" product={modal.product} onClose={closeModal} onSubmit={handleSubmitEdit} />
-      )}
-
       {modal?.type === "delete" && (
         <DeleteConfirmModal product={modal.product} onClose={closeModal} onConfirm={handleConfirmDelete} />
-      )}
-
-      {modal?.type === "create" && (
-        <ProductFormModal mode="create" onClose={closeModal} onSubmit={handleSubmitCreate} />
       )}
     </FarmerLayout>
   );

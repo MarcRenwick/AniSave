@@ -35,8 +35,8 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    // "preorder" is where an order starts when the farmer doesn't have the
-    // stock yet; accepting it moves it into the same flow as any other order.
+    // "preorder" is where an order on a For Pre-Order listing starts; accepting
+    // it moves it into the same flow as any other order.
     status: {
       type: String,
       enum: ["new", "preorder", "processing", "ready", "done", "cancelled"],

@@ -6,8 +6,15 @@ const notFound = (req, res, next) => {
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message;
+
+  // An upload the user can fix (too big, too many) - not a server fault
+  if (err.name === "MulterError") {
+    statusCode = 400;
+    if (err.code === "LIMIT_FILE_SIZE") message = "Each photo must be 5 MB or smaller";
+    if (err.code === "LIMIT_UNEXPECTED_FILE") message = "You can upload up to 5 photos";
+  }
 
   // Mongoose bad ObjectId
   if (err.name === "CastError" && err.kind === "ObjectId") {

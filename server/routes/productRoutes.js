@@ -20,8 +20,8 @@ router.get("/", getAllProducts);
 // below, since Express would otherwise match GET /products/mine against
 // "/:id" first and try to look up a product literally named "mine".
 router.get("/mine", protect, authorize("farmer"), getMyProducts);
-router.post("/", protect, authorize("farmer"), upload.single("image"), createProduct);
-router.put("/:id", protect, authorize("farmer"), upload.single("image"), updateProduct);
+router.post("/", protect, authorize("farmer"), upload.array("images", 5), createProduct);
+router.put("/:id", protect, authorize("farmer"), upload.array("images", 5), updateProduct);
 router.patch("/:id/restock", protect, authorize("farmer"), restockProduct);
 router.delete("/:id", protect, authorize("farmer"), deleteProduct);
 

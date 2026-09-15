@@ -12,9 +12,22 @@ const productSchema = new mongoose.Schema(
       required: [true, "Title is required"],
       trim: true,
     },
+    // Always mirrors images[0], so everything that shows a single cover photo
+    // (cards, cart lines, orders) keeps working without knowing about images.
     image: {
       type: String,
       default: null,
+    },
+    // Up to five photos, in the order the farmer arranged them.
+    images: {
+      type: [String],
+      default: [],
+    },
+    // "preorder" listings are ordered ahead of the stock being there.
+    productType: {
+      type: String,
+      enum: ["sale", "preorder"],
+      default: "sale",
     },
     stock: {
       type: Number,

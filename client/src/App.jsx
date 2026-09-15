@@ -9,6 +9,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import FarmerDashboard from "./pages/farmer/FarmerDashboard";
 import FarmerProducts from "./pages/farmer/FarmerProducts";
+import FarmerProductForm from "./pages/farmer/FarmerProductForm";
+import FarmerProductDetail from "./pages/farmer/FarmerProductDetail";
 import FarmerOrders from "./pages/farmer/FarmerOrders";
 import FarmerOrderDetail from "./pages/farmer/FarmerOrderDetail";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
@@ -16,6 +18,7 @@ import FarmerSettings from "./pages/farmer/FarmerSettings";
 import BuyerHome from "./pages/buyer/BuyerHome";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import ProductDetail from "./pages/buyer/ProductDetail";
+import ProductRatings from "./pages/ProductRatings";
 import CartPage from "./pages/buyer/CartPage";
 import Checkout from "./pages/buyer/Checkout";
 import BuyerSettings from "./pages/buyer/BuyerSettings";
@@ -60,6 +63,38 @@ export default function App() {
               }
             />
             <Route
+              path="/farmer/products/new"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerProductForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/products/:id"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerProductDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/products/:id/edit"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerProductForm />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/products/:id/ratings"
+              element={
+                <ProtectedRoute role="farmer">
+                  <ProductRatings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/farmer/orders"
               element={
                 <ProtectedRoute role="farmer">
@@ -96,6 +131,7 @@ export default function App() {
             <Route path="/buyer/home" element={<BuyerHome />} />
             <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
             <Route path="/buyer/products/:id" element={<ProductDetail />} />
+            <Route path="/buyer/products/:id/ratings" element={<ProductRatings />} />
             <Route path="/buyer/cart" element={<CartPage />} />
             <Route
               path="/buyer/checkout"

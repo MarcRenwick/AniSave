@@ -65,7 +65,7 @@ export default function Checkout() {
     const createdOrders = [];
     try {
       for (const item of items) {
-        const { data: order } = await createOrder(item.productId, item.quantity, item.preorder);
+        const { data: order } = await createOrder(item.productId, item.quantity);
         placedIds.push(item.productId);
         createdOrders.push(order);
       }
@@ -98,8 +98,8 @@ export default function Checkout() {
       <div className="mx-auto max-w-2xl space-y-5 p-5 sm:p-8">
         {isPreOrder && (
           <div className="rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-800">
-            This product is out of stock. Placing a pre-order sends it to the farmer, who
-            prepares it once they restock - you&apos;ll see it move along as they do.
+            This is a pre-order listing. Placing it sends the order to the farmer, who accepts
+            it once the produce is available - you&apos;ll see it move along as they do.
           </div>
         )}
 

@@ -76,7 +76,7 @@ export default function OrderDetail() {
 
             {order.status === "preorder" && (
               <div className="rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-800">
-                This is a pre-order. The farmer will accept it once they have restocked.
+                This is a pre-order. The farmer accepts it once the produce is available.
               </div>
             )}
 

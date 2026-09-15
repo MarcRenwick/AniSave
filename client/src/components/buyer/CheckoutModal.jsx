@@ -6,8 +6,8 @@ import { SERVER_URL } from "../../services/api";
 export default function CheckoutModal({ product, preorder = false, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
 
-  // A pre-order isn't capped by stock - there is none yet, which is the
-  // whole point of pre-ordering it.
+  // A pre-order isn't capped by current stock - the farmer fills it as the
+  // produce comes in.
   const clamp = (value) => Math.max(1, preorder ? value : Math.min(product.stock, value));
   const adjust = (delta) => setQuantity((q) => clamp(q + delta));
   const handleTyped = (e) => {
@@ -63,7 +63,7 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
       </div>
       <p className="mt-2 text-center text-xs text-gray-400">
         {preorder
-          ? "Out of stock - the farmer prepares this once they restock"
+          ? "Pre-order - the farmer prepares this once it's available"
           : `${product.stock} kilos available`}
       </p>
 

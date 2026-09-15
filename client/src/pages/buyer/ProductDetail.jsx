@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Package, ImageOff, Star, ShoppingBasket, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Package, Star, ShoppingBasket, User as UserIcon } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import AddToCartModal from "../../components/buyer/AddToCartModal";
 import CheckoutModal from "../../components/buyer/CheckoutModal";
-import { getProduct, getFarmerProfile, SERVER_URL } from "../../services/api";
+import ProductGallery from "../../components/products/ProductGallery";
+import { getProduct, getFarmerProfile } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { activeAgo, timeAgo } from "../../utils/activity";
@@ -53,7 +54,8 @@ export default function ProductDetail() {
     setBuyMessage(`Added ${qty}kg to cart!`);
   };
 
-  const isPreOrder = product?.stock === 0;
+  const isPreOrder = product?.productType === "preorder";
+  const soldOut = !isPreOrder && product?.stock === 0;
 
   const handleProceedToCheckout = (qty) => {
     setShowCheckout(false);
@@ -95,106 +97,115 @@ export default function ProductDetail() {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && product && (
-        <div className="grid grid-cols-2 gap-8 rounded-2xl bg-white p-6 shadow-sm">
-          <div>
-            <div className="flex h-72 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-gray-300">
-              {product.image ? (
-                <img
-                  src={`${SERVER_URL}${product.image}`}
-                  alt={product.title}
-                  className="h-full w-full object-cover"
-                />
+          <div className="grid grid-cols-2 gap-8 rounded-2xl bg-white p-6 shadow-sm">
+            <div>
+              <ProductGallery key={product._id} product={product} />
+
+              <Link
+                to={`/buyer/products/${product._id}/ratings`}
+                className="mx-auto mt-4 block w-fit rounded-md border-2 border-[#2f8f66] px-6 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 active:scale-95"
+              >
+                View Ratings
+              </Link>
+
+              {buyMessage && (
+                <div className="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+                  {buyMessage}
+                </div>
+              )}
+
+              {user?.role === "buyer" ? (
+                <div className="mt-4 flex gap-3">
+                  {/* Pre-orders are placed one listing at a time, straight from here -
+                      the cart checks out against live stock. */}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddToCart(true)}
+                    disabled={product.stock === 0 || isPreOrder}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-3 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                  >
+                    <ShoppingBasket className="h-4 w-4" />
+                    Add to Cart
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCheckout(true)}
+                    disabled={soldOut}
+                    className={`flex-1 rounded-md py-3 text-sm font-semibold text-white transition disabled:opacity-60 ${
+                      isPreOrder ? "bg-amber-500 hover:bg-amber-600" : "bg-red-600 hover:bg-red-700"
+                    }`}
+                  >
+                    {isPreOrder ? "Pre-Order" : soldOut ? "Out of Stock" : "Buy Now"}
+                  </button>
+                </div>
               ) : (
-                <ImageOff className="h-16 w-16" />
+                <Link
+                  to="/login"
+                  className="mt-4 block w-full rounded-md bg-red-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-700"
+                >
+                  Log in as a buyer to order
+                </Link>
               )}
             </div>
 
-            {buyMessage && (
-              <div className="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
-                {buyMessage}
+            <div>
+              <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-900">
+                {product.title}
+                {isPreOrder && (
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                    Pre-Order
+                  </span>
+                )}
+              </h1>
+              <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
+                <Star
+                  className={`h-4 w-4 ${product.ratingCount > 0 ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+                />
+                {product.ratingCount > 0
+                  ? `${product.rating.toFixed(1)} (${product.ratingCount} rating${product.ratingCount === 1 ? "" : "s"})`
+                  : "No ratings yet"}{" "}
+                · Sold {product.sold || 0}
+              </p>
+
+              <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2 text-lg font-semibold text-white">
+                ₱{product.price} per kilo
               </div>
-            )}
 
-            {user?.role === "buyer" ? (
-              <div className="mt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddToCart(true)}
-                  disabled={product.stock === 0}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-3 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
-                >
-                  <ShoppingBasket className="h-4 w-4" />
-                  Add to Cart
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCheckout(true)}
-                  className={`flex-1 rounded-md py-3 text-sm font-semibold text-white transition ${
-                    isPreOrder ? "bg-amber-500 hover:bg-amber-600" : "bg-red-600 hover:bg-red-700"
-                  }`}
-                >
-                  {isPreOrder ? "Pre-Order" : "Buy Now"}
-                </button>
-              </div>
-            ) : (
-              <Link
-                to="/login"
-                className="mt-4 block w-full rounded-md bg-red-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-700"
-              >
-                Log in as a buyer to order
-              </Link>
-            )}
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{product.title}</h1>
-            <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-              <Star className={`h-4 w-4 ${product.ratingCount > 0 ? "fill-amber-400 text-amber-400" : "text-gray-300"}`} />
-              {product.ratingCount > 0
-                ? `${product.rating.toFixed(1)} (${product.ratingCount} rating${product.ratingCount === 1 ? "" : "s"})`
-                : "No ratings yet"}{" "}
-              · Sold {product.sold || 0}
-            </p>
-
-            <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2 text-lg font-semibold text-white">
-              ₱{product.price} per kilo
+              <dl className="mt-4 space-y-3 text-sm">
+                <div>
+                  <dt className="text-gray-500">Sold by</dt>
+                  <dd className="font-medium text-gray-900">
+                    {product.farmer?._id ? (
+                      <Link to={`/buyer/farmers/${product.farmer._id}`} className="hover:underline">
+                        {product.farmer?.farmName || product.farmer?.name || "Unknown farmer"}
+                      </Link>
+                    ) : (
+                      product.farmer?.farmName || product.farmer?.name || "Unknown farmer"
+                    )}
+                  </dd>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-gray-400" />
+                  <dt className="text-gray-500">Pick up</dt>
+                  <dd className="font-medium text-gray-900">Ready for pickup</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Category</dt>
+                  <dd className="font-medium capitalize text-gray-900">{product.category}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Address</dt>
+                  <dd className="font-medium text-gray-900">
+                    {product.location || product.farmer?.location || "Not set"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Available Stock</dt>
+                  <dd className="font-medium text-gray-900">{product.stock} kilos</dd>
+                </div>
+              </dl>
             </div>
-
-            <dl className="mt-4 space-y-3 text-sm">
-              <div>
-                <dt className="text-gray-500">Sold by</dt>
-                <dd className="font-medium text-gray-900">
-                  {product.farmer?._id ? (
-                    <Link to={`/buyer/farmers/${product.farmer._id}`} className="hover:underline">
-                      {product.farmer?.farmName || product.farmer?.name || "Unknown farmer"}
-                    </Link>
-                  ) : (
-                    product.farmer?.farmName || product.farmer?.name || "Unknown farmer"
-                  )}
-                </dd>
-              </div>
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-gray-400" />
-                <dt className="text-gray-500">Pick up</dt>
-                <dd className="font-medium text-gray-900">Ready for pickup</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Category</dt>
-                <dd className="font-medium capitalize text-gray-900">{product.category}</dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Address</dt>
-                <dd className="font-medium text-gray-900">
-                  {product.location || product.farmer?.location || "Not set"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-gray-500">Available Stock</dt>
-                <dd className="font-medium text-gray-900">{product.stock} kilos</dd>
-              </div>
-            </dl>
           </div>
-        </div>
         )}
 
         {!loading && !error && product && farmerStats && (
