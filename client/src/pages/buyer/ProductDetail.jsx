@@ -63,6 +63,8 @@ export default function ProductDetail() {
     setBuyMessage(`Added ${qty}kg to cart!`);
   };
 
+  const isPreOrder = product?.stock === 0;
+
   const handleProceedToCheckout = (qty) => {
     setShowCheckout(false);
     navigate("/buyer/checkout", {
@@ -77,6 +79,7 @@ export default function ProductDetail() {
             farmerName: product.farmer?.farmName || product.farmer?.name || "Unknown Farmer",
             location: product.location || product.farmer?.location || "Address not set",
             quantity: qty,
+            preorder: isPreOrder,
           },
         ],
         fromCart: false,
@@ -136,10 +139,11 @@ export default function ProductDetail() {
                 <button
                   type="button"
                   onClick={() => setShowCheckout(true)}
-                  disabled={product.stock === 0}
-                  className="flex-1 rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+                  className={`flex-1 rounded-md py-3 text-sm font-semibold text-white transition ${
+                    isPreOrder ? "bg-amber-500 hover:bg-amber-600" : "bg-red-600 hover:bg-red-700"
+                  }`}
                 >
-                  {product.stock === 0 ? "Out of Stock" : "Buy Now"}
+                  {isPreOrder ? "Pre-Order" : "Buy Now"}
                 </button>
               </div>
             ) : (
@@ -256,6 +260,7 @@ export default function ProductDetail() {
       {showCheckout && product && (
         <CheckoutModal
           product={product}
+          preorder={isPreOrder}
           onClose={() => setShowCheckout(false)}
           onConfirm={handleProceedToCheckout}
         />

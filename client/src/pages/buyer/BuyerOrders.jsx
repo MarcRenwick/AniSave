@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { FileText, Clock, CheckCircle2, XCircle, PackageOpen, CalendarClock } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
@@ -9,15 +9,19 @@ import { getBuyerOrders, cancelOrder } from "../../services/api";
 const filters = [
   { key: "", label: "All" },
   { key: "new", label: "New" },
+  { key: "processing", label: "Processing" },
   { key: "ready", label: "Ready" },
-  { key: "done", label: "Done" },
+  { key: "done", label: "Completed" },
+  { key: "preorder", label: "Pre-Order" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
 const statusMeta = {
   new: { label: "New", icon: FileText, color: "text-blue-700 bg-blue-100" },
+  preorder: { label: "Pre-Order", icon: CalendarClock, color: "text-amber-700 bg-amber-100" },
+  processing: { label: "Processing", icon: PackageOpen, color: "text-indigo-700 bg-indigo-100" },
   ready: { label: "Ready", icon: Clock, color: "text-yellow-700 bg-yellow-100" },
-  done: { label: "Done", icon: CheckCircle2, color: "text-green-700 bg-green-100" },
+  done: { label: "Completed", icon: CheckCircle2, color: "text-green-700 bg-green-100" },
   cancelled: { label: "Cancelled", icon: XCircle, color: "text-red-700 bg-red-100" },
 };
 
@@ -127,7 +131,7 @@ export default function BuyerOrders() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {o.status === "new" && (
+                        {(o.status === "new" || o.status === "preorder") && (
                           <button
                             type="button"
                             onClick={(e) => {

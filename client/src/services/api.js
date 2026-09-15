@@ -44,7 +44,8 @@ export const deleteProduct = (id) => api.delete(`/products/${id}`);
 export const getFarmerOrders = () => api.get("/orders/farmer");
 export const getBuyerOrders = () => api.get("/orders/buyer");
 export const getOrder = (id) => api.get(`/orders/${id}`);
-export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });
+export const createOrder = (productId, quantity, preorder = false) =>
+  api.post("/orders", { productId, quantity, preorder });
 export const updateOrderStatus = (id, status) => api.patch(`/orders/${id}/status`, { status });
 export const cancelOrder = (id) => api.patch(`/orders/${id}/cancel`);
 

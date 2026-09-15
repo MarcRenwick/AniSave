@@ -1,39 +1,26 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, CheckCircle2, ChevronRight, ImageOff } from "lucide-react";
+import { ImageOff } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { getFarmerOrders, SERVER_URL } from "../../services/api";
+import { formatDateTime } from "../../utils/orderStatus";
 
-const columnMeta = {
-  new: {
-    label: "New",
-    description: "Orders waiting for your decision",
-    icon: FileText,
-    accent: "bg-blue-100 text-blue-700",
-    badge: "bg-blue-500",
-  },
-  ready: {
-    label: "Ready",
-    description: "Prepared and ready for pickup",
-    icon: Clock,
-    accent: "bg-yellow-100 text-yellow-700",
-    badge: "bg-yellow-500",
-  },
-  done: {
-    label: "Done",
-    description: "Successfully completed orders",
-    icon: CheckCircle2,
-    accent: "bg-green-100 text-green-700",
-    badge: "bg-green-500",
-  },
-};
+const tabs = [
+  { key: "new", label: "New" },
+  { key: "processing", label: "Processing" },
+  { key: "ready", label: "Ready" },
+  { key: "done", label: "Completed" },
+  { key: "preorder", label: "Pre-Order" },
+  { key: "cancelled", label: "Cancelled" },
+];
 
 export default function FarmerOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [tab, setTab] = useState("new");
 
   useEffect(() => {
     getFarmerOrders()
@@ -42,11 +29,8 @@ export default function FarmerOrders() {
       .finally(() => setLoading(false));
   }, []);
 
-  const byStatus = {
-    new: orders.filter((o) => o.status === "new"),
-    ready: orders.filter((o) => o.status === "ready"),
-    done: orders.filter((o) => o.status === "done"),
-  };
+  const countFor = (key) => orders.filter((o) => o.status === key).length;
+  const visible = orders.filter((o) => o.status === tab);
 
   return (
     <FarmerLayout>
@@ -56,77 +40,69 @@ export default function FarmerOrders() {
       </FarmerTopBar>
 
       <div className="p-8">
-        {loading && <p className="text-sm text-gray-500">Loading your orders...</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        <div className="overflow-hidden rounded-2xl bg-[#2f8f66] p-5">
+          <div className="flex flex-wrap gap-2">
+            {tabs.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition duration-150 active:scale-95 ${
+                  tab === key ? "bg-white text-[#1f5c42]" : "bg-white/15 text-white hover:bg-white/25"
+                }`}
+              >
+                {label}({countFor(key)})
+              </button>
+            ))}
+          </div>
 
-        {!loading && !error && (
-          <>
-            <div className="grid grid-cols-3 gap-6">
-              {Object.entries(columnMeta).map(([key, { label, description, icon: Icon, accent }]) => (
-                <div key={key} className={`flex items-center justify-between rounded-xl p-5 ${accent}`}>
-                  <div>
-                    <div className="flex items-center gap-2 font-semibold">
-                      <Icon className="h-5 w-5" />
-                      {label}
-                    </div>
-                    <p className="mt-1 text-xs">{description}</p>
-                    <p className="mt-3 text-2xl font-bold">{byStatus[key].length} orders</p>
-                  </div>
-                  <ChevronRight className="h-5 w-5 opacity-60" />
-                </div>
-              ))}
-            </div>
+          <div className="mt-4 space-y-3">
+            {loading && <p className="text-sm text-white/80">Loading your orders...</p>}
+            {error && <p className="text-sm text-red-100">{error}</p>}
 
-            <div className="mt-6 grid grid-cols-3 gap-6">
-              {Object.entries(columnMeta).map(([key, { label, badge }]) => (
-                <div key={key} className="overflow-hidden rounded-xl bg-white shadow-sm">
-                  <div className={`flex items-center justify-between px-4 py-2 text-sm font-semibold text-white ${badge}`}>
-                    <span>{label}</span>
-                    <span>{byStatus[key].length} orders</span>
-                  </div>
-                  <div className="space-y-3 p-4">
-                    {byStatus[key].length === 0 && (
-                      <p className="py-4 text-center text-sm text-gray-400">No orders here yet</p>
+            {!loading && !error && visible.length === 0 && (
+              <p className="py-8 text-center text-sm text-white/80">No orders here yet.</p>
+            )}
+
+            {!loading &&
+              !error &&
+              visible.map((order) => (
+                <button
+                  key={order._id}
+                  type="button"
+                  onClick={() => navigate(`/farmer/orders/${order._id}`)}
+                  className="flex w-full items-center gap-4 rounded-xl bg-white p-3 text-left transition duration-150 hover:shadow-md active:scale-[0.99]"
+                >
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300">
+                    {order.product?.image ? (
+                      <img
+                        src={`${SERVER_URL}${order.product.image}`}
+                        alt={order.productTitle}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <ImageOff className="h-6 w-6" />
                     )}
-                    {byStatus[key].map((order) => (
-                      <button
-                        key={order._id}
-                        type="button"
-                        onClick={() => navigate(`/farmer/orders/${order._id}`)}
-                        className="flex w-full items-center gap-3 rounded-lg border border-gray-200 p-3 text-left transition hover:border-[#2f8f66] hover:shadow-sm"
-                      >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-50 text-gray-300">
-                          {order.product?.image ? (
-                            <img
-                              src={`${SERVER_URL}${order.product.image}`}
-                              alt={order.productTitle}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <ImageOff className="h-5 w-5" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-gray-900">{order.buyer?.name}</p>
-                          <p className="truncate text-xs text-gray-500">
-                            {order.quantity}kg {order.productTitle}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {new Date(order.createdAt).toLocaleDateString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </p>
-                        </div>
-                        <p className="shrink-0 text-sm font-semibold text-gray-900">₱{order.total}</p>
-                      </button>
-                    ))}
                   </div>
-                </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-gray-900">
+                      {order.buyer?.name || "Unknown buyer"}
+                    </p>
+                    <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
+                    <p className="truncate text-sm text-gray-600">
+                      {order.quantity}kg {order.productTitle}
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900">Total ₱{order.total}</p>
+                  </div>
+                </button>
               ))}
-            </div>
-          </>
-        )}
+
+            {!loading && !error && visible.length > 0 && (
+              <p className="pt-2 text-center text-sm text-white/80">No more products</p>
+            )}
+          </div>
+        </div>
       </div>
     </FarmerLayout>
   );

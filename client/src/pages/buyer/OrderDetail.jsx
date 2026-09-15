@@ -1,36 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Check, ImageOff, Star } from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, ImageOff, MapPin, Phone, Star, User as UserIcon } from "lucide-react";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
+import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
 import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
-
-// Displayed as 5 conceptual steps, even though the real backend only has
-// 3 statuses - the farmer accepting bundles "Accepted"/"Prepared"/"Ready
-// for Pickup" into one real event (readyAt), and marking done covers
-// "Picked Up".
-const steps = ["Order Placed", "Accepted", "Prepared", "Ready for Pickup", "Picked Up"];
-
-function doneCountFor(status) {
-  if (status === "new") return 1;
-  if (status === "ready") return 4;
-  if (status === "done") return 5;
-  return 0;
-}
-
-function getStepDate(order, index) {
-  if (index === 0) return order.createdAt;
-  if (index === 4) return order.doneAt;
-  return order.readyAt;
-}
-
-const statusTitle = {
-  new: "Order Placed",
-  ready: "Ready for Pickup",
-  done: "Completed",
-  cancelled: "Cancelled",
-};
+import { BUYER_STEPS, BUYER_STATUS_TITLE } from "../../utils/orderStatus";
 
 export default function OrderDetail() {
   const { id } = useParams();
@@ -58,7 +34,7 @@ export default function OrderDetail() {
     setCancelling(true);
     try {
       const { data } = await cancelOrder(order._id);
-      setOrder(data);
+      setOrder((prev) => ({ ...prev, ...data }));
       setShowCancel(false);
     } catch (err) {
       setCancelError(err.response?.data?.message || "Could not cancel this order. Please try again.");
@@ -72,8 +48,8 @@ export default function OrderDetail() {
     setShowRate(false);
   };
 
-  const title = order ? statusTitle[order.status] : "Order";
-  const doneCount = order ? doneCountFor(order.status) : 0;
+  const title = order ? BUYER_STATUS_TITLE[order.status] : "Order";
+  const canCancel = order && (order.status === "new" || order.status === "preorder");
 
   return (
     <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
@@ -84,7 +60,7 @@ export default function OrderDetail() {
         <h1 className="flex-1 pr-6 text-center text-lg font-semibold">{title}</h1>
       </div>
 
-      <div className="mx-auto max-w-xl space-y-4 p-4 sm:p-6">
+      <div className="mx-auto max-w-2xl space-y-4 p-4 sm:p-6">
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
@@ -95,53 +71,36 @@ export default function OrderDetail() {
                 <p className="font-semibold text-red-600">This order was cancelled.</p>
               </div>
             ) : (
-              <div className="rounded-xl bg-white p-4 shadow-sm">
-                <p className="mb-4 text-sm font-semibold text-gray-700">Order Status</p>
-                <div className="flex items-start">
-                  {steps.map((label, i) => {
-                    const isDone = i < doneCount;
-                    const beforeGreen = i > 0 && i - 1 < doneCount;
-                    const afterGreen = i < steps.length - 1 && i < doneCount;
-                    const date = isDone ? getStepDate(order, i) : null;
-                    return (
-                      <div key={label} className="flex flex-1 flex-col items-center text-center">
-                        <div className="flex w-full items-center">
-                          <div
-                            className={`h-0.5 flex-1 ${i === 0 ? "invisible" : beforeGreen ? "bg-[#2f8f66]" : "bg-gray-200"}`}
-                          />
-                          <div
-                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                              isDone ? "bg-[#2f8f66] text-white" : "bg-gray-200 text-gray-400"
-                            }`}
-                          >
-                            {isDone ? <Check className="h-4 w-4" /> : i + 1}
-                          </div>
-                          <div
-                            className={`h-0.5 flex-1 ${i === steps.length - 1 ? "invisible" : afterGreen ? "bg-[#2f8f66]" : "bg-gray-200"}`}
-                          />
-                        </div>
-                        <p className="mt-2 text-[10px] leading-tight text-gray-500">{label}</p>
-                        {date && (
-                          <p className="text-[9px] leading-tight text-gray-400">
-                            {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+              <OrderStatusTracker steps={BUYER_STEPS} order={order} />
+            )}
+
+            {order.status === "preorder" && (
+              <div className="rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-800">
+                This is a pre-order. The farmer will accept it once they have restocked.
               </div>
             )}
 
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase text-gray-400">Pickup Information</p>
-              <p className="mt-1 font-semibold text-gray-900">
-                {order.farmer?.farmName || order.farmer?.name || "Unknown farmer"}
-              </p>
-              <p className="text-sm text-gray-500">{order.farmer?.location || "Address not set"}</p>
+            <div className="rounded-xl bg-white p-5 shadow-sm">
+              <p className="text-sm font-semibold text-[#2f8f66]">Pickup Information</p>
 
-              <div className="mt-3 flex items-center gap-3 border-t border-gray-100 pt-3">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300">
+              <div className="mt-3 flex items-start gap-2.5 text-sm">
+                <UserIcon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    {order.farmer?.farmName || order.farmer?.name || "Unknown farmer"}
+                    {order.farmer?.phone && (
+                      <span className="font-normal text-gray-600"> ({order.farmer.phone})</span>
+                    )}
+                  </p>
+                  <p className="flex items-center gap-1.5 text-gray-500">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {order.farmer?.location || "Address not set"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300">
                   {order.product?.image ? (
                     <img
                       src={`${SERVER_URL}${order.product.image}`}
@@ -149,70 +108,81 @@ export default function OrderDetail() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <ImageOff className="h-6 w-6" />
+                    <ImageOff className="h-5 w-5" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-gray-900">{order.productTitle}</p>
-                  <p className="text-sm text-gray-500">Quantity: {order.quantity}kg</p>
+                  <p className="text-sm text-gray-500">Quantity: {order.quantity}</p>
                 </div>
                 <p className="shrink-0 font-semibold text-gray-900">₱{order.total}</p>
               </div>
             </div>
 
-            {order.status === "done" && (
-              <div className="rounded-xl bg-white p-4 shadow-sm">
-                {order.myRating ? (
-                  <>
-                    <p className="text-xs font-semibold uppercase text-gray-400">Your Rating</p>
-                    <div className="mt-1 flex items-center gap-1">
-                      {[1, 2, 3, 4, 5].map((value) => (
-                        <Star
-                          key={value}
-                          className={`h-5 w-5 ${
-                            value <= order.myRating.stars
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-gray-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    {order.myRating.comment && (
-                      <p className="mt-2 text-sm text-gray-600">{order.myRating.comment}</p>
-                    )}
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowRate(true)}
-                    className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-2.5 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
-                  >
-                    <Star className="h-4 w-4" />
-                    Rate this Product
-                  </button>
+            {order.status === "done" && order.myRating && (
+              <div className="rounded-xl bg-white p-5 shadow-sm">
+                <p className="text-xs font-semibold uppercase text-gray-400">Your Rating</p>
+                <div className="mt-1 flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <Star
+                      key={value}
+                      className={`h-5 w-5 ${
+                        value <= order.myRating.stars ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                {order.myRating.comment && (
+                  <p className="mt-2 text-sm text-gray-600">{order.myRating.comment}</p>
                 )}
               </div>
             )}
 
-            <div className="flex gap-3">
-              {order.status === "new" && (
-                <button
-                  type="button"
-                  onClick={() => setShowCancel(true)}
-                  className="flex-1 rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
-                >
-                  Cancel Order
-                </button>
-              )}
-              {order.farmer?._id && (
-                <Link
-                  to={`/buyer/farmers/${order.farmer._id}`}
-                  className="flex-1 rounded-md bg-[#2f8f66] py-3 text-center text-sm font-semibold text-white transition hover:bg-[#267a56]"
-                >
-                  View Farmer Profile
-                </Link>
-              )}
-            </div>
+            {order.status === "done" ? (
+              <div className="flex gap-3">
+                {order.product?._id && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/buyer/products/${order.product._id}`)}
+                    className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+                  >
+                    Buy Again
+                  </button>
+                )}
+                {!order.myRating && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRate(true)}
+                    className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+                  >
+                    To Rate
+                  </button>
+                )}
+              </div>
+            ) : (
+              order.status !== "cancelled" && (
+                <div className="flex gap-3">
+                  {canCancel && (
+                    <button
+                      type="button"
+                      onClick={() => setShowCancel(true)}
+                      className="flex-1 rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition duration-150 hover:bg-red-700 active:scale-[0.98]"
+                    >
+                      Cancel Order
+                    </button>
+                  )}
+                  {order.farmer?.phone && (
+                    <a
+                      href={`tel:${order.farmer.phone}`}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98]"
+                    >
+                      <Phone className="h-4 w-4" />
+                      Call Seller
+                    </a>
+                  )}
+                </div>
+              )
+            )}
           </>
         )}
       </div>

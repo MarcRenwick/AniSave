@@ -56,6 +56,7 @@ export default function Checkout() {
 
   const groups = groupByFarmer(items);
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const isPreOrder = items.some((i) => i.preorder);
 
   const handlePlaceOrder = async () => {
     setError("");
@@ -64,7 +65,7 @@ export default function Checkout() {
     const createdOrders = [];
     try {
       for (const item of items) {
-        const { data: order } = await createOrder(item.productId, item.quantity);
+        const { data: order } = await createOrder(item.productId, item.quantity, item.preorder);
         placedIds.push(item.productId);
         createdOrders.push(order);
       }
@@ -89,10 +90,19 @@ export default function Checkout() {
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-6 w-6" />
         </button>
-        <h1 className="flex-1 pr-7 text-center text-xl font-semibold">Checkout</h1>
+        <h1 className="flex-1 pr-7 text-center text-xl font-semibold">
+          {isPreOrder ? "Pre-Order" : "Checkout"}
+        </h1>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-5 p-5 sm:p-8">
+        {isPreOrder && (
+          <div className="rounded-xl bg-amber-50 px-5 py-4 text-sm text-amber-800">
+            This product is out of stock. Placing a pre-order sends it to the farmer, who
+            prepares it once they restock - you&apos;ll see it move along as they do.
+          </div>
+        )}
+
         {groups.map((group) => (
           <div key={group.key} className="space-y-4">
             <div className="rounded-xl border-2 border-dashed border-[#2f8f66]/40 bg-white p-5">
@@ -160,7 +170,7 @@ export default function Checkout() {
           disabled={submitting}
           className="w-full rounded-md bg-red-600 py-4 text-base font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
         >
-          {submitting ? "Placing Order..." : "Place Order"}
+          {submitting ? "Placing Order..." : isPreOrder ? "Place Pre-Order" : "Place Order"}
         </button>
       </div>
     </div>

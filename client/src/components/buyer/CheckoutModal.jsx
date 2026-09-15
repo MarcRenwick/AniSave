@@ -3,10 +3,12 @@ import { ImageOff } from "lucide-react";
 import Modal from "../Modal";
 import { SERVER_URL } from "../../services/api";
 
-export default function CheckoutModal({ product, onClose, onConfirm }) {
+export default function CheckoutModal({ product, preorder = false, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
 
-  const clamp = (value) => Math.min(product.stock, Math.max(1, value));
+  // A pre-order isn't capped by stock - there is none yet, which is the
+  // whole point of pre-ordering it.
+  const clamp = (value) => Math.max(1, preorder ? value : Math.min(product.stock, value));
   const adjust = (delta) => setQuantity((q) => clamp(q + delta));
   const handleTyped = (e) => {
     const value = Number(e.target.value);
@@ -16,7 +18,7 @@ export default function CheckoutModal({ product, onClose, onConfirm }) {
   const total = product.price * quantity;
 
   return (
-    <Modal title="Checkout" onClose={onClose}>
+    <Modal title={preorder ? "Pre-Order" : "Checkout"} onClose={onClose}>
       <div className="flex items-center gap-3">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300">
           {product.image ? (
@@ -46,7 +48,7 @@ export default function CheckoutModal({ product, onClose, onConfirm }) {
         <input
           type="number"
           min="1"
-          max={product.stock}
+          max={preorder ? undefined : product.stock}
           value={quantity}
           onChange={handleTyped}
           className="w-16 rounded-md border border-gray-300 py-1.5 text-center text-xl font-semibold text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
@@ -59,7 +61,11 @@ export default function CheckoutModal({ product, onClose, onConfirm }) {
           +
         </button>
       </div>
-      <p className="mt-2 text-center text-xs text-gray-400">{product.stock} kilos available</p>
+      <p className="mt-2 text-center text-xs text-gray-400">
+        {preorder
+          ? "Out of stock - the farmer prepares this once they restock"
+          : `${product.stock} kilos available`}
+      </p>
 
       <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-4 py-3">
         <span className="text-sm text-gray-600">Total (Cash on Pick-up)</span>
@@ -79,7 +85,7 @@ export default function CheckoutModal({ product, onClose, onConfirm }) {
           onClick={() => onConfirm(quantity)}
           className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700"
         >
-          Proceed to Checkout
+          {preorder ? "Proceed to Pre-Order" : "Proceed to Checkout"}
         </button>
       </div>
     </Modal>

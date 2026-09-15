@@ -7,7 +7,7 @@ const Rating = require("../models/Rating");
 // @route   POST /api/orders
 // @access  Private (buyer)
 const createOrder = asyncHandler(async (req, res) => {
-  const { productId, quantity } = req.body;
+  const { productId, quantity, preorder } = req.body;
 
   if (!productId || !quantity || quantity <= 0) {
     res.status(400);
@@ -20,7 +20,10 @@ const createOrder = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  if (product.stock < quantity) {
+  // Short stock is only allowed through if the buyer deliberately chose to
+  // pre-order, so an ordinary order still fails the way it always has.
+  const isPreOrder = product.stock < quantity;
+  if (isPreOrder && !preorder) {
     res.status(400);
     throw new Error(`Only ${product.stock}kg of ${product.title} left in stock`);
   }
@@ -35,10 +38,15 @@ const createOrder = asyncHandler(async (req, res) => {
     pricePerKilo: product.price,
     quantity,
     total,
+    status: isPreOrder ? "preorder" : "new",
   });
 
-  product.stock -= quantity;
-  await product.save();
+  // A pre-order reserves nothing - there is no stock to hold yet, so it is
+  // taken from the farmer when they accept instead.
+  if (!isPreOrder) {
+    product.stock -= quantity;
+    await product.save();
+  }
 
   res.status(201).json(order);
 });
@@ -48,7 +56,7 @@ const createOrder = asyncHandler(async (req, res) => {
 // @access  Private (farmer)
 const getFarmerOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ farmer: req.user._id })
-    .populate("buyer", "name location")
+    .populate("buyer", "name location phone")
     .populate("product", "image category location")
     .sort({ createdAt: -1 });
   res.json(orders);
@@ -70,24 +78,27 @@ const getBuyerOrders = asyncHandler(async (req, res) => {
 
 // Which status a farmer may move an order into, from its current status.
 const ALLOWED_TRANSITIONS = {
-  new: ["ready", "cancelled"],
+  new: ["processing", "cancelled"],
+  preorder: ["processing", "cancelled"],
+  processing: ["ready"],
   ready: ["done"],
 };
 const TIMESTAMP_FIELD = {
+  processing: "acceptedAt",
   ready: "readyAt",
   done: "doneAt",
   cancelled: "cancelledAt",
 };
 
-// @desc    Move an order forward (accept/decline a new order, or mark a
-//          ready order done), one real step at a time
+// @desc    Move an order one real step forward: accept or decline it, mark it
+//          ready for pickup, or mark it picked up
 // @route   PATCH /api/orders/:id/status
 // @access  Private (farmer, owner only)
 const updateOrderStatus = asyncHandler(async (req, res) => {
   const { status } = req.body;
   if (!TIMESTAMP_FIELD[status]) {
     res.status(400);
-    throw new Error("Status must be 'ready', 'done' or 'cancelled'");
+    throw new Error("Status must be 'processing', 'ready', 'done' or 'cancelled'");
   }
 
   const order = await Order.findById(req.params.id);
@@ -100,16 +111,37 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error("You do not own this order");
   }
 
-  if (!ALLOWED_TRANSITIONS[order.status]?.includes(status)) {
+  const from = order.status;
+  if (!ALLOWED_TRANSITIONS[from]?.includes(status)) {
     res.status(400);
-    throw new Error(`This order is '${order.status}' and cannot be moved to '${status}'`);
+    throw new Error(`This order is '${from}' and cannot be moved to '${status}'`);
+  }
+
+  // Accepting a pre-order is the point where stock is finally taken, so it
+  // can only go ahead if the farmer has restocked enough of it by now.
+  if (from === "preorder" && status === "processing") {
+    const product = await Product.findById(order.product);
+    if (!product) {
+      res.status(404);
+      throw new Error("That product no longer exists, so this pre-order can't be accepted");
+    }
+    if (product.stock < order.quantity) {
+      res.status(400);
+      throw new Error(
+        `You need ${order.quantity}kg in stock to accept this pre-order - you have ${product.stock}kg`
+      );
+    }
+    product.stock -= order.quantity;
+    await product.save();
   }
 
   order.status = status;
   order[TIMESTAMP_FIELD[status]] = Date.now();
   await order.save();
 
-  if (status === "cancelled") {
+  // Only an order that actually held stock gives it back. A pre-order the
+  // farmer declines never took any.
+  if (status === "cancelled" && from === "new") {
     const product = await Product.findById(order.product);
     if (product) {
       product.stock += order.quantity;
@@ -133,18 +165,24 @@ const cancelOrder = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("You do not own this order");
   }
-  if (order.status !== "new") {
+  if (order.status !== "new" && order.status !== "preorder") {
     res.status(400);
     throw new Error("This order has already been accepted by the farmer and can no longer be cancelled");
   }
 
+  const heldStock = order.status === "new";
+
   order.status = "cancelled";
+  order.cancelledAt = Date.now();
   await order.save();
 
-  const product = await Product.findById(order.product);
-  if (product) {
-    product.stock += order.quantity;
-    await product.save();
+  // A pre-order never took stock off the farmer, so there is none to give back.
+  if (heldStock) {
+    const product = await Product.findById(order.product);
+    if (product) {
+      product.stock += order.quantity;
+      await product.save();
+    }
   }
 
   res.json(order);
@@ -155,8 +193,8 @@ const cancelOrder = asyncHandler(async (req, res) => {
 // @access  Private (the buyer or farmer on that order only)
 const getOrderById = asyncHandler(async (req, res) => {
   const order = await Order.findById(req.params.id)
-    .populate("farmer", "name farmName location")
-    .populate("buyer", "name location")
+    .populate("farmer", "name farmName location phone")
+    .populate("buyer", "name location phone")
     .populate("product", "image category location");
 
   if (!order) {
