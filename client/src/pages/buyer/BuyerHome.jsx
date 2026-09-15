@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ImageOff, Sprout, Star, Leaf, Handshake, ShieldCheck, Award } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
@@ -75,11 +75,23 @@ export default function BuyerHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const [search, setSearch] = useState("");
-  // null = no explicit sort chosen yet, so the curated Home view still
-  // shows; picking any option (including "Newest") switches to a single
-  // sorted results grid even with an empty search box.
-  const [sort, setSort] = useState(null);
+  // Search and filter live in the URL, so the logo, the Home link and Back all
+  // return to the plain Home view. No sort = the curated view.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("q") || "";
+  const sortParam = searchParams.get("sort");
+  const sort = sortOptions.some((o) => o.key === sortParam) ? sortParam : null;
+
+  const updateParam = (key, value, options) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set(key, value);
+      else next.delete(key);
+      return next;
+    }, options);
+  // Typing replaces the history entry so Back doesn't replay every keystroke.
+  const setSearch = (value) => updateParam("q", value, { replace: true });
+  const setSort = (value) => updateParam("sort", value);
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);

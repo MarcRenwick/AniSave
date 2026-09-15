@@ -4,16 +4,19 @@ import fieldPhoto from "../../assets/lndingpge.jpg";
 import farmPhoto from "../../assets/bckgrnd.jpg";
 import { SERVER_URL } from "../../services/api";
 
-const AUTO_ADVANCE_MS = 4500;
+const AUTO_ADVANCE_MS = 4000;
 
 const ctaClass =
   "mt-5 w-fit rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#2f8f66] hover:bg-green-50";
+
+// px-16 keeps slide text clear of the prev/next arrows.
+const contentClass = "relative flex h-full max-w-md flex-col justify-center px-16 text-white";
 
 function PhotoSlide({ photo, children }) {
   return (
     <div className="relative h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${photo})` }}>
       <div className="absolute inset-0 bg-gradient-to-r from-[#1f5c42]/95 via-[#2f8f66]/80 to-transparent" />
-      <div className="relative flex h-full max-w-md flex-col justify-center p-8 text-white">{children}</div>
+      <div className={contentClass}>{children}</div>
     </div>
   );
 }
@@ -54,22 +57,29 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
       </button>
     </PhotoSlide>,
 
+    // The product photo fills the whole slide; the text sits on it over a
+    // light shade that fades out, just enough to keep white text readable.
     ...featured.map(({ product, tag }) => (
-      <div key={product._id} className="flex h-full w-full bg-gradient-to-r from-[#1f5c42] to-[#2f8f66] text-white">
-        <div className="flex w-1/2 flex-col justify-center p-8">
+      <div key={product._id} className="relative h-full w-full">
+        <img
+          src={`${SERVER_URL}${product.image}`}
+          alt={product.title}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+        <div className={`${contentClass} drop-shadow-md`}>
           <span className="w-fit rounded-full bg-yellow-300 px-2.5 py-0.5 text-xs font-semibold text-[#1f5c42]">
             {tag}
           </span>
           <h2 className="mt-3 line-clamp-2 text-3xl font-bold leading-tight">{product.title}</h2>
-          <p className="mt-1 text-lg">₱{product.price} per kilo</p>
-          <p className="truncate text-sm text-white/80">
+          <p className="mt-1 text-lg font-medium">₱{product.price} per kilo</p>
+          <p className="truncate text-sm text-white/90">
             {product.farmer?.farmName || product.farmer?.name}
           </p>
           <button type="button" onClick={() => onOpenProduct(product._id)} className={ctaClass}>
             Shop Now
           </button>
         </div>
-        <img src={`${SERVER_URL}${product.image}`} alt={product.title} className="h-full w-1/2 object-cover" />
       </div>
     )),
   ];
