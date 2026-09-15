@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import background from "../assets/bckgrnd.jpg";
 
-export default function AuthLayout({ header, children, maxWidth = "max-w-[26rem]" }) {
+export default function AuthLayout({ header, children, maxWidth = "max-w-[26rem]", variant = "green" }) {
   return (
     <div
       className="relative flex min-h-screen flex-col items-center justify-center gap-6 px-4 py-10"
@@ -17,7 +17,13 @@ export default function AuthLayout({ header, children, maxWidth = "max-w-[26rem]
         Back to Home
       </Link>
       {header && <div className={`relative w-full text-center ${maxWidth}`}>{header}</div>}
-      <div className={`relative w-full rounded-xl bg-[#54b04f] p-8 shadow-xl ${maxWidth}`}>{children}</div>
+      <div
+        className={`relative w-full rounded-xl p-8 shadow-xl ${maxWidth} ${
+          variant === "white" ? "border border-gray-100 bg-white" : "bg-[#54b04f]"
+        }`}
+      >
+        {children}
+      </div>
     </div>
   );
 }

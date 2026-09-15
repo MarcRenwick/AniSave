@@ -36,6 +36,7 @@ export default function Login() {
 
   return (
     <AuthLayout
+      variant="white"
       header={
         <>
           <img src={logo} alt="AniSave" className="mx-auto h-32 w-32 rounded-full" />
@@ -51,7 +52,7 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="username" className="block text-sm font-medium text-white">
+          <label htmlFor="username" className="block text-sm font-medium text-gray-700">
             Username
           </label>
           <input
@@ -61,13 +62,13 @@ export default function Login() {
             required
             value={form.username}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             placeholder="username"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-white">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-700">
             Password
           </label>
           <PasswordInput
@@ -76,11 +77,11 @@ export default function Login() {
             required
             value={form.password}
             onChange={handleChange}
-            className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
             placeholder="••••••••••"
           />
           <div className="mt-1 text-right">
-            <Link to="/forgot-password" className="text-xs font-medium text-white/80 hover:text-white hover:underline">
+            <Link to="/forgot-password" className="text-xs font-medium text-gray-500 hover:text-[#2f8f66] hover:underline">
               Forgot password?
             </Link>
           </div>
@@ -89,15 +90,15 @@ export default function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-md bg-white py-2 text-sm font-semibold text-[#54b04f] transition hover:bg-green-50 disabled:opacity-60"
+          className="w-full rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
         >
           {submitting ? "Logging in..." : "Log In"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-white/80">
+      <p className="mt-6 text-center text-sm text-gray-500">
         Don&apos;t have an account?{" "}
-        <Link to="/register" className="font-medium text-white hover:underline">
+        <Link to="/register" className="font-medium text-[#2f8f66] hover:underline">
           Sign up
         </Link>
       </p>
