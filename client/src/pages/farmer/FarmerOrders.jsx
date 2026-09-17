@@ -5,6 +5,7 @@ import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { getFarmerOrders, SERVER_URL } from "../../services/api";
 import { formatDateTime } from "../../utils/orderStatus";
+import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const tabs = [
   { key: "new", label: "New" },
@@ -21,6 +22,7 @@ export default function FarmerOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("new");
+  usePreserveScroll(tab);
 
   useEffect(() => {
     getFarmerOrders()

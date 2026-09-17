@@ -188,6 +188,36 @@ const cancelOrder = asyncHandler(async (req, res) => {
   res.json(order);
 });
 
+// @desc    Archive or unarchive one of the buyer's own completed orders
+// @route   PATCH /api/orders/:id/archive
+// @access  Private (buyer, owner only)
+const archiveOrder = asyncHandler(async (req, res) => {
+  const { archived } = req.body;
+  if (typeof archived !== "boolean") {
+    res.status(400);
+    throw new Error("'archived' must be true or false");
+  }
+
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+  if (order.buyer.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("You do not own this order");
+  }
+  if (order.status !== "done") {
+    res.status(400);
+    throw new Error("Only a completed order can be archived");
+  }
+
+  order.archived = archived;
+  await order.save();
+
+  res.json(order);
+});
+
 // @desc    Get a single order's detail, for tracking
 // @route   GET /api/orders/:id
 // @access  Private (the buyer or farmer on that order only)
@@ -221,4 +251,5 @@ module.exports = {
   getOrderById,
   updateOrderStatus,
   cancelOrder,
+  archiveOrder,
 };

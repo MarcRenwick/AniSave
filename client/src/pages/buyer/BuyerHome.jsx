@@ -5,6 +5,7 @@ import BuyerLayout from "../../layouts/BuyerLayout";
 import HomeBanner from "../../components/buyer/HomeBanner";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
+import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const sortOptions = [
   { key: "newest", label: "Newest Products", icon: Sparkles },
@@ -82,6 +83,7 @@ export default function BuyerHome() {
   const [error, setError] = useState("");
 
   const browsing = Boolean(search.trim()) || sort !== null;
+  usePreserveScroll(searchParams.toString());
 
   const setSort = (value) =>
     setSearchParams((prev) => {

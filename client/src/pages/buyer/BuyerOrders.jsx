@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Clock, CheckCircle2, XCircle, PackageOpen, CalendarClock } from "lucide-react";
+import { FileText, Clock, CheckCircle2, XCircle, PackageOpen, CalendarClock, Archive, ArchiveRestore } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
-import { getBuyerOrders, cancelOrder } from "../../services/api";
+import { getBuyerOrders, cancelOrder, archiveOrder } from "../../services/api";
+import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const filters = [
   { key: "", label: "All" },
@@ -14,6 +15,7 @@ const filters = [
   { key: "done", label: "Completed" },
   { key: "preorder", label: "Pre-Order" },
   { key: "cancelled", label: "Cancelled" },
+  { key: "archived", label: "Archived" },
 ];
 
 const statusMeta = {
@@ -34,6 +36,9 @@ export default function BuyerOrders() {
   const [target, setTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [archiveError, setArchiveError] = useState("");
+  const [archivingId, setArchivingId] = useState(null);
+  usePreserveScroll(status);
 
   useEffect(() => {
     getBuyerOrders()
@@ -42,7 +47,12 @@ export default function BuyerOrders() {
       .finally(() => setLoading(false));
   }, []);
 
-  const visibleOrders = status ? orders.filter((o) => o.status === status) : orders;
+  // Archived orders are tucked away everywhere except their own tab, the
+  // same way an inbox hides archived mail from every other view.
+  const visibleOrders =
+    status === "archived"
+      ? orders.filter((o) => o.archived)
+      : (status ? orders.filter((o) => o.status === status) : orders).filter((o) => !o.archived);
 
   const handleConfirmCancel = async () => {
     setCancelError("");
@@ -55,6 +65,19 @@ export default function BuyerOrders() {
       setCancelError(err.response?.data?.message || "Could not cancel this order. Please try again.");
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleArchiveToggle = async (order, archived) => {
+    setArchiveError("");
+    setArchivingId(order._id);
+    try {
+      const { data } = await archiveOrder(order._id, archived);
+      setOrders((prev) => prev.map((o) => (o._id === data._id ? data : o)));
+    } catch (err) {
+      setArchiveError(err.response?.data?.message || "Could not update this order. Please try again.");
+    } finally {
+      setArchivingId(null);
     }
   };
 
@@ -85,6 +108,7 @@ export default function BuyerOrders() {
 
         {loading && <p className="mt-6 text-sm text-gray-500">Loading your orders...</p>}
         {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+        {archiveError && <p className="mt-6 text-sm text-red-600">{archiveError}</p>}
 
         {!loading && !error && (
           <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
@@ -144,6 +168,24 @@ export default function BuyerOrders() {
                             Cancel
                           </button>
                         )}
+                        {o.status === "done" && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchiveToggle(o, !o.archived);
+                            }}
+                            disabled={archivingId === o._id}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                          >
+                            {o.archived ? (
+                              <ArchiveRestore className="h-3.5 w-3.5" />
+                            ) : (
+                              <Archive className="h-3.5 w-3.5" />
+                            )}
+                            {o.archived ? "Unarchive" : "Archive"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );
@@ -152,7 +194,9 @@ export default function BuyerOrders() {
             </table>
 
             {visibleOrders.length === 0 && (
-              <p className="p-6 text-center text-sm text-gray-400">No orders found.</p>
+              <p className="p-6 text-center text-sm text-gray-400">
+                {status === "archived" ? "No archived orders." : "No orders found."}
+              </p>
             )}
           </div>
         )}

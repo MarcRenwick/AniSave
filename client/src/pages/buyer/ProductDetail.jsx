@@ -209,6 +209,17 @@ export default function ProductDetail() {
           </div>
         )}
 
+        {!loading && !error && product && (
+          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div className="bg-[#2f8f66] px-6 py-3 font-semibold text-white">
+              Product Description
+            </div>
+            <p className="whitespace-pre-line p-6 text-sm leading-relaxed text-gray-700">
+              {product.description || "No description provided yet."}
+            </p>
+          </div>
+        )}
+
         {!loading && !error && product && farmerStats && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-8 rounded-2xl bg-white p-7 shadow-sm">
             <div className="flex items-center gap-5">
@@ -239,17 +250,6 @@ export default function ProductDetail() {
               <Stat label="Joined" value={timeAgo(farmerStats.createdAt)} />
               <Stat label="Products" value={farmerStats.productCount} />
             </div>
-          </div>
-        )}
-
-        {!loading && !error && product && (
-          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="bg-[#2f8f66] px-6 py-3 font-semibold text-white">
-              Product Description
-            </div>
-            <p className="whitespace-pre-line p-6 text-sm leading-relaxed text-gray-700">
-              {product.description || "No description provided yet."}
-            </p>
           </div>
         )}
       </div>

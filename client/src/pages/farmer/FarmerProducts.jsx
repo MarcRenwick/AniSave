@@ -7,6 +7,7 @@ import ProductCard from "../../components/farmer/products/ProductCard";
 import RestockModal from "../../components/farmer/products/RestockModal";
 import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmModal";
 import { getMyProducts, restockProduct, deleteProduct } from "../../services/api";
+import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const filters = [
   { key: "all", label: "All" },
@@ -23,6 +24,7 @@ export default function FarmerProducts() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [modal, setModal] = useState(null); // { type: "restock" | "delete", product }
+  usePreserveScroll(filter);
 
   useEffect(() => {
     getMyProducts()

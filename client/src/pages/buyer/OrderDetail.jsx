@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, ImageOff, MapPin, Phone, Star, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, ImageOff, MapPin, Phone, Star, User as UserIcon } from "lucide-react";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
-import { getOrder, cancelOrder, SERVER_URL } from "../../services/api";
+import { getOrder, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
 import { BUYER_STEPS, BUYER_STATUS_TITLE } from "../../utils/orderStatus";
 
@@ -19,6 +19,8 @@ export default function OrderDetail() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
   const [showRate, setShowRate] = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [archiveError, setArchiveError] = useState("");
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
 
@@ -46,6 +48,19 @@ export default function OrderDetail() {
   const handleRatingSubmitted = (rating) => {
     setOrder((prev) => ({ ...prev, myRating: rating }));
     setShowRate(false);
+  };
+
+  const handleArchiveToggle = async () => {
+    setArchiveError("");
+    setArchiving(true);
+    try {
+      const { data } = await archiveOrder(order._id, !order.archived);
+      setOrder((prev) => ({ ...prev, ...data }));
+    } catch (err) {
+      setArchiveError(err.response?.data?.message || "Could not update this order. Please try again.");
+    } finally {
+      setArchiving(false);
+    }
   };
 
   const title = order ? BUYER_STATUS_TITLE[order.status] : "Order";
@@ -139,26 +154,44 @@ export default function OrderDetail() {
             )}
 
             {order.status === "done" ? (
-              <div className="flex gap-3">
-                {order.product?._id && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/buyer/products/${order.product._id}`)}
-                    className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
-                  >
-                    Buy Again
-                  </button>
+              <>
+                {archiveError && (
+                  <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">{archiveError}</div>
                 )}
-                {!order.myRating && (
-                  <button
-                    type="button"
-                    onClick={() => setShowRate(true)}
-                    className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
-                  >
-                    To Rate
-                  </button>
-                )}
-              </div>
+                <div className="flex gap-3">
+                  {order.product?._id && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/buyer/products/${order.product._id}`)}
+                      className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+                    >
+                      Buy Again
+                    </button>
+                  )}
+                  {!order.myRating && (
+                    <button
+                      type="button"
+                      onClick={() => setShowRate(true)}
+                      className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+                    >
+                      To Rate
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleArchiveToggle}
+                  disabled={archiving}
+                  className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 py-2.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
+                >
+                  {order.archived ? (
+                    <ArchiveRestore className="h-4 w-4" />
+                  ) : (
+                    <Archive className="h-4 w-4" />
+                  )}
+                  {archiving ? "Updating..." : order.archived ? "Unarchive Order" : "Archive Order"}
+                </button>
+              </>
             ) : (
               order.status !== "cancelled" && (
                 <div className="flex gap-3">

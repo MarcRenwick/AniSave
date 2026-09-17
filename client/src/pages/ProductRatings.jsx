@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import Avatar from "../components/Avatar";
 import { getProduct, getProductRatings, toggleRatingLike } from "../services/api";
 import useScrollReveal from "../hooks/useScrollReveal";
+import usePreserveScroll from "../hooks/usePreserveScroll";
 
 function Stars({ value, className = "h-4 w-4" }) {
   return (
@@ -38,6 +39,7 @@ export default function ProductRatings() {
   const [pendingId, setPendingId] = useState(null);
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
+  usePreserveScroll(filter);
 
   useEffect(() => {
     Promise.all([getProduct(id), getProductRatings(id)])

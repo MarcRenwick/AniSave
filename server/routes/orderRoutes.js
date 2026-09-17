@@ -6,6 +6,7 @@ const {
   getOrderById,
   updateOrderStatus,
   cancelOrder,
+  archiveOrder,
 } = require("../controllers/orderController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
@@ -19,5 +20,6 @@ router.get("/buyer", authorize("buyer"), getBuyerOrders);
 router.get("/:id", getOrderById);
 router.patch("/:id/status", authorize("farmer"), updateOrderStatus);
 router.patch("/:id/cancel", authorize("buyer"), cancelOrder);
+router.patch("/:id/archive", authorize("buyer"), archiveOrder);
 
 module.exports = router;

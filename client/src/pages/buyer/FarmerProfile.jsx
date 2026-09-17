@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, BadgeCheck, ImageOff, MapPin, Phone } from "lucide-react";
+import { useParams, Link } from "react-router-dom";
+import { BadgeCheck, ImageOff, MapPin, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
-import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import Avatar from "../../components/Avatar";
 import shopBackground from "../../assets/bckgrnd.jpg";
 import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api";
 import { activeAgo, timeAgo } from "../../utils/activity";
+import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const tabs = [
   { key: "home", label: "Home" },
@@ -71,15 +71,14 @@ function ProductGrid({ products, empty }) {
 
 export default function FarmerProfile() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const [farmer, setFarmer] = useState(null);
   const [products, setProducts] = useState([]);
   const [recommended, setRecommended] = useState([]);
   const [tab, setTab] = useState("home");
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  usePreserveScroll(tab);
 
   useEffect(() => {
     setLoading(true);
@@ -98,23 +97,10 @@ export default function FarmerProfile() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const matchesSearch = (p) => p.title.toLowerCase().includes(search.trim().toLowerCase());
-  const searched = products.filter(matchesSearch);
   const shopName = farmer?.farmName || farmer?.name || "Shop";
 
   return (
     <BuyerLayout>
-      <BuyerTopBar search={search} onSearchChange={setSearch} searchPlaceholder="Search in this Shop">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </button>
-      </BuyerTopBar>
-
       <div className="p-8">
         {loading && <p className="text-sm text-gray-500">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
@@ -203,12 +189,8 @@ export default function FarmerProfile() {
 
                   <div className="mt-4">
                     <ProductGrid
-                      products={recommended.filter(matchesSearch)}
-                      empty={
-                        search.trim()
-                          ? "Nothing recommended matches that search."
-                          : "No highly-rated products from this shop yet."
-                      }
+                      products={recommended}
+                      empty="No highly-rated products from this shop yet."
                     />
                   </div>
                 </div>
@@ -252,14 +234,8 @@ export default function FarmerProfile() {
             ) : (
               <div className="mt-6">
                 <ProductGrid
-                  products={
-                    tab === "all" ? searched : searched.filter((p) => p.category === tab)
-                  }
-                  empty={
-                    search.trim()
-                      ? "No products match that search."
-                      : "Nothing listed in here right now."
-                  }
+                  products={tab === "all" ? products : products.filter((p) => p.category === tab)}
+                  empty="Nothing listed in here right now."
                 />
               </div>
             )}

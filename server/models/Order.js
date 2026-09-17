@@ -49,6 +49,10 @@ const orderSchema = new mongoose.Schema(
     readyAt: { type: Date },
     doneAt: { type: Date },
     cancelledAt: { type: Date },
+
+    // Buyer-only housekeeping: tucks a completed order out of the normal
+    // My Orders view without deleting it.
+    archived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
