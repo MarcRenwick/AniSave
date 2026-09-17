@@ -2,8 +2,9 @@ import { Link } from "react-router-dom";
 import logo from "../assets/logo.png";
 
 // The shared frame for Log in / Sign up / Forgot password: a flat green brand
-// panel beside the form, so all three pages read as one set.
-export default function AuthShell({ tagline, blurb, aside, children }) {
+// panel beside the form, so all three pages read as one set. `wide` makes room
+// for Sign up's two-column form; Log in stays narrow.
+export default function AuthShell({ tagline, blurb, aside, wide = false, children }) {
   return (
     <div className="flex min-h-screen">
       <div className="relative hidden w-1/2 flex-col justify-center overflow-hidden bg-[#2f8f66] p-12 text-white lg:flex">
@@ -29,7 +30,7 @@ export default function AuthShell({ tagline, blurb, aside, children }) {
       </div>
 
       <div className="flex w-full flex-col justify-center px-6 py-10 sm:px-12 lg:w-1/2 lg:px-16">
-        <div className="mx-auto w-full max-w-sm">{children}</div>
+        <div className={`mx-auto w-full ${wide ? "max-w-xl" : "max-w-sm"}`}>{children}</div>
       </div>
     </div>
   );

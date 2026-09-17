@@ -19,7 +19,13 @@ const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-router.post("/register", registerUser);
+// A farmer's verification documents: one government ID, up to 5 farm documents.
+const verificationUploads = upload.fields([
+  { name: "governmentId", maxCount: 1 },
+  { name: "farmDocuments", maxCount: 5 },
+]);
+
+router.post("/register", verificationUploads, registerUser);
 router.post("/login", loginUser);
 router.post("/login-otp/request", requestLoginOtp);
 router.post("/login-otp/verify", loginWithOtp);
@@ -28,10 +34,7 @@ router.post(
   "/verification",
   protect,
   authorize("farmer"),
-  upload.fields([
-    { name: "governmentId", maxCount: 1 },
-    { name: "farmDocuments", maxCount: 5 },
-  ]),
+  verificationUploads,
   submitVerification
 );
 router.post("/forgot-password", forgotPassword);

@@ -7,8 +7,28 @@ const Rating = require("../models/Rating");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
+const { effectiveVerificationStatus } = require("../utils/verification");
 
-// @desc    Register a new user (farmer or buyer)
+// What a client needs to start a session. A farmer's pages read the
+// verification fields to decide whether to show the pending/rejected banner.
+const sessionPayload = (user) => ({
+  _id: user._id,
+  name: user.name,
+  username: user.username,
+  email: user.email,
+  role: user.role,
+  location: user.location,
+  avatar: user.avatar,
+  isVerified: user.isVerified,
+  verificationStatus: effectiveVerificationStatus(user),
+  verificationNote: user.verificationNote,
+  governmentId: user.governmentId,
+  farmDocuments: user.farmDocuments,
+  token: generateToken(user._id, user.role),
+});
+
+// @desc    Register a new user (farmer or buyer). A farmer sends their
+//          verification documents in this same request.
 // @route   POST /api/auth/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
@@ -23,52 +43,73 @@ const registerUser = asyncHandler(async (req, res) => {
     farmDescription,
   } = req.body;
 
-  if (!name || !username || !email || !password || !role) {
-    res.status(400);
-    throw new Error("Name, username, email, password and role are required");
+  // The account and its documents are created together or not at all, so a
+  // refused upload can't leave a farmer with nothing for an admin to review.
+  // Uploads only stay on disk if the account is actually created.
+  const governmentIdFile = req.files?.governmentId?.[0];
+  const farmDocumentFiles = req.files?.farmDocuments || [];
+  const discardUploads = () => {
+    if (governmentIdFile) deleteImageFile(imagePath(governmentIdFile));
+    farmDocumentFiles.forEach((file) => deleteImageFile(imagePath(file)));
+  };
+
+  try {
+    if (!name || !username || !email || !password || !role) {
+      res.status(400);
+      throw new Error("Name, username, email, password and role are required");
+    }
+
+    if (!["farmer", "buyer"].includes(role)) {
+      res.status(400);
+      throw new Error("Role must be either 'farmer' or 'buyer'");
+    }
+
+    const isFarmer = role === "farmer";
+    if (isFarmer && !governmentIdFile) {
+      res.status(400);
+      throw new Error("A photo of a valid government-issued ID is required");
+    }
+    if (isFarmer && farmDocumentFiles.length === 0) {
+      res.status(400);
+      throw new Error("At least one farm-related document is required");
+    }
+
+    const usernameTaken = await User.findOne({ username: username.toLowerCase() });
+    if (usernameTaken) {
+      res.status(400);
+      throw new Error("Username is already exist");
+    }
+
+    const emailTaken = await User.findOne({ email: email.toLowerCase() });
+    if (emailTaken) {
+      res.status(400);
+      throw new Error("Email is already registered");
+    }
+
+    const user = await User.create({
+      name,
+      username,
+      email,
+      password,
+      role,
+      location,
+      farmName: isFarmer ? farmName : undefined,
+      farmDescription: isFarmer ? farmDescription : undefined,
+      // A farmer has to get their documents past an admin before selling.
+      verificationStatus: isFarmer ? "pending" : "approved",
+      governmentId: isFarmer ? imagePath(governmentIdFile) : undefined,
+      farmDocuments: isFarmer ? farmDocumentFiles.map(imagePath) : undefined,
+      verificationSubmittedAt: isFarmer ? Date.now() : undefined,
+    });
+
+    // Buyers don't have documents, so nothing they sent is worth keeping.
+    if (!isFarmer) discardUploads();
+
+    res.status(201).json(sessionPayload(user));
+  } catch (err) {
+    discardUploads();
+    throw err;
   }
-
-  if (!["farmer", "buyer"].includes(role)) {
-    res.status(400);
-    throw new Error("Role must be either 'farmer' or 'buyer'");
-  }
-
-  const usernameTaken = await User.findOne({ username: username.toLowerCase() });
-  if (usernameTaken) {
-    res.status(400);
-    throw new Error("Username is already exist");
-  }
-
-  const emailTaken = await User.findOne({ email: email.toLowerCase() });
-  if (emailTaken) {
-    res.status(400);
-    throw new Error("Email is already registered");
-  }
-
-  const user = await User.create({
-    name,
-    username,
-    email,
-    password,
-    role,
-    location,
-    farmName: role === "farmer" ? farmName : undefined,
-    farmDescription: role === "farmer" ? farmDescription : undefined,
-    // A farmer has to get their documents past an admin before selling.
-    verificationStatus: role === "farmer" ? "pending" : "approved",
-  });
-
-  res.status(201).json({
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-    isVerified: user.isVerified,
-    verificationStatus: user.verificationStatus,
-    token: generateToken(user._id, user.role),
-  });
 });
 
 // @desc    Authenticate user & get token
@@ -94,16 +135,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("This account has been banned. Contact support for more information.");
   }
 
-  res.json({
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-    isVerified: user.isVerified,
-    token: generateToken(user._id, user.role),
-  });
+  res.json(sessionPayload(user));
 });
 
 // @desc    Get current logged-in user's profile
@@ -181,16 +213,7 @@ const loginWithOtp = asyncHandler(async (req, res) => {
   user.loginCodeExpires = undefined;
   await user.save();
 
-  res.json({
-    _id: user._id,
-    name: user.name,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    avatar: user.avatar,
-    isVerified: user.isVerified,
-    token: generateToken(user._id, user.role),
-  });
+  res.json(sessionPayload(user));
 });
 
 // @desc    Email a 6-digit OTP to reset a password

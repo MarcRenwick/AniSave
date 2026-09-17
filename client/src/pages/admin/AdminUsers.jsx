@@ -17,7 +17,18 @@ const verificationMeta = {
   pending: { label: "Pending", color: "bg-amber-100 text-amber-800" },
   approved: { label: "Approved", color: "bg-green-100 text-green-700" },
   rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
+  // Still pending, but they never uploaded anything, so there's nothing to review.
+  missing: {
+    label: "No documents",
+    color: "bg-gray-100 text-gray-600",
+    title: "This farmer hasn't uploaded a government ID and farm documents yet, so there is nothing to approve.",
+  },
 };
+
+const hasDocuments = (user) => Boolean(user.governmentId) && user.farmDocuments?.length > 0;
+
+const verificationKey = (user) =>
+  user.verificationStatus === "pending" && !hasDocuments(user) ? "missing" : user.verificationStatus;
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -46,7 +57,7 @@ export default function AdminUsers() {
   };
 
   const pendingCount = users.filter(
-    (u) => u.role === "farmer" && u.verificationStatus === "pending"
+    (u) => u.role === "farmer" && verificationKey(u) === "pending"
   ).length;
 
   return (
@@ -99,8 +110,7 @@ export default function AdminUsers() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {users.map((u) => {
-                  const meta = verificationMeta[u.verificationStatus];
-                  const hasDocuments = Boolean(u.governmentId) && u.farmDocuments?.length > 0;
+                  const meta = verificationMeta[verificationKey(u)];
                   return (
                     <tr key={u._id}>
                       <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
@@ -110,6 +120,7 @@ export default function AdminUsers() {
                       <td className="px-4 py-3">
                         {u.role === "farmer" ? (
                           <span
+                            title={meta?.title}
                             className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${meta?.color || "bg-gray-100 text-gray-600"}`}
                           >
                             {meta?.label || "—"}
@@ -131,7 +142,7 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
-                          {u.role === "farmer" && hasDocuments && (
+                          {u.role === "farmer" && hasDocuments(u) && (
                             <button
                               type="button"
                               onClick={() => setReviewing(u)}

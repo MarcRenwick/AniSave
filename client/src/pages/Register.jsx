@@ -5,7 +5,6 @@ import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
 import VerificationDocumentFields from "../components/verification/VerificationDocumentFields";
-import { submitVerification } from "../services/api";
 import { getPasswordError } from "../utils/password";
 
 const initialForm = {
@@ -33,7 +32,6 @@ export default function Register() {
   const [form, setForm] = useState(initialForm);
   const [governmentId, setGovernmentId] = useState(null);
   const [farmDocuments, setFarmDocuments] = useState([]);
-  const [accountCreated, setAccountCreated] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -102,25 +100,23 @@ export default function Register() {
     submitRegistration();
   };
 
-  // Kept as two phases so a failed document upload can be retried without
-  // trying to create the account a second time.
   const submitRegistration = async () => {
     setSubmitting(true);
     setError("");
     try {
-      if (!accountCreated) {
-        const { confirmPassword: _confirmPassword, ...payload } = form;
-        await register({ ...payload, role });
-        setAccountCreated(true);
-      }
+      const { confirmPassword: _confirmPassword, ...details } = form;
 
       if (role === "farmer") {
+        // One request, so the account only exists if its documents were
+        // accepted too - a refused upload leaves nothing half-created.
         const data = new FormData();
+        Object.entries({ ...details, role }).forEach(([key, value]) => data.append(key, value));
         data.append("governmentId", governmentId);
         farmDocuments.forEach((file) => data.append("farmDocuments", file));
-        await submitVerification(data);
+        await register(data);
         navigate("/farmer/dashboard");
       } else {
+        await register({ ...details, role });
         navigate("/buyer/home");
       }
     } catch (err) {
@@ -165,6 +161,7 @@ export default function Register() {
           : "Create an account to order produce directly from the farms around you."
       }
       aside={steps}
+      wide
     >
       <div className="flex items-center justify-between">
         {step === 1 ? (
@@ -202,14 +199,7 @@ export default function Register() {
       <h1 className="mt-1 text-3xl font-bold text-gray-900">Sign Up</h1>
 
       {error && (
-        <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
-          {error}
-          {accountCreated && (
-            <span className="mt-1 block text-xs text-red-500">
-              Your account was created - you can also finish this later from your Profile.
-            </span>
-          )}
-        </div>
+        <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
       )}
 
       {step === 1 && (
@@ -249,137 +239,138 @@ export default function Register() {
       )}
 
       {step === 2 && (
-        <form onSubmit={handleDetailsSubmit} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="name" className={labelClass}>
-              Full Name
-            </label>
-            <input
-              id="name"
-              name="name"
-              required
-              value={form.name}
-              onChange={handleChange}
-              placeholder="Your full name"
-              className={`mt-1 ${inputClass}`}
-            />
+        <form onSubmit={handleDetailsSubmit} className="mt-6">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="name" className={labelClass}>
+                Full Name
+              </label>
+              <input
+                id="name"
+                name="name"
+                required
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Your full name"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="username" className={labelClass}>
+                Username
+              </label>
+              <input
+                id="username"
+                name="username"
+                required
+                minLength={3}
+                value={form.username}
+                onChange={handleChange}
+                placeholder="Your username"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className={labelClass}>
+                Your Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                value={form.email}
+                onChange={handleChange}
+                placeholder="Your email"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="location" className={labelClass}>
+                Address
+              </label>
+              <input
+                id="location"
+                name="location"
+                required
+                value={form.location}
+                onChange={handleChange}
+                placeholder="e.g. Dagupan City"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className={labelClass}>
+                Password
+              </label>
+              <PasswordInput
+                id="password"
+                name="password"
+                required
+                value={form.password}
+                onChange={handleChange}
+                placeholder="Your password"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className={labelClass}>
+                Re-type Password
+              </label>
+              <PasswordInput
+                id="confirmPassword"
+                name="confirmPassword"
+                required
+                value={form.confirmPassword}
+                onChange={handleChange}
+                placeholder="Re-type your password"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            {role === "farmer" && (
+              <>
+                <div>
+                  <label htmlFor="farmName" className={labelClass}>
+                    Farm Name
+                  </label>
+                  <input
+                    id="farmName"
+                    name="farmName"
+                    required
+                    value={form.farmName}
+                    onChange={handleChange}
+                    placeholder="Your farm name"
+                    className={`mt-1 ${inputClass}`}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="farmDescription" className={labelClass}>
+                    Farm Details
+                  </label>
+                  <input
+                    id="farmDescription"
+                    name="farmDescription"
+                    value={form.farmDescription}
+                    onChange={handleChange}
+                    placeholder="Crops, farm size (optional)"
+                    className={`mt-1 ${inputClass}`}
+                  />
+                </div>
+              </>
+            )}
           </div>
-
-          <div>
-            <label htmlFor="username" className={labelClass}>
-              Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              required
-              minLength={3}
-              value={form.username}
-              onChange={handleChange}
-              placeholder="Your username"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className={labelClass}>
-              Your Email
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              value={form.email}
-              onChange={handleChange}
-              placeholder="Your email"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className={labelClass}>
-              Password
-            </label>
-            <PasswordInput
-              id="password"
-              name="password"
-              required
-              value={form.password}
-              onChange={handleChange}
-              placeholder="Your password"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirmPassword" className={labelClass}>
-              Re-type Password
-            </label>
-            <PasswordInput
-              id="confirmPassword"
-              name="confirmPassword"
-              required
-              value={form.confirmPassword}
-              onChange={handleChange}
-              placeholder="Re-type your password"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-
-          <div>
-            <label htmlFor="location" className={labelClass}>
-              Address
-            </label>
-            <input
-              id="location"
-              name="location"
-              required
-              value={form.location}
-              onChange={handleChange}
-              placeholder="e.g. Dagupan City"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
-
-          {role === "farmer" && (
-            <>
-              <div>
-                <label htmlFor="farmName" className={labelClass}>
-                  Farm Name
-                </label>
-                <input
-                  id="farmName"
-                  name="farmName"
-                  required
-                  value={form.farmName}
-                  onChange={handleChange}
-                  placeholder="Your farm name"
-                  className={`mt-1 ${inputClass}`}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="farmDescription" className={labelClass}>
-                  Farm Details
-                </label>
-                <textarea
-                  id="farmDescription"
-                  name="farmDescription"
-                  rows={2}
-                  value={form.farmDescription}
-                  onChange={handleChange}
-                  placeholder="Crops you grow, farm size, etc. (optional)"
-                  className={`mt-1 ${inputClass}`}
-                />
-              </div>
-            </>
-          )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+            className="mt-6 w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
           >
             {submitting ? "Creating account..." : role === "farmer" ? "Continue" : "Sign Up"}
           </button>
@@ -388,7 +379,9 @@ export default function Register() {
 
       {step === 3 && (
         <form onSubmit={handleDocumentsSubmit} className="mt-6 space-y-6">
+          {/* The ID only ever needs two tiles; farm documents get the extra room. */}
           <VerificationDocumentFields
+            className="grid gap-6 sm:grid-cols-[2fr_3fr]"
             governmentId={governmentId}
             farmDocuments={farmDocuments}
             onGovernmentIdChange={setGovernmentId}
