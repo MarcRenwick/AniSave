@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Clock, ShieldAlert, ShieldCheck } from "lucide-react";
+import Modal from "../Modal";
 import VerificationDocumentFields from "../verification/VerificationDocumentFields";
 import { submitVerification } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -7,25 +7,22 @@ import { useAuth } from "../../context/AuthContext";
 const statusMeta = {
   pending: {
     label: "Pending verification",
-    icon: Clock,
     pill: "bg-amber-100 text-amber-800",
     blurb: "An administrator is reviewing your documents. You can list products once approved.",
   },
   approved: {
     label: "Approved",
-    icon: ShieldCheck,
     pill: "bg-green-100 text-green-700",
     blurb: "Your account is verified - you can list and sell products.",
   },
   rejected: {
     label: "Rejected",
-    icon: ShieldAlert,
     pill: "bg-red-100 text-red-700",
     blurb: "An administrator rejected your documents. Update them below and resubmit.",
   },
 };
 
-export default function VerificationCard() {
+export default function VerificationModal({ onClose }) {
   const { user, updateUser } = useAuth();
   const [governmentId, setGovernmentId] = useState(null);
   const [farmDocuments, setFarmDocuments] = useState([]);
@@ -33,22 +30,19 @@ export default function VerificationCard() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (user?.role !== "farmer") return null;
-
-  const status = user.verificationStatus || (user.isVerified ? "approved" : "pending");
+  const status = user?.verificationStatus || (user?.isVerified ? "approved" : "pending");
   const meta = statusMeta[status];
-  const Icon = meta.icon;
-  const hasDocuments = Boolean(user.governmentId) && user.farmDocuments?.length > 0;
+  const hasDocuments = Boolean(user?.governmentId) && user?.farmDocuments?.length > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!governmentId && !user.governmentId) {
+    if (!governmentId && !user?.governmentId) {
       setError("A photo of a valid government-issued ID is required.");
       return;
     }
-    if (farmDocuments.length === 0 && !user.farmDocuments?.length) {
+    if (farmDocuments.length === 0 && !user?.farmDocuments?.length) {
       setError("Add at least one farm-related document.");
       return;
     }
@@ -71,19 +65,15 @@ export default function VerificationCard() {
   };
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="flex items-center gap-2 font-semibold text-gray-900">
-          <Icon className="h-4 w-4 text-[#2f8f66]" /> Account Verification
-        </p>
+    <Modal title="Account Verification" onClose={onClose} maxWidth="max-w-lg">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-gray-600">{meta.blurb}</p>
         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.pill}`}>
           {meta.label}
         </span>
       </div>
 
-      <p className="mt-2 text-sm text-gray-600">{meta.blurb}</p>
-
-      {status === "rejected" && user.verificationNote && (
+      {status === "rejected" && user?.verificationNote && (
         <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           <span className="font-semibold">Reason: </span>
           {user.verificationNote}
@@ -101,12 +91,12 @@ export default function VerificationCard() {
       )}
 
       {editing ? (
-        <form onSubmit={handleSubmit} className="mt-4 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
           <VerificationDocumentFields
             governmentId={governmentId}
             farmDocuments={farmDocuments}
-            existingGovernmentId={user.governmentId}
-            existingFarmDocuments={user.farmDocuments || []}
+            existingGovernmentId={user?.governmentId}
+            existingFarmDocuments={user?.farmDocuments || []}
             onGovernmentIdChange={setGovernmentId}
             onFarmDocumentsChange={setFarmDocuments}
           />
@@ -137,7 +127,7 @@ export default function VerificationCard() {
       ) : (
         <>
           {hasDocuments && (
-            <div className="mt-4">
+            <div className="mt-5">
               <p className="text-xs font-semibold uppercase text-gray-400">Documents on file</p>
               <div className="mt-2">
                 <VerificationDocumentFields
@@ -155,12 +145,12 @@ export default function VerificationCard() {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="mt-4 rounded-md border-2 border-[#2f8f66] px-4 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+            className="mt-5 w-full rounded-md border-2 border-[#2f8f66] py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
           >
             {hasDocuments ? "Update documents" : "Submit documents"}
           </button>
         </>
       )}
-    </div>
+    </Modal>
   );
 }

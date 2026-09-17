@@ -33,7 +33,7 @@ export default function VerificationBanner() {
         </p>
       </div>
       <Link
-        to="/farmer/settings"
+        to="/farmer/settings?verification=1"
         className={`shrink-0 rounded-md px-4 py-2 text-sm font-semibold text-white ${
           rejected ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"
         }`}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   User as UserIcon,
   Mail,
@@ -14,11 +14,12 @@ import {
   Trash2,
   LogOut,
   Menu,
+  ShieldCheck,
 } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import Avatar from "../../components/Avatar";
-import VerificationCard from "../../components/farmer/VerificationCard";
+import VerificationModal from "../../components/farmer/VerificationModal";
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
@@ -42,6 +43,21 @@ export default function FarmerSettings() {
   const [showLogout, setShowLogout] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  // The verification banners elsewhere link here with ?verification=1 so the
+  // dialog opens straight away; the param is cleared once it has.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showVerification, setShowVerification] = useState(
+    () => searchParams.get("verification") === "1"
+  );
+
+  useEffect(() => {
+    if (searchParams.get("verification") !== "1") return;
+    setShowVerification(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("verification");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -160,6 +176,16 @@ export default function FarmerSettings() {
                     type="button"
                     onClick={() => {
                       setMenuOpen(false);
+                      setShowVerification(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <ShieldCheck className="h-4 w-4 text-[#2f8f66]" /> Account Verification
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
                       setShowDelete(true);
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
@@ -181,8 +207,6 @@ export default function FarmerSettings() {
             </div>
           </div>
         </div>
-
-        <VerificationCard />
 
         <div className="grid grid-cols-5 gap-6">
           <div className="col-span-2 rounded-xl bg-white p-5 shadow-sm">
@@ -304,6 +328,7 @@ export default function FarmerSettings() {
         />
       )}
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+      {showVerification && <VerificationModal onClose={() => setShowVerification(false)} />}
       {showDelete && (
         <DeleteAccountModal onClose={() => setShowDelete(false)} onDeleted={handleAccountDeleted} />
       )}

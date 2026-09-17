@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import AuthLayout from "../components/AuthLayout";
+import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
-import logo from "../assets/logo.png";
 import { forgotPassword, resetPassword } from "../services/api";
 import { getPasswordError } from "../utils/password";
+
+const inputClass =
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+
+const labelClass = "block text-sm font-medium text-gray-700";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -57,132 +61,120 @@ export default function ForgotPassword() {
   };
 
   return (
-    <AuthLayout
-      header={
-        <>
-          <img src={logo} alt="AniSave" className="mx-auto h-32 w-32 rounded-full" />
-          <h1 className="mt-2 text-2xl font-bold text-gray-900">
-            {step === "request" ? "Forgot Password" : "Enter OTP"}
-          </h1>
-        </>
-      }
+    <AuthShell
+      tagline="Locked out? It happens."
+      blurb="We'll email a 6-digit code to the address on your account so you can set a new password."
     >
+      <p className="text-sm text-gray-500">{step === "request" ? "Password reset" : "Almost there"}</p>
+      <h1 className="mt-1 text-3xl font-bold text-gray-900">
+        {step === "request" ? "Forgot Password" : "Enter OTP"}
+      </h1>
+
       {error && (
-        <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
+        <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
       )}
 
       {step === "request" ? (
-        <>
-          <p className="text-center text-sm text-white/80">
-            Enter your account email and we&apos;ll send you a 6-digit OTP.
-          </p>
-
-          <form onSubmit={handleRequestCode} className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-white">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-md bg-white py-2 text-sm font-semibold text-[#54b04f] transition hover:bg-green-50 disabled:opacity-60"
-            >
-              {submitting ? "Sending..." : "Send OTP"}
-            </button>
-          </form>
-        </>
-      ) : (
-        <>
-          <p className="text-center text-sm text-white/80">
-            We sent an OTP to <span className="font-medium">{email}</span>. Enter it below with your
-            new password.
-          </p>
-
-          <form onSubmit={handleResetPassword} className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="code" className="block text-sm font-medium text-white">
-                OTP
-              </label>
-              <input
-                id="code"
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                required
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="------"
-                className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-center text-lg tracking-[0.5em] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-white">
-                New Password
-              </label>
-              <PasswordInput
-                id="password"
-                required
-                minLength={6}
-                maxLength={12}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-white">
-                Confirm New Password
-              </label>
-              <PasswordInput
-                id="confirmPassword"
-                required
-                minLength={6}
-                maxLength={12}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"
-              />
-            </div>
-            <p className="-mt-2 text-xs text-white/70">
-              6-12 characters, with at least 1 capital letter and 1 special character.
+        <form onSubmit={handleRequestCode} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="email" className={labelClass}>
+              Your Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="The email you registered with"
+              className={`mt-1 ${inputClass}`}
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              We&apos;ll send you a 6-digit OTP to reset your password.
             </p>
+          </div>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-md bg-white py-2 text-sm font-semibold text-[#54b04f] transition hover:bg-green-50 disabled:opacity-60"
-            >
-              {submitting ? "Resetting..." : "Reset Password"}
-            </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+          >
+            {submitting ? "Sending..." : "Send OTP"}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={handleResetPassword} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="code" className={labelClass}>
+              OTP
+            </label>
+            <input
+              id="code"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="------"
+              className={`mt-1 ${inputClass} text-center text-lg tracking-[0.5em]`}
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Sent to <span className="font-medium text-gray-700">{email}</span>.
+            </p>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => setStep("request")}
-              className="w-full text-center text-xs text-white/70 hover:text-white hover:underline"
-            >
-              Use a different email
-            </button>
-          </form>
-        </>
+          <div>
+            <label htmlFor="password" className={labelClass}>
+              New Password
+            </label>
+            <PasswordInput
+              id="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your new password"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="confirmPassword" className={labelClass}>
+              Confirm New Password
+            </label>
+            <PasswordInput
+              id="confirmPassword"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-type your new password"
+              className={`mt-1 ${inputClass}`}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+          >
+            {submitting ? "Resetting..." : "Reset Password"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStep("request")}
+            className="w-full text-center text-xs text-gray-500 hover:text-[#2f8f66] hover:underline"
+          >
+            Use a different email
+          </button>
+        </form>
       )}
 
-      <p className="mt-6 text-center text-sm text-white/80">
-        <Link to="/login" className="font-medium text-white hover:underline">
+      <p className="mt-8 text-center text-sm text-gray-500">
+        <Link to="/login" className="font-semibold text-[#2f8f66] hover:underline">
           ← Back to log in
         </Link>
       </p>
-    </AuthLayout>
+    </AuthShell>
   );
 }
