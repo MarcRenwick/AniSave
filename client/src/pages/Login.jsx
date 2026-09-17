@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import PasswordInput from "../components/PasswordInput";
 import { requestLoginOtp, loginWithOtp } from "../services/api";
 import logo from "../assets/logo.png";
-import fieldPhoto from "../assets/lndingpge.jpg";
+import fieldPhoto from "../assets/loginbackground.jpg";
 
 const SLIDE_MS = 5000;
 
@@ -129,17 +129,42 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen">
-      <div className="flex w-full flex-col justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-20">
+      <div className="relative hidden w-1/2 lg:block">
+        <img src={fieldPhoto} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+
+        <div className="relative flex h-full flex-col items-center justify-end p-12 text-center text-white">
+          <h2 className="text-2xl font-bold">{slides[slide].title}</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-white/85">{slides[slide].text}</p>
+
+          <div className="mt-6 flex gap-2">
+            {slides.map((s, i) => (
+              <button
+                key={s.title}
+                type="button"
+                onClick={() => setSlide(i)}
+                aria-label={`Show slide ${i + 1}`}
+                aria-current={i === slide}
+                className={`h-2.5 rounded-full transition-all ${
+                  i === slide ? "w-6 bg-white" : "w-2.5 bg-white/50 hover:bg-white/80"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex w-full flex-col justify-center px-6 py-8 sm:px-10 lg:w-1/2 lg:px-14">
         <div className="mx-auto w-full max-w-sm">
           <Link to="/" className="flex items-center gap-2.5">
             <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
             <span className="text-xl font-bold text-gray-900">AniSave</span>
           </Link>
 
-          <h1 className="mt-8 text-2xl font-bold text-gray-900">Log in to your Account</h1>
+          <h1 className="mt-6 text-2xl font-bold text-gray-900">Log in to your Account</h1>
           <p className="mt-1 text-sm text-gray-500">Welcome back! Select method to log in:</p>
 
-          <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => switchMethod("password")}
@@ -166,7 +191,7 @@ export default function Login() {
             </button>
           </div>
 
-          <div className="my-6 flex items-center gap-3">
+          <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-gray-200" />
             <span className="text-xs text-gray-400">
               {method === "password" ? "log in with your password" : "log in with an emailed code"}
@@ -182,7 +207,7 @@ export default function Login() {
           )}
 
           {method === "password" ? (
-            <form onSubmit={handlePasswordLogin} className="space-y-4">
+            <form onSubmit={handlePasswordLogin} className="space-y-3">
               <input
                 id="username"
                 name="username"
@@ -216,7 +241,7 @@ export default function Login() {
               </button>
             </form>
           ) : otpStep === "request" ? (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
+            <form onSubmit={handleRequestOtp} className="space-y-3">
               <input
                 id="email"
                 type="email"
@@ -240,7 +265,7 @@ export default function Login() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
+            <form onSubmit={handleVerifyOtp} className="space-y-3">
               <p className="text-sm text-gray-600">
                 Enter the code sent to <span className="font-medium text-gray-900">{email}</span>. It
                 expires in 10 minutes.
@@ -283,38 +308,12 @@ export default function Login() {
             </form>
           )}
 
-          <p className="mt-8 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-gray-500">
             Don&apos;t have an account?{" "}
             <Link to="/register" className="font-semibold text-[#2f8f66] hover:underline">
               Create an account
             </Link>
           </p>
-        </div>
-      </div>
-
-      <div className="hidden w-1/2 flex-col items-center justify-center bg-gradient-to-br from-[#2f8f66] to-[#1f5c42] p-12 text-white lg:flex">
-        <div className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl">
-          <img src={fieldPhoto} alt="" className="h-64 w-full object-cover" />
-        </div>
-
-        <div className="mt-10 text-center">
-          <h2 className="text-2xl font-bold">{slides[slide].title}</h2>
-          <p className="mx-auto mt-2 max-w-sm text-sm text-white/85">{slides[slide].text}</p>
-        </div>
-
-        <div className="mt-8 flex gap-2">
-          {slides.map((s, i) => (
-            <button
-              key={s.title}
-              type="button"
-              onClick={() => setSlide(i)}
-              aria-label={`Show slide ${i + 1}`}
-              aria-current={i === slide}
-              className={`h-2.5 rounded-full transition-all ${
-                i === slide ? "w-6 bg-white" : "w-2.5 bg-white/50 hover:bg-white/80"
-              }`}
-            />
-          ))}
         </div>
       </div>
     </div>
