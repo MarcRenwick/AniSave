@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, X } from "lucide-react";
+import { ArrowLeft, Camera, MapPin, X } from "lucide-react";
 import { createProduct, getProduct, updateProduct, SERVER_URL } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import { productImages } from "../../utils/productImages";
 
 const MAX_PHOTOS = 5;
@@ -9,7 +10,6 @@ const MAX_PHOTOS = 5;
 const emptyForm = {
   title: "",
   stock: "",
-  location: "",
   price: "",
   category: "vegetable",
   productType: "sale",
@@ -53,14 +53,16 @@ export default function FarmerProductForm() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [form, setForm] = useState(emptyForm);
-  // Each slot is empty, a photo the product already has, or a newly picked file.
-  const [slots, setSlots] = useState(() => Array(MAX_PHOTOS).fill(null));
+  // Photos in display order - either ones the product already has, or files
+  // just picked. The first is the cover.
+  const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const fileInputs = useRef([]);
+  const fileRef = useRef(null);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -69,16 +71,16 @@ export default function FarmerProductForm() {
         setForm({
           title: data.title,
           stock: data.stock,
-          location: data.location || "",
           price: data.price,
           category: data.category,
           productType: data.productType || "sale",
           description: data.description || "",
         });
-        const existing = productImages(data)
-          .slice(0, MAX_PHOTOS)
-          .map((path) => ({ kind: "existing", path }));
-        setSlots([...existing, ...Array(MAX_PHOTOS - existing.length).fill(null)]);
+        setPhotos(
+          productImages(data)
+            .slice(0, MAX_PHOTOS)
+            .map((path) => ({ kind: "existing", path }))
+        );
       })
       .catch(() => setError("Could not load this product."))
       .finally(() => setLoading(false));
@@ -86,23 +88,33 @@ export default function FarmerProductForm() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const setSlot = (index, value) => {
-    const previous = slots[index];
-    if (previous?.kind === "new") URL.revokeObjectURL(previous.preview);
-    setSlots((prev) => prev.map((slot, i) => (i === index ? value : slot)));
+  const handleAddPhotos = (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    const room = MAX_PHOTOS - photos.length;
+    setError(
+      files.length > room
+        ? `Only ${room} more photo${room === 1 ? "" : "s"} could be added - ${MAX_PHOTOS} is the maximum.`
+        : ""
+    );
+    setPhotos((prev) => [
+      ...prev,
+      ...files.slice(0, room).map((file) => ({ kind: "new", file, preview: URL.createObjectURL(file) })),
+    ]);
   };
 
-  const handlePhoto = (index, e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (file) setSlot(index, { kind: "new", file, preview: URL.createObjectURL(file) });
+  const removePhoto = (index) => {
+    const photo = photos[index];
+    if (photo?.kind === "new") URL.revokeObjectURL(photo.preview);
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const photos = slots.filter(Boolean);
     if (photos.length === 0) {
       setError("Add at least one photo of the product.");
       return;
@@ -135,8 +147,6 @@ export default function FarmerProductForm() {
     }
   };
 
-  const coverIndex = slots.findIndex(Boolean);
-
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
       <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
@@ -161,60 +171,58 @@ export default function FarmerProductForm() {
                 Add photos
                 <Required />
               </p>
-              <p className="text-xs text-gray-500">Up to {MAX_PHOTOS}. The first one is the cover.</p>
+              <p className="text-xs text-gray-500">
+                Pick several at once - up to {MAX_PHOTOS}. The first is the cover.
+              </p>
 
               <div className="mt-3 grid grid-cols-2 gap-3">
-                {slots.map((slot, i) => (
-                  <div key={i} className="relative w-fit">
-                    <button
-                      type="button"
-                      onClick={() => fileInputs.current[i]?.click()}
-                      aria-label={slot ? `Replace photo ${i + 1}` : `Upload photo ${i + 1}`}
-                      className="flex h-24 w-24 flex-col items-center justify-center gap-1 overflow-hidden rounded-md border-2 border-dashed border-gray-400 bg-gray-50 text-gray-500 hover:border-[#2f8f66]"
-                    >
-                      {slot ? (
-                        <img
-                          src={slot.kind === "new" ? slot.preview : `${SERVER_URL}${slot.path}`}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <>
-                          <Camera className="h-6 w-6" />
-                          <span className="text-[10px]">Upload a photo</span>
-                        </>
-                      )}
-                    </button>
+                {photos.map((photo, i) => (
+                  <div key={photo.kind === "new" ? photo.preview : photo.path} className="relative w-fit">
+                    <div className="h-24 w-24 overflow-hidden rounded-md border border-gray-300 bg-gray-50">
+                      <img
+                        src={photo.kind === "new" ? photo.preview : `${SERVER_URL}${photo.path}`}
+                        alt={`Product photo ${i + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
 
-                    {i === coverIndex && (
+                    {i === 0 && (
                       <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-[#2f8f66] px-1.5 text-[10px] font-semibold text-white">
                         Cover
                       </span>
                     )}
 
-                    {slot && (
-                      <button
-                        type="button"
-                        onClick={() => setSlot(i, null)}
-                        aria-label={`Remove photo ${i + 1}`}
-                        className="absolute -right-2 -top-2 rounded-full bg-red-600 p-0.5 text-white shadow"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-
-                    <input
-                      ref={(el) => {
-                        fileInputs.current[i] = el;
-                      }}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handlePhoto(i, e)}
-                      className="hidden"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute -right-2 -top-2 rounded-full bg-red-600 p-0.5 text-white shadow"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 ))}
+
+                {photos.length < MAX_PHOTOS && (
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-gray-400 bg-gray-50 text-gray-500 hover:border-[#2f8f66]"
+                  >
+                    <Camera className="h-6 w-6" />
+                    <span className="text-[10px]">Add photos</span>
+                  </button>
+                )}
               </div>
+
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleAddPhotos}
+                className="hidden"
+              />
             </div>
 
             <div className="space-y-4">
@@ -246,22 +254,6 @@ export default function FarmerProductForm() {
               </div>
 
               <div>
-                <label htmlFor="location" className="font-medium text-gray-900">
-                  Address
-                  <Required />
-                </label>
-                <input
-                  id="location"
-                  name="location"
-                  required
-                  value={form.location}
-                  onChange={handleChange}
-                  placeholder="e.g. Brgy. Bagong Bayan, Dagupan City Pangasinan"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
                 <label htmlFor="price" className="font-medium text-gray-900">
                   Price
                   <Required />
@@ -277,6 +269,18 @@ export default function FarmerProductForm() {
                   placeholder="₱ per kilo"
                   className={inputClass}
                 />
+              </div>
+
+              <div className="flex items-start gap-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8f66]" />
+                <p className="text-gray-600">
+                  Pickup address:{" "}
+                  <span className="font-medium text-gray-900">
+                    {user?.location || "not set yet - add it in Edit Profile"}
+                  </span>
+                  <br />
+                  <span className="text-xs">Taken from your registered address, for every listing.</span>
+                </p>
               </div>
 
               <RadioGroup

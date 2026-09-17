@@ -24,6 +24,8 @@ export const getCurrentUser = () => api.get("/auth/me");
 export const forgotPassword = (email) => api.post("/auth/forgot-password", { email });
 export const resetPassword = (email, code, password) => api.post("/auth/reset-password", { email, code, password });
 export const updateProfile = (data) => api.put("/auth/profile", data);
+export const uploadAvatar = (formData) =>
+  api.put("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
 export const changePassword = (currentPassword, newPassword) =>
   api.put("/auth/change-password", { currentPassword, newPassword });
 export const requestAccountDeletion = () => api.post("/auth/delete-account/request-otp");

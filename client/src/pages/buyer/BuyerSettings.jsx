@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { User as UserIcon, Pencil, KeyRound, Trash2, LogOut } from "lucide-react";
+import { Pencil, KeyRound, Trash2, LogOut } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
+import Avatar from "../../components/Avatar";
 import DeleteAccountModal from "../../components/buyer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
@@ -54,9 +55,12 @@ export default function BuyerSettings() {
       <div className="p-8">
         <div className="mx-auto max-w-lg">
           <div className="flex justify-center rounded-t-2xl bg-[#2f8f66] pb-14 pt-8">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-white/20 text-white">
-              <UserIcon className="h-12 w-12" />
-            </div>
+            <Avatar
+              src={user?.avatar}
+              alt={user?.name || "Profile photo"}
+              className="h-24 w-24 rounded-full border-4 border-white bg-white/20 text-white"
+              iconClass="h-12 w-12"
+            />
           </div>
 
           <div className="-mt-10 rounded-2xl bg-white p-6 shadow-sm">
@@ -111,6 +115,7 @@ export default function BuyerSettings() {
         <EditProfileModal
           user={user}
           onClose={() => setShowEdit(false)}
+          onAvatarChanged={updateUser}
           onSaved={(data) => {
             updateUser(data);
             setShowEdit(false);

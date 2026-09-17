@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, CircleUserRound, X } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
+import { useAuth } from "../../context/AuthContext";
+import Avatar from "../Avatar";
 
 export default function FarmerTopBar({ children, showActions = true }) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const panelRef = useRef(null);
   const navigate = useNavigate();
@@ -43,7 +46,12 @@ export default function FarmerTopBar({ children, showActions = true }) {
                 <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
               )}
             </button>
-            <CircleUserRound className="h-9 w-9 rounded-full bg-white text-[#2f8f66]" />
+            <Avatar
+              src={user?.avatar}
+              alt={user?.name || "Profile photo"}
+              className="h-9 w-9 rounded-full bg-white text-[#2f8f66]"
+              iconClass="h-7 w-7"
+            />
           </div>
 
           {open && (

@@ -27,21 +27,30 @@ export default function Landing() {
               <img src={logo} alt="AniSave" className="h-9 w-9 rounded-full" />
               <span className="text-lg font-semibold text-white">AniSave</span>
             </div>
-            <div className="hidden items-center gap-8 text-sm font-medium text-white/90 md:flex">
-              <a href="#home" className="transition hover:text-white">Home</a>
-              <a href="#how-it-works" className="transition hover:text-white">How It Works</a>
-              <a href="#about" className="transition hover:text-white">About</a>
+            <div className="hidden items-center gap-8 text-base font-medium text-white/90 md:flex">
+              <a href="#home" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">
+                Home
+              </a>
+              <a
+                href="#how-it-works"
+                className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white"
+              >
+                How It Works
+              </a>
+              <a href="#about" className="rounded-full px-3 py-2 transition hover:bg-white/10 hover:text-white">
+                About
+              </a>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 to="/register"
-                className="rounded-full border border-white/70 px-3 py-2 text-xs font-medium text-white transition duration-150 hover:bg-white/10 active:scale-95 sm:px-4 sm:text-sm"
+                className="rounded-full border border-white/70 px-4 py-2.5 text-sm font-medium text-white transition duration-150 hover:bg-white/10 active:scale-95 sm:px-6 sm:text-base"
               >
                 Sign Up
               </Link>
               <Link
                 to="/login"
-                className="rounded-full bg-white px-3 py-2 text-xs font-semibold text-[#1f5c42] transition duration-150 hover:bg-green-50 active:scale-95 sm:px-4 sm:text-sm"
+                className="rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#1f5c42] transition duration-150 hover:bg-green-50 active:scale-95 sm:px-6 sm:text-base"
               >
                 Log In
               </Link>

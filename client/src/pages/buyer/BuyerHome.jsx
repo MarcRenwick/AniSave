@@ -1,24 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ImageOff, Sprout, Star, Leaf, Handshake, ShieldCheck, Award } from "lucide-react";
+import { ImageOff, Sprout, Star, Sparkles, MapPin, LayoutGrid } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
-import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import HomeBanner from "../../components/buyer/HomeBanner";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
 
-const badges = [
-  { icon: Leaf, label: "100% Farm-Fresh" },
-  { icon: Handshake, label: "Transparent Rates" },
-  { icon: ShieldCheck, label: "Verified Local Farms" },
-  { icon: Award, label: "Guaranteed Best Value" },
-];
-
 const sortOptions = [
-  { key: "newest", label: "Newest Products" },
-  { key: "recommended", label: "Recommended for You" },
-  { key: "nearest", label: "Nearest to You" },
-  { key: "all", label: "All Products" },
+  { key: "newest", label: "Newest Products", icon: Sparkles },
+  { key: "recommended", label: "Recommended for You", icon: Star },
+  { key: "nearest", label: "Nearest to You", icon: MapPin },
+  { key: "all", label: "All Products", icon: LayoutGrid },
 ];
 
 const FEATURED_SLIDES = 3;
@@ -82,16 +74,6 @@ export default function BuyerHome() {
   const sortParam = searchParams.get("sort");
   const sort = sortOptions.some((o) => o.key === sortParam) ? sortParam : null;
 
-  const updateParam = (key, value, options) =>
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (value) next.set(key, value);
-      else next.delete(key);
-      return next;
-    }, options);
-  // Typing replaces the history entry so Back doesn't replay every keystroke.
-  const setSearch = (value) => updateParam("q", value, { replace: true });
-  const setSort = (value) => updateParam("sort", value);
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
@@ -100,6 +82,14 @@ export default function BuyerHome() {
   const [error, setError] = useState("");
 
   const browsing = Boolean(search.trim()) || sort !== null;
+
+  const setSort = (value) =>
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (value) next.set("sort", value);
+      else next.delete("sort");
+      return next;
+    });
 
   useEffect(() => {
     setLoading(true);
@@ -158,39 +148,43 @@ export default function BuyerHome() {
       tag: recommendedIds.has(product._id) ? "Top Rated" : "Just Listed",
     }));
 
+  const handleShopNow = () => {
+    if (browsing) {
+      setSearchParams(new URLSearchParams());
+      return;
+    }
+    document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <BuyerLayout>
-      <BuyerTopBar
-        search={search}
-        onSearchChange={setSearch}
-        sortOptions={sortOptions}
-        sortValue={sort}
-        onSortChange={setSort}
-      >
-        <h1 className="text-2xl font-semibold text-gray-900">Home</h1>
-      </BuyerTopBar>
-
       <div className="p-8">
-        {!browsing && (
-          <div className="mb-8">
-            <HomeBanner
-              featured={featured}
-              buyerLocation={user?.location}
-              onShop={() => document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" })}
-              onBrowse={setSort}
-              onOpenProduct={(id) => navigate(`/buyer/products/${id}`)}
-            />
+        <div className="mb-8">
+          <HomeBanner
+            featured={featured}
+            buyerLocation={user?.location}
+            onShop={handleShopNow}
+            onBrowse={setSort}
+            onOpenProduct={(id) => navigate(`/buyer/products/${id}`)}
+          />
 
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 rounded-xl bg-white px-4 py-3 text-xs font-medium text-gray-700 shadow-sm">
-              {badges.map(({ icon: Icon, label }) => (
-                <span key={label} className="flex items-center gap-1.5">
-                  <Icon className="h-4 w-4 text-[#2f8f66]" />
-                  {label}
-                </span>
-              ))}
-            </div>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
+            {sortOptions.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSort(sort === key ? null : key)}
+                aria-pressed={sort === key}
+                className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition duration-150 active:scale-95 ${
+                  sort === key ? "bg-[#2f8f66] text-white" : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <Icon className={`h-4 w-4 ${sort === key ? "" : "text-[#2f8f66]"}`} />
+                {label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, BadgeCheck, ImageOff, MapPin, Phone, User as UserIcon } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ImageOff, MapPin, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
+import Avatar from "../../components/Avatar";
 import shopBackground from "../../assets/bckgrnd.jpg";
 import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api";
 import { activeAgo, timeAgo } from "../../utils/activity";
@@ -128,9 +129,12 @@ export default function FarmerProfile() {
 
               <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-green-100 text-[#2f8f66] shadow-sm">
-                    <UserIcon className="h-10 w-10" />
-                  </div>
+                  <Avatar
+                    src={farmer.avatar}
+                    alt={shopName}
+                    className="h-20 w-20 rounded-full border-4 border-white bg-green-100 text-[#2f8f66] shadow-sm"
+                    iconClass="h-10 w-10"
+                  />
                   <div>
                     <p className="flex items-center gap-2 text-xl font-bold text-gray-900">
                       {shopName}

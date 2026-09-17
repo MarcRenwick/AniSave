@@ -49,6 +49,11 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Uploaded profile photo, already cropped to a square by the client
+    avatar: {
+      type: String,
+      default: null,
+    },
 
     // Farmer-only fields
     farmName: {

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star, ThumbsUp, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Star, ThumbsUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import Avatar from "../components/Avatar";
 import { getProduct, getProductRatings, toggleRatingLike } from "../services/api";
 import useScrollReveal from "../hooks/useScrollReveal";
 
@@ -148,9 +149,12 @@ export default function ProductRatings() {
               {visible.map((r) => (
                 <div key={r._id} className="p-6">
                   <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
-                      <UserIcon className="h-5 w-5" />
-                    </div>
+                    <Avatar
+                      src={r.buyerAvatar}
+                      alt={r.buyerName}
+                      className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                      iconClass="h-5 w-5"
+                    />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{r.buyerName}</p>
                       <Stars value={r.stars} className="h-3.5 w-3.5" />

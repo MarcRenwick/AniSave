@@ -3,9 +3,10 @@ const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
+const Rating = require("../models/Rating");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
-const { deleteImageFile } = require("../utils/fileUtils");
+const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 
 // @desc    Register a new user (farmer or buyer)
 // @route   POST /api/auth/register
@@ -61,6 +62,7 @@ const registerUser = asyncHandler(async (req, res) => {
     username: user.username,
     email: user.email,
     role: user.role,
+    avatar: user.avatar,
     isVerified: user.isVerified,
     token: generateToken(user._id, user.role),
   });
@@ -95,6 +97,7 @@ const loginUser = asyncHandler(async (req, res) => {
     username: user.username,
     email: user.email,
     role: user.role,
+    avatar: user.avatar,
     isVerified: user.isVerified,
     token: generateToken(user._id, user.role),
   });
@@ -197,10 +200,30 @@ const updateProfile = asyncHandler(async (req, res) => {
     role: req.user.role,
     location: req.user.location,
     phone: req.user.phone,
+    avatar: req.user.avatar,
     farmName: req.user.farmName,
     farmDescription: req.user.farmDescription,
     isVerified: req.user.isVerified,
   });
+});
+
+// @desc    Replace the logged-in user's profile photo
+// @route   PUT /api/auth/avatar
+// @access  Private
+const uploadAvatar = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    res.status(400);
+    throw new Error("Choose a photo to upload");
+  }
+
+  const previous = req.user.avatar;
+  req.user.avatar = imagePath(req.file);
+  await req.user.save();
+
+  // The old photo only comes off disk once the new one is safely stored.
+  if (previous) deleteImageFile(previous);
+
+  res.json(req.user);
 });
 
 // @desc    Change the logged-in user's password
@@ -273,11 +296,15 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   }
 
   // Cascade delete - remove everything that references this account so
-  // nothing is left orphaned behind.
+  // nothing is left orphaned behind, files included.
   const products = await Product.find({ farmer: user._id });
-  products.forEach((product) => deleteImageFile(product.image));
+  products.forEach((product) =>
+    new Set([...product.images, product.image].filter(Boolean)).forEach(deleteImageFile)
+  );
   await Product.deleteMany({ farmer: user._id });
   await Order.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
+  await Rating.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
+  if (user.avatar) deleteImageFile(user.avatar);
   await user.deleteOne();
 
   res.json({ message: "Your account has been permanently deleted." });
@@ -290,6 +317,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfile,
+  uploadAvatar,
   changePassword,
   requestAccountDeletion,
   confirmAccountDeletion,

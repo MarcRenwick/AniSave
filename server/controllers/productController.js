@@ -7,6 +7,7 @@ const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 
 const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
+const FARMER_FIELDS = "name farmName location rating isVerified avatar";
 
 // multer has already written a request's files to disk by the time the
 // request is rejected, so they have to be removed again explicitly.
@@ -17,7 +18,7 @@ const discardUploads = (req) =>
 // @route   POST /api/products
 // @access  Private (farmer)
 const createProduct = asyncHandler(async (req, res) => {
-  const { title, stock, price, category, location, description, productType } = req.body;
+  const { title, stock, price, category, description, productType } = req.body;
 
   if (!title || stock === undefined || price === undefined || !category) {
     discardUploads(req);
@@ -43,7 +44,9 @@ const createProduct = asyncHandler(async (req, res) => {
       stock,
       price,
       category,
-      location,
+      // Buyers collect from the farm, so a listing's address always follows
+      // the farmer's registered address rather than being typed per product.
+      location: req.user.location,
       description,
       productType,
       images,
@@ -137,16 +140,13 @@ const getAllProducts = asyncHandler(async (req, res) => {
       { $project: { ratings: 0, orders: 0 } },
     ]);
 
-    await Product.populate(products, {
-      path: "farmer",
-      select: "name farmName location rating isVerified",
-    });
+    await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
 
     return res.json(products);
   }
 
   const products = await Product.find(filter)
-    .populate("farmer", "name farmName location rating isVerified")
+    .populate("farmer", FARMER_FIELDS)
     .sort({ createdAt: -1 });
 
   res.json(products);
@@ -156,10 +156,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products/:id
 // @access  Public
 const getProductById = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).populate(
-    "farmer",
-    "name farmName location rating isVerified"
-  );
+  const product = await Product.findById(req.params.id).populate("farmer", FARMER_FIELDS);
 
   if (!product) {
     res.status(404);
@@ -205,8 +202,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 
-  const { title, stock, price, category, location, description, productType, imageOrder } =
-    req.body;
+  const { title, stock, price, category, description, productType, imageOrder } = req.body;
 
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -218,9 +214,11 @@ const updateProduct = asyncHandler(async (req, res) => {
   if (stock !== undefined) product.stock = stock;
   if (price !== undefined) product.price = price;
   if (category !== undefined) product.category = category;
-  if (location !== undefined) product.location = location;
   if (description !== undefined) product.description = description;
   if (productType !== undefined) product.productType = productType;
+  // Re-follows the farmer's registered address, so editing a listing also
+  // brings it up to date if they've since moved.
+  product.location = req.user.location;
 
   const uploaded = (req.files || []).map(imagePath);
   let removedImages = [];

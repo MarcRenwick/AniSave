@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
+import Avatar from "../../components/Avatar";
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
@@ -98,9 +99,12 @@ export default function FarmerSettings() {
         <div className="relative rounded-2xl bg-gradient-to-r from-[#2f8f66] to-[#7fd9a4] p-6 text-white">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-white bg-white/20">
-                <UserIcon className="h-10 w-10" />
-              </div>
+              <Avatar
+                src={user?.avatar}
+                alt={user?.name || "Profile photo"}
+                className="h-20 w-20 rounded-full border-4 border-white bg-white/20"
+                iconClass="h-10 w-10"
+              />
               <div>
                 <h2 className="text-2xl font-bold">{user?.name}</h2>
                 <p className="text-sm text-white/90">
@@ -289,6 +293,7 @@ export default function FarmerSettings() {
         <EditProfileModal
           user={user}
           onClose={() => setShowEdit(false)}
+          onAvatarChanged={updateUser}
           onSaved={(data) => {
             updateUser(data);
             setShowEdit(false);

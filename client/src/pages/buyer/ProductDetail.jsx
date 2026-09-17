@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Package, Star, ShoppingBasket, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Package, Star, ShoppingBasket } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import AddToCartModal from "../../components/buyer/AddToCartModal";
 import CheckoutModal from "../../components/buyer/CheckoutModal";
 import ProductGallery from "../../components/products/ProductGallery";
+import Avatar from "../../components/Avatar";
 import { getProduct, getFarmerProfile } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -211,9 +212,12 @@ export default function ProductDetail() {
         {!loading && !error && product && farmerStats && (
           <div className="mt-6 flex flex-wrap items-center justify-between gap-8 rounded-2xl bg-white p-7 shadow-sm">
             <div className="flex items-center gap-5">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
-                <UserIcon className="h-10 w-10" />
-              </div>
+              <Avatar
+                src={farmerStats.avatar}
+                alt={farmerStats.farmName || farmerStats.name}
+                className="h-20 w-20 rounded-full bg-green-100 text-[#2f8f66]"
+                iconClass="h-10 w-10"
+              />
               <div>
                 <p className="text-xl font-bold text-gray-900">
                   {farmerStats.farmName || farmerStats.name}

@@ -60,7 +60,7 @@ const getProductRatings = asyncHandler(async (req, res) => {
   }
 
   const ratings = await Rating.find({ product: req.params.productId })
-    .populate("buyer", "name")
+    .populate("buyer", "name avatar")
     .sort({ createdAt: -1 });
 
   const viewerId = req.user?._id?.toString();
@@ -74,6 +74,7 @@ const getProductRatings = asyncHandler(async (req, res) => {
       // The reviewer's display name, not their username - that's also their
       // login handle, and shouldn't be published on every review.
       buyerName: r.buyer?.name || "AniSave buyer",
+      buyerAvatar: r.buyer?.avatar || null,
       isMine: Boolean(viewerId) && r.buyer?._id?.toString() === viewerId,
       likeCount: r.likes.length,
       likedByMe: Boolean(viewerId) && r.likes.some((id) => id.toString() === viewerId),
