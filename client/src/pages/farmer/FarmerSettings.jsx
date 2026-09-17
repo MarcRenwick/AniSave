@@ -256,7 +256,7 @@ export default function FarmerSettings() {
                   <button
                     key={p._id}
                     type="button"
-                    onClick={() => navigate("/farmer/products")}
+                    onClick={() => navigate(`/farmer/products/${p._id}`)}
                     className="overflow-hidden rounded-lg bg-gray-50 text-left shadow-sm transition hover:shadow-md"
                   >
                     <div className="flex h-20 items-center justify-center bg-white text-gray-300">
