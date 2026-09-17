@@ -1,29 +1,20 @@
 import { createContext, useContext, useState } from "react";
 import { loginUser, registerUser } from "../services/api";
+import { readStoredUser, writeSession, writeStoredUser, clearSession } from "../utils/session";
 
 const AuthContext = createContext(null);
-
-function readStoredUser() {
-  try {
-    const stored = localStorage.getItem("anisave_user");
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser);
 
-  const persistSession = (data) => {
-    localStorage.setItem("anisave_token", data.token);
-    localStorage.setItem("anisave_user", JSON.stringify(data));
+  const persistSession = (data, remember = true) => {
+    writeSession(data, remember);
     setUser(data);
   };
 
-  const login = async (username, password) => {
+  const login = async (username, password, remember = true) => {
     const { data } = await loginUser({ username, password });
-    persistSession(data);
+    persistSession(data, remember);
     return data;
   };
 
@@ -34,8 +25,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem("anisave_token");
-    localStorage.removeItem("anisave_user");
+    clearSession();
     setUser(null);
   };
 
@@ -44,7 +34,7 @@ export function AuthProvider({ children }) {
   const updateUser = (updates) => {
     setUser((prev) => {
       const next = { ...prev, ...updates };
-      localStorage.setItem("anisave_user", JSON.stringify(next));
+      writeStoredUser(next);
       return next;
     });
   };

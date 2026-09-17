@@ -110,6 +110,86 @@ const getMe = asyncHandler(async (req, res) => {
   res.json(req.user);
 });
 
+// @desc    Email a 6-digit OTP for signing in without a password
+// @route   POST /api/auth/login-otp/request
+// @access  Public
+const requestLoginOtp = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    res.status(400);
+    throw new Error("Email is required");
+  }
+
+  const user = await User.findOne({ email: email.toLowerCase() });
+
+  // Always answers the same way, so this can't be used to find out which
+  // emails are registered. A banned account gets no code either.
+  if (user && !user.isBanned) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.loginCode = crypto.createHash("sha256").update(code).digest("hex");
+    user.loginCodeExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    await sendEmail({
+      to: user.email,
+      subject: "Your AniSave login code",
+      html: `
+        <p>Hi ${user.name},</p>
+        <p>Use this code to log in to AniSave. It expires in 10 minutes and can only be used once.</p>
+        <h2 style="letter-spacing: 6px;">${code}</h2>
+        <p>If you didn't try to log in, you can safely ignore this email - nobody can get in without this code.</p>
+      `,
+    });
+  }
+
+  res.json({ message: "If that email is registered, a login code has been sent." });
+});
+
+// @desc    Log in with the emailed OTP instead of a password
+// @route   POST /api/auth/login-otp/verify
+// @access  Public
+const loginWithOtp = asyncHandler(async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    res.status(400);
+    throw new Error("Email and the login code are required");
+  }
+
+  const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
+
+  const user = await User.findOne({
+    email: email.toLowerCase(),
+    loginCode: hashedCode,
+    loginCodeExpires: { $gt: Date.now() },
+  }).select("+loginCode +loginCodeExpires");
+
+  if (!user) {
+    res.status(400);
+    throw new Error("That login code is invalid or has expired");
+  }
+
+  if (user.isBanned) {
+    res.status(403);
+    throw new Error("This account has been banned. Contact support for more information.");
+  }
+
+  // A code is good for exactly one login.
+  user.loginCode = undefined;
+  user.loginCodeExpires = undefined;
+  await user.save();
+
+  res.json({
+    _id: user._id,
+    name: user.name,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    avatar: user.avatar,
+    isVerified: user.isVerified,
+    token: generateToken(user._id, user.role),
+  });
+});
+
 // @desc    Email a 6-digit OTP to reset a password
 // @route   POST /api/auth/forgot-password
 // @access  Public
@@ -313,6 +393,8 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
 module.exports = {
   registerUser,
   loginUser,
+  requestLoginOtp,
+  loginWithOtp,
   getMe,
   forgotPassword,
   resetPassword,

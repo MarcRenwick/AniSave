@@ -93,6 +93,16 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // One-time code for signing in by email instead of a password
+    loginCode: {
+      type: String,
+      select: false,
+    },
+    loginCodeExpires: {
+      type: Date,
+      select: false,
+    },
+
     resetPasswordCode: {
       type: String,
       select: false,
