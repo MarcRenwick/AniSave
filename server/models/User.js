@@ -81,6 +81,33 @@ const userSchema = new mongoose.Schema(
       },
     },
 
+    // Documents an admin reviews before a farmer is allowed to sell.
+    // verificationStatus has no default on purpose: accounts made before this
+    // existed have none, and fall back to isVerified - see
+    // effectiveVerificationStatus() in utils/verification.js.
+    verificationStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+    },
+    verificationNote: {
+      type: String,
+      trim: true,
+    },
+    governmentId: {
+      type: String,
+      default: null,
+    },
+    farmDocuments: {
+      type: [String],
+      default: [],
+    },
+    verificationSubmittedAt: {
+      type: Date,
+    },
+    verificationReviewedAt: {
+      type: Date,
+    },
+
     // Set by an admin - a banned user cannot log in
     isBanned: {
       type: Boolean,

@@ -18,6 +18,7 @@ import {
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import Avatar from "../../components/Avatar";
+import VerificationCard from "../../components/farmer/VerificationCard";
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
@@ -180,6 +181,8 @@ export default function FarmerSettings() {
             </div>
           </div>
         </div>
+
+        <VerificationCard />
 
         <div className="grid grid-cols-5 gap-6">
           <div className="col-span-2 rounded-xl bg-white p-5 shadow-sm">

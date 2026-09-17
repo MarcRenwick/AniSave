@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { TrendingDown, Coins, Banknote, TrendingUp, Award, Star } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
+import VerificationBanner from "../../components/farmer/VerificationBanner";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProducts, getFarmerOrders } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
@@ -124,6 +125,10 @@ export default function FarmerDashboard() {
       <FarmerTopBar>
         <h1 className="text-2xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
       </FarmerTopBar>
+
+      <div className="px-8 pt-8">
+        <VerificationBanner />
+      </div>
 
       <div className="grid grid-cols-3 gap-6 p-8">
         <div className="col-span-2 space-y-6">

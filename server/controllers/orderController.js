@@ -14,10 +14,17 @@ const createOrder = asyncHandler(async (req, res) => {
     throw new Error("A product and a positive quantity are required");
   }
 
-  const product = await Product.findById(productId);
+  const product = await Product.findById(productId).populate("farmer", "isVerified");
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
+  }
+
+  // Closes the direct-link route around browsing: an unapproved farmer can't
+  // take orders even if a buyer reaches one of their listings.
+  if (!product.farmer?.isVerified) {
+    res.status(403);
+    throw new Error("This farmer isn't verified yet, so their products can't be ordered.");
   }
 
   // Only a listing the farmer put up For Pre-Order takes pre-orders - an
@@ -32,7 +39,7 @@ const createOrder = asyncHandler(async (req, res) => {
 
   const order = await Order.create({
     buyer: req.user._id,
-    farmer: product.farmer,
+    farmer: product.farmer._id,
     product: product._id,
     productTitle: product.title,
     pricePerKilo: product.price,

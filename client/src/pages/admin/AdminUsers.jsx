@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ShieldOff, ShieldCheck } from "lucide-react";
+import { ShieldOff, ShieldCheck, FileSearch } from "lucide-react";
 import AdminLayout from "../../layouts/AdminLayout";
 import AdminTopBar from "../../components/admin/AdminTopBar";
 import BanConfirmModal from "../../components/admin/BanConfirmModal";
+import VerificationReviewModal from "../../components/admin/VerificationReviewModal";
 import { getAdminUsers, banUser, unbanUser } from "../../services/api";
+import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const filters = [
   { key: "", label: "All" },
@@ -11,12 +13,20 @@ const filters = [
   { key: "buyer", label: "Buyers" },
 ];
 
+const verificationMeta = {
+  pending: { label: "Pending", color: "bg-amber-100 text-amber-800" },
+  approved: { label: "Approved", color: "bg-green-100 text-green-700" },
+  rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
+};
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [role, setRole] = useState("");
   const [target, setTarget] = useState(null);
+  const [reviewing, setReviewing] = useState(null);
+  usePreserveScroll(role);
 
   useEffect(() => {
     setLoading(true);
@@ -26,11 +36,18 @@ export default function AdminUsers() {
       .finally(() => setLoading(false));
   }, [role]);
 
+  const replaceUser = (updated) =>
+    setUsers((prev) => prev.map((u) => (u._id === updated._id ? updated : u)));
+
   const handleConfirm = async () => {
     const { data } = target.isBanned ? await unbanUser(target._id) : await banUser(target._id);
-    setUsers((prev) => prev.map((u) => (u._id === data._id ? data : u)));
+    replaceUser(data);
     setTarget(null);
   };
+
+  const pendingCount = users.filter(
+    (u) => u.role === "farmer" && u.verificationStatus === "pending"
+  ).length;
 
   return (
     <AdminLayout>
@@ -40,7 +57,7 @@ export default function AdminUsers() {
       </AdminTopBar>
 
       <div className="p-8">
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {filters.map(({ key, label }) => (
             <button
               key={key}
@@ -55,6 +72,12 @@ export default function AdminUsers() {
               {label}
             </button>
           ))}
+
+          {pendingCount > 0 && (
+            <span className="rounded-full bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800">
+              {pendingCount} farmer{pendingCount === 1 ? "" : "s"} awaiting verification
+            </span>
+          )}
         </div>
 
         {loading && <p className="mt-6 text-sm text-gray-500">Loading users...</p>}
@@ -69,51 +92,79 @@ export default function AdminUsers() {
                   <th className="px-4 py-3">Username</th>
                   <th className="px-4 py-3">Role</th>
                   <th className="px-4 py-3">Location</th>
+                  <th className="px-4 py-3">Verification</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((u) => (
-                  <tr key={u._id}>
-                    <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{u.username}</td>
-                    <td className="px-4 py-3 capitalize text-gray-600">{u.role}</td>
-                    <td className="px-4 py-3 text-gray-600">{u.location || "—"}</td>
-                    <td className="px-4 py-3">
-                      {u.isBanned ? (
-                        <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
-                          Banned
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => setTarget(u)}
-                        className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
-                          u.isBanned
-                            ? "bg-[#2f8f66] text-white hover:bg-[#267a56]"
-                            : "bg-red-600 text-white hover:bg-red-700"
-                        }`}
-                      >
-                        {u.isBanned ? (
-                          <>
-                            <ShieldCheck className="h-3.5 w-3.5" /> Unban
-                          </>
+                {users.map((u) => {
+                  const meta = verificationMeta[u.verificationStatus];
+                  const hasDocuments = Boolean(u.governmentId) && u.farmDocuments?.length > 0;
+                  return (
+                    <tr key={u._id}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{u.username}</td>
+                      <td className="px-4 py-3 capitalize text-gray-600">{u.role}</td>
+                      <td className="px-4 py-3 text-gray-600">{u.location || "—"}</td>
+                      <td className="px-4 py-3">
+                        {u.role === "farmer" ? (
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${meta?.color || "bg-gray-100 text-gray-600"}`}
+                          >
+                            {meta?.label || "—"}
+                          </span>
                         ) : (
-                          <>
-                            <ShieldOff className="h-3.5 w-3.5" /> Ban
-                          </>
+                          <span className="text-xs text-gray-400">Not required</span>
                         )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.isBanned ? (
+                          <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
+                            Banned
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          {u.role === "farmer" && hasDocuments && (
+                            <button
+                              type="button"
+                              onClick={() => setReviewing(u)}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] hover:bg-green-50"
+                            >
+                              <FileSearch className="h-3.5 w-3.5" />
+                              Review
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setTarget(u)}
+                            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold ${
+                              u.isBanned
+                                ? "bg-[#2f8f66] text-white hover:bg-[#267a56]"
+                                : "bg-red-600 text-white hover:bg-red-700"
+                            }`}
+                          >
+                            {u.isBanned ? (
+                              <>
+                                <ShieldCheck className="h-3.5 w-3.5" /> Unban
+                              </>
+                            ) : (
+                              <>
+                                <ShieldOff className="h-3.5 w-3.5" /> Ban
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
@@ -126,6 +177,17 @@ export default function AdminUsers() {
 
       {target && (
         <BanConfirmModal user={target} onClose={() => setTarget(null)} onConfirm={handleConfirm} />
+      )}
+
+      {reviewing && (
+        <VerificationReviewModal
+          farmer={reviewing}
+          onClose={() => setReviewing(null)}
+          onReviewed={(updated) => {
+            replaceUser(updated);
+            setReviewing(null);
+          }}
+        />
       )}
     </AdminLayout>
   );

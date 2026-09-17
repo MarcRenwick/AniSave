@@ -4,6 +4,7 @@ const {
   loginUser,
   requestLoginOtp,
   loginWithOtp,
+  submitVerification,
   getMe,
   forgotPassword,
   resetPassword,
@@ -13,7 +14,7 @@ const {
   confirmAccountDeletion,
   uploadAvatar,
 } = require("../controllers/authController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authorize } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
@@ -23,6 +24,16 @@ router.post("/login", loginUser);
 router.post("/login-otp/request", requestLoginOtp);
 router.post("/login-otp/verify", loginWithOtp);
 router.get("/me", protect, getMe);
+router.post(
+  "/verification",
+  protect,
+  authorize("farmer"),
+  upload.fields([
+    { name: "governmentId", maxCount: 1 },
+    { name: "farmDocuments", maxCount: 5 },
+  ]),
+  submitVerification
+);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 router.put("/profile", protect, updateProfile);

@@ -4,10 +4,12 @@ import { Plus, Leaf } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import ProductCard from "../../components/farmer/products/ProductCard";
+import VerificationBanner from "../../components/farmer/VerificationBanner";
 import RestockModal from "../../components/farmer/products/RestockModal";
 import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmModal";
 import { getMyProducts, restockProduct, deleteProduct } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import { useAuth } from "../../context/AuthContext";
 
 const filters = [
   { key: "all", label: "All" },
@@ -17,7 +19,10 @@ const filters = [
 
 export default function FarmerProducts() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const justAddedId = useLocation().state?.justAddedId;
+  // Matches the server: only an approved farmer can list products.
+  const canSell = Boolean(user?.isVerified);
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +61,10 @@ export default function FarmerProducts() {
       </FarmerTopBar>
 
       <div className="p-8">
+        <div className="mb-6 empty:mb-0">
+          <VerificationBanner />
+        </div>
+
         <div className="flex items-center justify-between">
           <div className="flex gap-3">
             {filters.map(({ key, label }) => (
@@ -78,7 +87,9 @@ export default function FarmerProducts() {
           <button
             type="button"
             onClick={() => navigate("/farmer/products/new")}
-            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56]"
+            disabled={!canSell}
+            title={canSell ? undefined : "Your account needs to be verified before you can list products"}
+            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:opacity-60"
           >
             Create new <Plus className="h-4 w-4" />
           </button>

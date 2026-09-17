@@ -54,6 +54,8 @@ const registerUser = asyncHandler(async (req, res) => {
     location,
     farmName: role === "farmer" ? farmName : undefined,
     farmDescription: role === "farmer" ? farmDescription : undefined,
+    // A farmer has to get their documents past an admin before selling.
+    verificationStatus: role === "farmer" ? "pending" : "approved",
   });
 
   res.status(201).json({
@@ -64,6 +66,7 @@ const registerUser = asyncHandler(async (req, res) => {
     role: user.role,
     avatar: user.avatar,
     isVerified: user.isVerified,
+    verificationStatus: user.verificationStatus,
     token: generateToken(user._id, user.role),
   });
 });
@@ -390,11 +393,59 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   res.json({ message: "Your account has been permanently deleted." });
 });
 
+// @desc    Submit (or resubmit) the documents an admin reviews before a farmer
+//          can sell - a government ID, plus at least one farm-related document
+// @route   POST /api/auth/verification
+// @access  Private (farmer)
+const submitVerification = asyncHandler(async (req, res) => {
+  const newGovernmentId = req.files?.governmentId?.[0];
+  const newFarmDocuments = req.files?.farmDocuments || [];
+
+  const governmentId = newGovernmentId ? imagePath(newGovernmentId) : req.user.governmentId;
+  const farmDocuments = newFarmDocuments.length
+    ? newFarmDocuments.map(imagePath)
+    : req.user.farmDocuments;
+
+  const discard = () => {
+    if (newGovernmentId) deleteImageFile(imagePath(newGovernmentId));
+    newFarmDocuments.forEach((file) => deleteImageFile(imagePath(file)));
+  };
+
+  if (!governmentId) {
+    discard();
+    res.status(400);
+    throw new Error("A photo of a valid government-issued ID is required");
+  }
+  if (farmDocuments.length === 0) {
+    discard();
+    res.status(400);
+    throw new Error("At least one farm-related document is required");
+  }
+
+  // Anything being replaced only leaves the disk once the new set is saved.
+  const replaced = [];
+  if (newGovernmentId && req.user.governmentId) replaced.push(req.user.governmentId);
+  if (newFarmDocuments.length) replaced.push(...req.user.farmDocuments);
+
+  req.user.governmentId = governmentId;
+  req.user.farmDocuments = farmDocuments;
+  req.user.verificationStatus = "pending";
+  req.user.verificationNote = undefined;
+  req.user.verificationSubmittedAt = Date.now();
+  req.user.isVerified = false;
+  await req.user.save();
+
+  replaced.forEach(deleteImageFile);
+
+  res.json(req.user);
+});
+
 module.exports = {
   registerUser,
   loginUser,
   requestLoginOtp,
   loginWithOtp,
+  submitVerification,
   getMe,
   forgotPassword,
   resetPassword,

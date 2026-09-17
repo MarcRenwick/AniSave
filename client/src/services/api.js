@@ -54,9 +54,14 @@ export const updateOrderStatus = (id, status) => api.patch(`/orders/${id}/status
 export const cancelOrder = (id) => api.patch(`/orders/${id}/cancel`);
 export const archiveOrder = (id, archived) => api.patch(`/orders/${id}/archive`, { archived });
 
+export const submitVerification = (formData) =>
+  api.post("/auth/verification", formData, { headers: { "Content-Type": "multipart/form-data" } });
+
 export const getAdminUsers = (role) => api.get("/admin/users", { params: role ? { role } : {} });
 export const banUser = (id) => api.patch(`/admin/users/${id}/ban`);
 export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
+export const reviewFarmerVerification = (id, approved, note) =>
+  api.patch(`/admin/users/${id}/verification`, { approved, note });
 
 export const requestAdminOtp = (email) => api.post("/admin-auth/request-otp", { email });
 export const registerAdmin = (data) => api.post("/admin-auth/register", data);

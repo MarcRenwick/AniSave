@@ -4,10 +4,15 @@ const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
+const { effectiveVerificationStatus } = require("../utils/verification");
 
 const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
 const FARMER_FIELDS = "name farmName location rating isVerified avatar";
+
+// Listings only reach buyers once an admin has approved the farmer behind
+// them, so a rejected or still-pending farmer effectively can't sell.
+const sellable = (product) => Boolean(product.farmer?.isVerified);
 
 // multer has already written a request's files to disk by the time the
 // request is rejected, so they have to be removed again explicitly.
@@ -18,6 +23,17 @@ const discardUploads = (req) =>
 // @route   POST /api/products
 // @access  Private (farmer)
 const createProduct = asyncHandler(async (req, res) => {
+  // The end of the verification flow: only an approved farmer can sell.
+  if (!req.user.isVerified) {
+    discardUploads(req);
+    res.status(403);
+    throw new Error(
+      effectiveVerificationStatus(req.user) === "rejected"
+        ? "Your verification was rejected. Update your documents and resubmit before listing products."
+        : "Your account is still being verified. You can list products once an admin approves it."
+    );
+  }
+
   const { title, stock, price, category, description, productType } = req.body;
 
   if (!title || stock === undefined || price === undefined || !category) {
@@ -142,14 +158,14 @@ const getAllProducts = asyncHandler(async (req, res) => {
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
 
-    return res.json(products);
+    return res.json(products.filter(sellable));
   }
 
   const products = await Product.find(filter)
     .populate("farmer", FARMER_FIELDS)
     .sort({ createdAt: -1 });
 
-  res.json(products);
+  res.json(products.filter(sellable));
 });
 
 // @desc    Get a single product's public detail
