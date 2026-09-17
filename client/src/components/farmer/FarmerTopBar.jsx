@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Bell, X } from "lucide-react";
 import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
 import { useAuth } from "../../context/AuthContext";
@@ -46,12 +46,18 @@ export default function FarmerTopBar({ children, showActions = true }) {
                 <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
               )}
             </button>
-            <Avatar
-              src={user?.avatar}
-              alt={user?.name || "Profile photo"}
-              className="h-9 w-9 rounded-full bg-white text-[#2f8f66]"
-              iconClass="h-7 w-7"
-            />
+            <Link
+              to="/farmer/settings"
+              aria-label="Profile"
+              className="rounded-full transition duration-150 active:scale-90"
+            >
+              <Avatar
+                src={user?.avatar}
+                alt={user?.name || "Profile photo"}
+                className="h-9 w-9 rounded-full bg-white text-[#2f8f66]"
+                iconClass="h-7 w-7"
+              />
+            </Link>
           </div>
 
           {open && (
