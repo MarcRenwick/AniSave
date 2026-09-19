@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-// Total kilos ordered over a period the farmer picks. One series, so no
-// legend - the card title says what is plotted. Individual products are
-// deliberately not broken out here: the farmer already has per-product
-// leaderboards beside this chart, and naming products made the chart's shape
-// change every time the mix changed.
+// Total kilos sold - completed orders only, a buyer placing one doesn't
+// count until the farmer's actually fulfilled it - over a period the farmer
+// picks. One series, so no legend - the card title says what is plotted.
+// Individual products are deliberately not broken out here: the farmer
+// already has per-product leaderboards beside this chart, and naming
+// products made the chart's shape change every time the mix changed.
 const PERIODS = [
   { key: "today", label: "Today" },
   { key: "week", label: "This Week" },
@@ -38,6 +39,65 @@ function niceCeil(value) {
     if (value <= step * base) return step * base;
   }
   return 10 * base;
+}
+
+// A smooth curve through every point, without ever overshooting past a
+// point's real value between it and its neighbors - unlike a plain spline,
+// it can't invent a bump or dip the data doesn't have. Standard monotone
+// cubic Hermite interpolation (Fritsch-Carlson), converted to the cubic
+// bezier segments an SVG path draws.
+function smoothPath(points) {
+  const n = points.length;
+  if (n === 0) return "";
+  if (n === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  const dx = [];
+  const slopes = [];
+  for (let i = 0; i < n - 1; i += 1) {
+    dx[i] = points[i + 1].x - points[i].x;
+    const dy = points[i + 1].y - points[i].y;
+    slopes[i] = dx[i] === 0 ? 0 : dy / dx[i];
+  }
+
+  const tangents = new Array(n);
+  tangents[0] = slopes[0];
+  tangents[n - 1] = slopes[n - 2];
+  for (let i = 1; i < n - 1; i += 1) {
+    tangents[i] =
+      slopes[i - 1] === 0 || slopes[i] === 0 || slopes[i - 1] > 0 !== slopes[i] > 0
+        ? 0
+        : (slopes[i - 1] + slopes[i]) / 2;
+  }
+
+  // Clamp each segment's tangents so the curve can't swing past either
+  // endpoint's value - the guarantee that keeps this "monotone".
+  for (let i = 0; i < n - 1; i += 1) {
+    if (slopes[i] === 0) {
+      tangents[i] = 0;
+      tangents[i + 1] = 0;
+      continue;
+    }
+    const a = tangents[i] / slopes[i];
+    const b = tangents[i + 1] / slopes[i];
+    const h = Math.hypot(a, b);
+    if (h > 3) {
+      const t = 3 / h;
+      tangents[i] *= t;
+      tangents[i + 1] *= t;
+    }
+  }
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < n - 1; i += 1) {
+    const p0 = points[i];
+    const p1 = points[i + 1];
+    const cp1x = p0.x + dx[i] / 3;
+    const cp1y = p0.y + (tangents[i] * dx[i]) / 3;
+    const cp2x = p1.x - dx[i] / 3;
+    const cp2y = p1.y - (tangents[i + 1] * dx[i]) / 3;
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
+  }
+  return d;
 }
 
 const formatKg = (n) => (Number.isInteger(n) ? n : Number(n.toFixed(1))).toLocaleString();
@@ -155,15 +215,18 @@ export default function DemandChart({ orders, loading }) {
     let total = 0;
     let previousTotal = 0;
     orders.forEach((order) => {
-      if (order.status === "cancelled") return;
-      const placed = new Date(order.createdAt);
-      if (placed >= from && placed < to) {
-        const i = bucketIndex(placed, from, granularity);
+      // A placed order hasn't moved any produce yet - only count one the
+      // farmer actually completed, dated by when that happened rather than
+      // whenever the buyer first placed it.
+      if (order.status !== "done") return;
+      const completed = new Date(order.doneAt || order.createdAt);
+      if (completed >= from && completed < to) {
+        const i = bucketIndex(completed, from, granularity);
         if (buckets[i]) {
           buckets[i].value += order.quantity;
           total += order.quantity;
         }
-      } else if (placed >= prevFrom && placed < from) {
+      } else if (completed >= prevFrom && completed < from) {
         previousTotal += order.quantity;
       }
     });
@@ -196,7 +259,8 @@ export default function DemandChart({ orders, loading }) {
   const xAt = (i) => (count > 1 ? (i / (count - 1)) * 100 : 50);
   const yAt = (value) => 100 - (value / max) * 100;
 
-  const linePath = buckets.map((b, i) => `${i === 0 ? "M" : "L"} ${xAt(i)} ${yAt(b.value)}`).join(" ");
+  const points = buckets.map((b, i) => ({ x: xAt(i), y: yAt(b.value) }));
+  const linePath = smoothPath(points);
   const areaPath = `${linePath} L ${xAt(count - 1)} 100 L ${xAt(0)} 100 Z`;
   const hasOrders = chart.total > 0;
 
@@ -227,7 +291,7 @@ export default function DemandChart({ orders, loading }) {
 
       <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-2 pt-5">
         <div>
-          <p className="text-xs text-gray-500">Total ordered · {chart.rangeLabel}</p>
+          <p className="text-xs text-gray-500">Completed orders · {chart.rangeLabel}</p>
           <p className="mt-0.5 text-3xl font-semibold text-gray-900">
             {loading ? "—" : `${formatKg(chart.total)} kg`}
           </p>
@@ -247,7 +311,7 @@ export default function DemandChart({ orders, loading }) {
             </p>
           )}
           {chart.change === null && !loading && (
-            <p className="mt-1 text-xs text-gray-400">Nothing ordered {chart.comparedTo} to compare with</p>
+            <p className="mt-1 text-xs text-gray-400">Nothing sold {chart.comparedTo} to compare with</p>
           )}
         </div>
 
@@ -316,7 +380,7 @@ export default function DemandChart({ orders, loading }) {
           <div
             role="img"
             tabIndex={0}
-            aria-label={`Kilos ordered, ${chart.rangeLabel}. Total ${formatKg(chart.total)} kilos.`}
+            aria-label={`Kilos sold, ${chart.rangeLabel}. Total ${formatKg(chart.total)} kilos.`}
             onMouseMove={moveHover}
             onMouseLeave={() => setHovered(null)}
             onFocus={() => setHovered(count - 1)}
@@ -363,7 +427,7 @@ export default function DemandChart({ orders, loading }) {
 
             {!hasOrders && !loading && (
               <p className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
-                No orders in this period yet
+                Nothing completed in this period yet
               </p>
             )}
 
@@ -432,11 +496,11 @@ export default function DemandChart({ orders, loading }) {
             full size and inflates the page's scrollable height. */}
         <div className="sr-only">
           <table>
-            <caption>Kilos ordered, {chart.rangeLabel}</caption>
+            <caption>Kilos sold, {chart.rangeLabel}</caption>
             <thead>
               <tr>
                 <th scope="col">Period</th>
-                <th scope="col">Kilos ordered</th>
+                <th scope="col">Kilos sold</th>
               </tr>
             </thead>
             <tbody>

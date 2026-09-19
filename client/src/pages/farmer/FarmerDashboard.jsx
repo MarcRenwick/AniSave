@@ -72,25 +72,32 @@ export default function FarmerDashboard() {
   );
   const totalStockKg = useMemo(() => products.reduce((sum, p) => sum + p.stock, 0), [products]);
 
-  const activeOrders = useMemo(() => orders.filter((o) => o.status !== "cancelled"), [orders]);
+  // A buyer placing an order doesn't move any produce yet - the farmer still
+  // has to accept it, and it can still be rejected or cancelled after that.
+  // Everything the dashboard reports as sold/demand only counts an order once
+  // it's actually done, not the moment it's placed.
+  const completedOrders = useMemo(() => orders.filter((o) => o.status === "done"), [orders]);
 
-  // All-time demand, by total quantity ordered.
-  const topProducts = useMemo(() => rankByQuantitySold(activeOrders), [activeOrders]);
+  // All-time demand, by total quantity sold.
+  const topProducts = useMemo(() => rankByQuantitySold(completedOrders), [completedOrders]);
 
-  // Same ranking, narrowed to this calendar month.
+  // Same ranking, narrowed to this calendar month - by when the order was
+  // actually completed, not when it was first placed.
   const topProductsThisMonth = useMemo(() => {
     const now = new Date();
-    const thisMonth = activeOrders.filter((order) => {
-      const d = new Date(order.createdAt);
+    const thisMonth = completedOrders.filter((order) => {
+      const d = new Date(order.doneAt || order.createdAt);
       return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
     });
     return rankByQuantitySold(thisMonth);
-  }, [activeOrders]);
+  }, [completedOrders]);
 
-  // Flash Sale candidates: still in stock, never ordered, not already
+  // Flash Sale candidates: still in stock, no buyer interest at all (this is
+  // about whether it's ever been ordered, not whether that order finished -
+  // one still in progress means it isn't sitting idle), not already
   // discounted, and old enough that it isn't just a normal slow week.
   const staleStock = useMemo(() => {
-    const everOrdered = new Set(activeOrders.map(orderProductId));
+    const everOrdered = new Set(orders.filter((o) => o.status !== "cancelled").map(orderProductId));
     const cutoff = new Date().getTime() - STALE_PRODUCT_DAYS * 24 * 60 * 60 * 1000;
     return products
       .filter(
@@ -102,14 +109,14 @@ export default function FarmerDashboard() {
       )
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
       .slice(0, 6);
-  }, [products, activeOrders]);
+  }, [products, orders]);
 
   const todaysSales = useMemo(
     () =>
-      orders
-        .filter((o) => o.status !== "cancelled" && isToday(o.createdAt))
+      completedOrders
+        .filter((o) => isToday(o.doneAt || o.createdAt))
         .reduce((sum, o) => sum + o.total, 0),
-    [orders]
+    [completedOrders]
   );
 
   const notifications = useMemo(() => deriveNotifications(products, orders), [products, orders]);
@@ -117,14 +124,14 @@ export default function FarmerDashboard() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-2xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
       </FarmerTopBar>
 
-      <div className="px-8 pt-8">
+      <div className="px-8 pt-6">
         <VerificationBanner />
       </div>
 
-      <div className="grid grid-cols-3 gap-6 p-8">
+      <div className="grid grid-cols-3 gap-6 p-8 pt-6">
         <div className="col-span-2 space-y-6">
           <DemandChart orders={orders} loading={loading} />
 
