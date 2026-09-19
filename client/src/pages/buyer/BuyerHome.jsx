@@ -85,6 +85,7 @@ export default function BuyerHome() {
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
   const [flashSaleProducts, setFlashSaleProducts] = useState([]);
+  const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -131,10 +132,18 @@ export default function BuyerHome() {
       return;
     }
 
-    Promise.all([getAllProducts(), getAllProducts({ sort: "flash-sale" }), getFarmers()])
-      .then(([newestRes, flashSaleRes, farmersRes]) => {
+    // Flash Sale feeds the banner at the top; Recommended is its own section
+    // further down the page.
+    Promise.all([
+      getAllProducts(),
+      getAllProducts({ sort: "flash-sale" }),
+      getAllProducts({ sort: "recommended" }),
+      getFarmers(),
+    ])
+      .then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
         setNewestProducts(newestRes.data.slice(0, 4));
         setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
+        setRecommendedProducts(recommendedRes.data.slice(0, 4));
         setFarmers(farmersRes.data);
       })
       .catch(() => setError("Could not load the home page. Is the server running?"))
@@ -226,15 +235,13 @@ export default function BuyerHome() {
             </section>
 
             <section>
-              <h2 className="mb-3 flex items-center gap-1.5 text-lg font-semibold text-gray-900">
-                <Zap className="h-5 w-5 text-red-500" /> Flash Sale
-              </h2>
-              {flashSaleProducts.length === 0 ? (
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for You</h2>
+              {recommendedProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No flash sales right now - check back soon.
+                  No highly-rated products yet - check back once buyers start rating orders.
                 </p>
               ) : (
-                <ProductGrid products={flashSaleProducts} navigate={navigate} />
+                <ProductGrid products={recommendedProducts} navigate={navigate} />
               )}
             </section>
 

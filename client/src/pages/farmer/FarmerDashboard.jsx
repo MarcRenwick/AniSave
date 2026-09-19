@@ -4,15 +4,11 @@ import { Coins, Banknote, TrendingUp, Award, CalendarCheck, Percent } from "luci
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
+import DemandChart from "../../components/farmer/DemandChart";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProducts, getFarmerOrders } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 
-const monthColors = ["bg-amber-400", "bg-rose-400", "bg-indigo-400"];
-// Fixed pixel budget for the demand chart: a label row above a bar row, so a
-// bar scaled to 100% never overflows past its label like it used to.
-const DEMAND_LABEL_HEIGHT = 20;
-const DEMAND_BAR_MAX_HEIGHT = 130;
 // "Old stock nobody bought" - long enough that a normal slow week doesn't
 // get flagged as needing a discount.
 const STALE_PRODUCT_DAYS = 14;
@@ -102,38 +98,6 @@ export default function FarmerDashboard() {
       .slice(0, 6);
   }, [products, activeOrders]);
 
-  // Real month-by-month demand: each of the last 3 calendar months, showing
-  // the farmer's own top-ordered products that month, scaled relative to
-  // that month's own busiest product.
-  const demandChart = useMemo(() => {
-    const now = new Date();
-
-    return [2, 1, 0].map((monthsAgo, idx) => {
-      const target = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
-
-      const byProduct = new Map();
-      activeOrders.forEach((order) => {
-        const d = new Date(order.createdAt);
-        if (d.getFullYear() === target.getFullYear() && d.getMonth() === target.getMonth()) {
-          byProduct.set(order.productTitle, (byProduct.get(order.productTitle) || 0) + order.quantity);
-        }
-      });
-
-      const crops = [...byProduct.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
-      const maxQty = crops[0]?.[1] || 0;
-
-      return {
-        month: target.toLocaleString(undefined, { month: "long" }),
-        color: monthColors[idx],
-        crops: crops.map(([label, qty]) => ({
-          label,
-          qty,
-          pct: maxQty > 0 ? Math.max(15, Math.round((qty / maxQty) * 100)) : 0,
-        })),
-      };
-    });
-  }, [activeOrders]);
-
   const todaysSales = useMemo(
     () =>
       orders
@@ -147,7 +111,7 @@ export default function FarmerDashboard() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-2xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
+        <h1 className="text-3xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
       </FarmerTopBar>
 
       <div className="px-8 pt-8">
@@ -156,47 +120,35 @@ export default function FarmerDashboard() {
 
       <div className="grid grid-cols-3 gap-6 p-8">
         <div className="col-span-2 space-y-6">
-          {/* Demand chart - real data: each of the farmer's last 3 months,
-              showing their own top-ordered products that month */}
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <CardHeader>Analytical Demands this Upcoming Months</CardHeader>
-            <div className="p-6">
-              <div
-                className="flex items-end justify-around border-b-2 border-gray-800"
-                style={{ height: `${DEMAND_LABEL_HEIGHT + DEMAND_BAR_MAX_HEIGHT}px` }}
-              >
-                {demandChart.map((month) => (
-                  <div key={month.month} className="flex items-end gap-4">
-                    {month.crops.length === 0 ? (
-                      <span className="pb-1 text-xs text-gray-400">No orders</span>
-                    ) : (
-                      month.crops.map((crop) => (
-                        <div key={crop.label} className="flex w-16 flex-col items-center">
-                          <div
-                            className="flex w-full items-end justify-center"
-                            style={{ height: `${DEMAND_LABEL_HEIGHT}px` }}
-                          >
-                            <span
-                              className="w-full truncate text-center text-[10px] font-medium text-gray-700"
-                              title={crop.label}
-                            >
-                              {crop.label}
-                            </span>
-                          </div>
-                          <div
-                            className={`w-9 rounded-t ${month.color}`}
-                            style={{ height: `${Math.max(6, (crop.pct / 100) * DEMAND_BAR_MAX_HEIGHT)}px` }}
-                          />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ))}
+          <DemandChart orders={orders} loading={loading} />
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-3 gap-6">
+            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+              <CardHeader>Today&apos;s Sales</CardHeader>
+              <div className="flex items-center gap-3 p-4">
+                <Coins className="h-8 w-8 text-amber-500" />
+                <span className="text-2xl font-bold text-gray-900">₱{todaysSales}</span>
               </div>
-              <div className="mt-2 flex justify-around text-sm font-semibold text-gray-800">
-                {demandChart.map((month) => (
-                  <span key={month.month}>{month.month}</span>
-                ))}
+            </div>
+            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+              <CardHeader>Profit</CardHeader>
+              <div className="flex items-center gap-3 p-4">
+                <Banknote className="h-8 w-8 text-green-600" />
+                <span className="text-lg font-bold text-gray-400">N/A</span>
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
+              <CardHeader>Stock</CardHeader>
+              <div className="flex items-center justify-between p-4">
+                <div className="text-sm text-gray-700">
+                  <p className="text-lg font-bold text-gray-900">{totalStockKg} kg</p>
+                  <p>{products.length} products</p>
+                  {lowStock.length > 0 && (
+                    <p className="text-amber-600">⚠ {lowStock.length} product(s) low in stock</p>
+                  )}
+                </div>
+                <TrendingUp className="h-8 w-8 shrink-0 text-blue-500" />
               </div>
             </div>
           </div>
@@ -230,37 +182,6 @@ export default function FarmerDashboard() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Stat cards */}
-          <div className="grid grid-cols-3 gap-6">
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <CardHeader>Today&apos;s Sales</CardHeader>
-              <div className="flex items-center gap-3 p-4">
-                <Coins className="h-8 w-8 text-amber-500" />
-                <span className="text-2xl font-bold text-gray-900">₱{todaysSales}</span>
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <CardHeader>Profit</CardHeader>
-              <div className="flex items-center gap-3 p-4">
-                <Banknote className="h-8 w-8 text-green-600" />
-                <span className="text-lg font-bold text-gray-400">N/A</span>
-              </div>
-            </div>
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <CardHeader>Stock</CardHeader>
-              <div className="flex items-center justify-between p-4">
-                <div className="text-sm text-gray-700">
-                  <p className="text-lg font-bold text-gray-900">{totalStockKg} kg</p>
-                  <p>{products.length} products</p>
-                  {lowStock.length > 0 && (
-                    <p className="text-amber-600">⚠ {lowStock.length} product(s) low in stock</p>
-                  )}
-                </div>
-                <TrendingUp className="h-8 w-8 shrink-0 text-blue-500" />
-              </div>
-            </div>
           </div>
         </div>
 

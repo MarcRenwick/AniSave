@@ -29,19 +29,19 @@ export default function FarmerTopBar({ children, showActions = true }) {
   };
 
   return (
-    <div className="relative flex items-center justify-between border-b border-gray-200 px-8 py-6">
+    <div className="relative flex items-center justify-between border-b border-gray-200 px-8 py-7">
       <div>{children}</div>
 
       {showActions && (
         <div ref={panelRef} className="relative">
-          <div className="flex items-center gap-3 rounded-full bg-[#2f8f66] py-1.5 pl-4 pr-1.5">
+          <div className="flex items-center gap-3 rounded-full bg-[#2f8f66] py-2 pl-5 pr-2">
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               className="relative"
               aria-label="Notifications"
             >
-              <Bell className="h-5 w-5 text-white" />
+              <Bell className="h-6 w-6 text-white" />
               {notifications.length > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
               )}
@@ -54,8 +54,8 @@ export default function FarmerTopBar({ children, showActions = true }) {
               <Avatar
                 src={user?.avatar}
                 alt={user?.name || "Profile photo"}
-                className="h-9 w-9 rounded-full bg-white text-[#2f8f66]"
-                iconClass="h-7 w-7"
+                className="h-10 w-10 rounded-full bg-white text-[#2f8f66]"
+                iconClass="h-8 w-8"
               />
             </Link>
           </div>
