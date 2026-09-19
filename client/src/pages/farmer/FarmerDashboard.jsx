@@ -15,10 +15,16 @@ const STALE_PRODUCT_DAYS = 14;
 
 // Shared by the all-time and this-month leaderboards below - only the set of
 // orders considered differs between them.
+// getFarmerOrders populates `product` (for its image/category/location), so
+// an order's product is an object here, not a plain id - grouping or
+// comparing by the object itself would treat every order as a different
+// product, since each is a distinct object from JSON parsing.
+const orderProductId = (order) => order.product?._id || order.product;
+
 function rankByQuantitySold(orders) {
   const salesByProduct = new Map();
   orders.forEach((order) => {
-    const key = order.product;
+    const key = orderProductId(order);
     const entry = salesByProduct.get(key) || { title: order.productTitle, qty: 0 };
     entry.qty += order.quantity;
     salesByProduct.set(key, entry);
@@ -84,7 +90,7 @@ export default function FarmerDashboard() {
   // Flash Sale candidates: still in stock, never ordered, not already
   // discounted, and old enough that it isn't just a normal slow week.
   const staleStock = useMemo(() => {
-    const everOrdered = new Set(activeOrders.map((o) => o.product));
+    const everOrdered = new Set(activeOrders.map(orderProductId));
     const cutoff = new Date().getTime() - STALE_PRODUCT_DAYS * 24 * 60 * 60 * 1000;
     return products
       .filter(
@@ -111,7 +117,7 @@ export default function FarmerDashboard() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-3xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
       </FarmerTopBar>
 
       <div className="px-8 pt-8">

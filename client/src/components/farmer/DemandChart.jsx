@@ -425,24 +425,30 @@ export default function DemandChart({ orders, loading }) {
           ))}
         </div>
 
-        {/* The same numbers without hovering, for screen readers. */}
-        <table className="sr-only">
-          <caption>Kilos ordered, {chart.rangeLabel}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Period</th>
-              <th scope="col">Kilos ordered</th>
-            </tr>
-          </thead>
-          <tbody>
-            {buckets.map((b, i) => (
-              <tr key={i}>
-                <th scope="row">{b.label}</th>
-                <td>{formatKg(b.value)}</td>
+        {/* The same numbers without hovering, for screen readers. A <table>
+            won't actually shrink to sr-only's 1px box on its own - CSS never
+            compresses a table below its rows' natural height - so the sr-only
+            wrapper has to be a plain div; without it, this ends up rendered at
+            full size and inflates the page's scrollable height. */}
+        <div className="sr-only">
+          <table>
+            <caption>Kilos ordered, {chart.rangeLabel}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Period</th>
+                <th scope="col">Kilos ordered</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {buckets.map((b, i) => (
+                <tr key={i}>
+                  <th scope="row">{b.label}</th>
+                  <td>{formatKg(b.value)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

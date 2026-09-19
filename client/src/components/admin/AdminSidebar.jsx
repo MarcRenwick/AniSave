@@ -18,7 +18,7 @@ export default function AdminSidebar() {
   };
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col bg-[#2f8f66] px-4 py-6 text-white">
+    <aside className="sticky top-0 flex min-h-screen w-64 shrink-0 flex-col self-stretch bg-[#2f8f66] px-4 py-6 text-white">
       <div className="flex items-center gap-3 px-2">
         <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
         <div className="leading-tight">

@@ -9,12 +9,17 @@ import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 
+// The filter row shows these four. Flash Sale is a real, valid sort (kept
+// here so the URL param and the "Sorted by ..." label still resolve) but
+// isn't one of the row's buttons - it's reached only from the banner tile.
 const sortOptions = [
   { key: "newest", label: "Newest Products", icon: Sparkles },
-  { key: "flash-sale", label: "Flash Sale", icon: Zap },
+  { key: "recommended", label: "Recommended for You", icon: Star },
   { key: "nearest", label: "Nearest to You", icon: MapPin },
   { key: "all", label: "All Products", icon: LayoutGrid },
+  { key: "flash-sale", label: "Flash Sale", icon: Zap },
 ];
+const chipOptions = sortOptions.filter((o) => o.key !== "flash-sale");
 
 const FEATURED_SLIDES = 3;
 
@@ -84,6 +89,7 @@ export default function BuyerHome() {
 
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [flashSaleProducts, setFlashSaleProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
@@ -108,12 +114,12 @@ export default function BuyerHome() {
     if (browsing) {
       const params = {};
       if (search.trim()) params.search = search.trim();
-      // "flash-sale" is filtered/ranked server-side (biggest discount first).
+      // "recommended" and "flash-sale" are filtered/ranked server-side.
       // "newest" and "all" both just want the full, unfiltered catalog -
       // "nearest" starts from that same catalog and is then re-sorted
       // client-side by comparing each product's own location to the
       // buyer's, the same way Nearest Farmers already works.
-      if (sort === "flash-sale") params.sort = "flash-sale";
+      if (sort === "recommended" || sort === "flash-sale") params.sort = sort;
 
       getAllProducts(params)
         .then(({ data }) => {
@@ -142,6 +148,9 @@ export default function BuyerHome() {
     ])
       .then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
         setNewestProducts(newestRes.data.slice(0, 4));
+        // The same fetch, kept whole for the "All Products" section at the
+        // bottom of the page - already newest-first, no extra request.
+        setAllProducts(newestRes.data);
         setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
         setRecommendedProducts(recommendedRes.data.slice(0, 4));
         setFarmers(farmersRes.data);
@@ -187,7 +196,7 @@ export default function BuyerHome() {
           />
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
-            {sortOptions.map(({ key, label, icon: Icon }) => (
+            {chipOptions.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 type="button"
@@ -273,6 +282,15 @@ export default function BuyerHome() {
                     </button>
                   ))}
                 </div>
+              )}
+            </section>
+
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">All Products</h2>
+              {allProducts.length === 0 ? (
+                <p className="text-sm text-gray-500">No products yet.</p>
+              ) : (
+                <ProductGrid products={allProducts} navigate={navigate} />
               )}
             </section>
           </div>
