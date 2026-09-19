@@ -11,6 +11,7 @@ import PrivacySecurityModal from "../../components/settings/PrivacySecurityModal
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser } from "../../services/api";
+import { withPageTransition } from "../../utils/pageTransition";
 
 function Field({ label, value }) {
   return (
@@ -38,15 +39,14 @@ export default function BuyerSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAccountDeleted = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  // Logging out (or deleting the account) eases from this page to the login page.
+  const leaveToLogin = () =>
+    withPageTransition(() => {
+      logout();
+      navigate("/login");
+    });
+  const handleAccountDeleted = leaveToLogin;
+  const handleLogout = leaveToLogin;
 
   return (
     <BuyerLayout>

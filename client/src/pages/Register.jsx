@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ArrowLeft, Check, ShoppingBasket, Sprout } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
+import SmoothLink from "../components/SmoothLink";
 import AddressPicker from "../components/AddressPicker";
+import { useSmoothNavigate } from "../utils/pageTransition";
 import VerificationDocumentFields from "../components/verification/VerificationDocumentFields";
 import { getPasswordError } from "../utils/password";
 import { emptyAddress, isAddressComplete } from "../utils/address";
@@ -61,7 +63,7 @@ const TermsConsent = ({ checked, onChange }) => (
 
 export default function Register() {
   const { register } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useSmoothNavigate();
 
   const [role, setRole] = useState(null);
   const [step, setStep] = useState(1);
@@ -224,13 +226,13 @@ export default function Register() {
     >
       <div className="flex items-center justify-between">
         {step === 1 ? (
-          <Link
+          <SmoothLink
             to="/"
             aria-label="Back to home"
             className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
             <ArrowLeft className="h-4 w-4" />
-          </Link>
+          </SmoothLink>
         ) : (
           <button
             type="button"
@@ -244,9 +246,9 @@ export default function Register() {
 
         <p className="text-sm text-gray-500">
           Already member?{" "}
-          <Link to="/login" className="font-semibold text-[#2f8f66] hover:underline">
+          <SmoothLink to="/login" className="font-semibold text-[#2f8f66] hover:underline">
             Sign in
-          </Link>
+          </SmoothLink>
         </p>
       </div>
 

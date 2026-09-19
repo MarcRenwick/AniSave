@@ -31,14 +31,20 @@ const fmtHour = (d) => d.toLocaleTimeString(undefined, { hour: "numeric" });
 const fmtMonth = (d) => d.toLocaleDateString(undefined, { month: "short" });
 const toInputDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-// Axis tops land on 1 / 2 / 2.5 / 5 x 10^n, so the gridline labels stay round.
-function niceCeil(value) {
-  if (value <= 0) return 10;
-  const base = 10 ** Math.floor(Math.log10(value));
-  for (const step of [1, 2, 2.5, 5, 10]) {
-    if (value <= step * base) return step * base;
+// The top gridline sits a little ABOVE the busiest point, never on it: with the
+// peak flush against the top edge its line looked sliced flat and its label had
+// nowhere to go but up into the heading. The axis is Y_TICKS equal steps, each
+// 1 / 1.2 / 1.5 / 2 / 2.5 / 3 / 4 / 5 / 6 / 8 x 10^n, so every gridline label
+// stays a round number.
+const AXIS_HEADROOM = 1.15;
+function axisTop(peak) {
+  if (peak <= 0) return 10;
+  const needed = Math.max((peak * AXIS_HEADROOM) / Y_TICKS, 1);
+  const base = 10 ** Math.floor(Math.log10(needed));
+  for (const step of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) {
+    if (needed <= step * base) return step * base * Y_TICKS;
   }
-  return 10 * base;
+  return 10 * base * Y_TICKS;
 }
 
 // A smooth curve through every point, without ever overshooting past a
@@ -251,7 +257,7 @@ export default function DemandChart({ orders, loading }) {
       ticks,
       rangeLabel,
       comparedTo,
-      max: niceCeil(Math.max(...buckets.map((b) => b.value), 0)),
+      max: axisTop(Math.max(...buckets.map((b) => b.value), 0)),
     };
   }, [orders, period, custom]);
 

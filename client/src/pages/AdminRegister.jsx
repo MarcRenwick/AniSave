@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import PasswordInput from "../components/PasswordInput";
+import SmoothLink from "../components/SmoothLink";
+import { useSmoothNavigate } from "../utils/pageTransition";
 import logo from "../assets/logo.png";
 import { requestAdminOtp, registerAdmin } from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -9,7 +10,7 @@ import { getPasswordError } from "../utils/password";
 
 export default function AdminRegister() {
   const { setSession } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useSmoothNavigate();
 
   const [step, setStep] = useState("request"); // "request" | "register"
   const [email, setEmail] = useState("");
@@ -216,9 +217,9 @@ export default function AdminRegister() {
       )}
 
       <p className="mt-6 text-center text-sm text-white/80">
-        <Link to="/login" className="font-medium text-white hover:underline">
+        <SmoothLink to="/login" className="font-medium text-white hover:underline">
           ← Back to log in
-        </Link>
+        </SmoothLink>
       </p>
     </AuthLayout>
   );

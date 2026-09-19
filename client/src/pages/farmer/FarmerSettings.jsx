@@ -29,6 +29,7 @@ import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
 import PrivacySecurityModal from "../../components/settings/PrivacySecurityModal";
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../../services/api";
+import { withPageTransition } from "../../utils/pageTransition";
 
 const categoryLabels = { vegetable: "Vegetables", fruit: "Fruits" };
 
@@ -90,15 +91,14 @@ export default function FarmerSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleAccountDeleted = () => {
-    logout();
-    navigate("/login");
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  // Logging out (or deleting the account) eases from this page to the login page.
+  const leaveToLogin = () =>
+    withPageTransition(() => {
+      logout();
+      navigate("/login");
+    });
+  const handleAccountDeleted = leaveToLogin;
+  const handleLogout = leaveToLogin;
 
   const categories = [...new Set(products.map((p) => p.category))];
   const productsLabel =

@@ -4,6 +4,7 @@ import { LayoutGrid, Package, ShoppingBag, CircleUserRound, LogOut, PanelLeftClo
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
+import { withPageTransition } from "../../utils/pageTransition";
 
 const navItems = [
   { to: "/farmer/dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -38,10 +39,12 @@ export default function FarmerSidebar() {
     });
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  // The dashboard eases out and the login page eases in, rather than one snapping to the other.
+  const handleLogout = () =>
+    withPageTransition(() => {
+      logout();
+      navigate("/login");
+    });
 
   return (
     <aside

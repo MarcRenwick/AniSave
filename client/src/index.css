@@ -41,3 +41,25 @@
     transform: scale(0.95);
   }
 }
+
+/* Changing page by logging in or out, signing up, or pressing "Get Started"
+   (see utils/pageTransition.js): the page being left fades out as the next one
+   fades in. Same length and easing on both sides, so the two blend evenly
+   instead of dipping to blank in between. (Fade only: sliding the new page in
+   leaves a strip of bare background along its edge while it moves.) */
+@keyframes page-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes page-in {
+  from {
+    opacity: 0;
+  }
+}
+::view-transition-old(root) {
+  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both page-out;
+}
+::view-transition-new(root) {
+  animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both page-in;
+}

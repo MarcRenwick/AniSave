@@ -1,6 +1,6 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
 import { Leaf, Users, Truck, Search, ShoppingBasket, Package, ArrowUpRight, Sprout } from "lucide-react";
+import SmoothLink from "../components/SmoothLink";
 import heroImage from "../assets/lndingpge.jpg";
 import logo from "../assets/logo.png";
 import useScrollReveal from "../hooks/useScrollReveal";
@@ -42,18 +42,18 @@ export default function Landing() {
               </a>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link
+              <SmoothLink
                 to="/register"
                 className="rounded-full border border-white/70 px-4 py-2.5 text-sm font-medium text-white transition duration-150 hover:bg-white/10 active:scale-95 sm:px-6 sm:text-base"
               >
                 Sign Up
-              </Link>
-              <Link
+              </SmoothLink>
+              <SmoothLink
                 to="/login"
                 className="rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-[#1f5c42] transition duration-150 hover:bg-green-50 active:scale-95 sm:px-6 sm:text-base"
               >
                 Log In
-              </Link>
+              </SmoothLink>
             </div>
           </nav>
 
@@ -69,13 +69,13 @@ export default function Landing() {
                   AniSave connects local farmers directly with buyers nearby - no
                   middlemen, fair prices, and produce reserved fresh for pickup.
                 </p>
-                <Link
+                <SmoothLink
                   to="/register"
                   className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#8ee6b0] px-6 py-3 text-sm font-semibold text-[#1f5c42] transition duration-150 hover:bg-[#7ad89e] active:scale-95"
                 >
                   Get Started
                   <ArrowUpRight className="h-4 w-4" />
-                </Link>
+                </SmoothLink>
               </div>
 
               <div className="w-full max-w-xs rounded-2xl bg-white/95 p-5 shadow-2xl backdrop-blur md:ml-auto">

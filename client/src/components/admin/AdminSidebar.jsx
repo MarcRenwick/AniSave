@@ -4,6 +4,7 @@ import { Users, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
+import { withPageTransition } from "../../utils/pageTransition";
 
 const navItems = [{ to: "/admin/users", label: "Users", icon: Users }];
 
@@ -12,10 +13,11 @@ export default function AdminSidebar() {
   const navigate = useNavigate();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
+  const handleLogout = () =>
+    withPageTransition(() => {
+      logout();
+      navigate("/login");
+    });
 
   return (
     <aside className="sticky top-0 flex min-h-screen w-64 shrink-0 flex-col self-stretch bg-[#2f8f66] px-4 py-6 text-white">

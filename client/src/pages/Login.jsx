@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { KeyRound, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
+import SmoothLink from "../components/SmoothLink";
+import { useSmoothNavigate } from "../utils/pageTransition";
 import { requestLoginOtp, loginWithOtp, verifyLoginMfa, resendLoginMfa } from "../services/api";
 
 const inputClass =
@@ -13,7 +15,7 @@ const labelClass = "block text-sm font-medium text-gray-700";
 
 export default function Login() {
   const { login, setSession } = useAuth();
-  const navigate = useNavigate();
+  const navigate = useSmoothNavigate();
   const [searchParams] = useSearchParams();
 
   const [method, setMethod] = useState("password");
@@ -144,9 +146,9 @@ export default function Login() {
         Remember me
       </label>
       {method === "password" && !mfa && (
-        <Link to="/forgot-password" className="text-sm font-medium text-[#2f8f66] hover:underline">
+        <SmoothLink to="/forgot-password" className="text-sm font-medium text-[#2f8f66] hover:underline">
           Forgot password?
-        </Link>
+        </SmoothLink>
       )}
     </div>
   );
@@ -352,9 +354,9 @@ export default function Login() {
 
       <p className="mt-8 text-center text-sm text-gray-500">
         Don&apos;t have an account?{" "}
-        <Link to="/register" className="font-semibold text-[#2f8f66] hover:underline">
+        <SmoothLink to="/register" className="font-semibold text-[#2f8f66] hover:underline">
           Sign up
-        </Link>
+        </SmoothLink>
       </p>
       <p className="mt-2 text-center text-xs text-gray-400">
         <Link to="/terms" className="hover:text-[#2f8f66] hover:underline">

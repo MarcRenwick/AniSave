@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
+import SmoothLink from "../components/SmoothLink";
+import { useSmoothNavigate } from "../utils/pageTransition";
 import { forgotPassword, resetPassword } from "../services/api";
 import { getPasswordError } from "../utils/password";
 
@@ -11,7 +12,7 @@ const inputClass =
 const labelClass = "block text-sm font-medium text-gray-700";
 
 export default function ForgotPassword() {
-  const navigate = useNavigate();
+  const navigate = useSmoothNavigate();
 
   const [step, setStep] = useState("request"); // "request" | "reset"
   const [email, setEmail] = useState("");
@@ -171,9 +172,9 @@ export default function ForgotPassword() {
       )}
 
       <p className="mt-8 text-center text-sm text-gray-500">
-        <Link to="/login" className="font-semibold text-[#2f8f66] hover:underline">
+        <SmoothLink to="/login" className="font-semibold text-[#2f8f66] hover:underline">
           ← Back to log in
-        </Link>
+        </SmoothLink>
       </p>
     </AuthShell>
   );
