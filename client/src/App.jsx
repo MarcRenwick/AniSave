@@ -26,6 +26,8 @@ import BuyerSettings from "./pages/buyer/BuyerSettings";
 import BuyerOrders from "./pages/buyer/BuyerOrders";
 import OrderDetail from "./pages/buyer/OrderDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminReports from "./pages/admin/AdminReports";
+import ReportFarmer from "./pages/buyer/ReportFarmer";
 import AdminRegister from "./pages/AdminRegister";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -136,6 +138,14 @@ export default function App() {
             {/* Public - browsing doesn't require an account */}
             <Route path="/buyer/home" element={<BuyerHome />} />
             <Route path="/buyer/farmers/:id" element={<FarmerProfile />} />
+            <Route
+              path="/buyer/farmers/:id/report"
+              element={
+                <ProtectedRoute role="buyer">
+                  <ReportFarmer />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/buyer/products/:id" element={<ProductDetail />} />
             <Route path="/buyer/products/:id/ratings" element={<ProductRatings />} />
             <Route path="/buyer/cart" element={<CartPage />} />
@@ -177,6 +187,15 @@ export default function App() {
               element={
                 <ProtectedRoute role="admin">
                   <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/reports"
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminReports />
                 </ProtectedRoute>
               }
             />

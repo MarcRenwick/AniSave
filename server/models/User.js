@@ -140,6 +140,18 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // A farmer suspended after a buyer's report was reviewed (see
+    // controllers/reportController.js). It is the same restriction as a ban -
+    // isBanned is what every check reads - plus when and why, so the account is
+    // told it was suspended rather than banned. Unbanning clears both.
+    suspendedAt: {
+      type: Date,
+    },
+    suspensionReason: {
+      type: String,
+      trim: true,
+      maxlength: [500, "The reason must be 500 characters or fewer"],
+    },
 
     // Stamped (throttled) on authenticated requests, so a seller's profile
     // can show a real "last active" time instead of a made-up one
@@ -248,6 +260,7 @@ const userSchema = new mongoose.Schema(
 // Whatever ends up in a response, these never do - even if a query selected them.
 const PRIVATE_FIELDS = [
   "password",
+  "suspensionReason",
   "tokenVersion",
   "failedLoginAttempts",
   "lockUntil",

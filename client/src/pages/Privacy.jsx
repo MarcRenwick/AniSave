@@ -19,6 +19,7 @@ export default function Privacy() {
             "Optional: a phone number and a profile photo.",
             "Farmers: farm name and description, a photo of a government-issued ID and one or more farm-related documents.",
             "What you do on AniSave: products you list, orders you place or receive, and ratings you write.",
+            "Reports: if you report a seller, the reason, your description and any photos you attach.",
             "Security records: one-time codes we email you (stored hashed, expiring within minutes), failed sign-in counts, and the sign-in token kept in your browser.",
           ]}
         />
@@ -38,6 +39,7 @@ export default function Privacy() {
             "To run your account and the marketplace: showing farms and products, placing and tracking orders.",
             "To sort farms and products from nearest to farthest, using the city you chose.",
             "To verify farmers: an administrator reviews the ID and farm documents before a farmer can sell. They are used for nothing else.",
+            "To keep the marketplace safe: an administrator reads the reports buyers send about sellers and decides whether to dismiss them or suspend the seller.",
             "To keep accounts secure: emailed sign-in and password-reset codes, two-step sign-in, and limits on repeated failed attempts.",
             "We only email you the codes and security messages you ask for - no marketing emails.",
           ]}
@@ -52,6 +54,7 @@ export default function Privacy() {
             "The buyer and farmer on an order: each other's name, address and phone number, so the order can be arranged.",
             "Administrators: the account list (to moderate accounts) and a farmer's ID and farm documents while reviewing them.",
             "Your ID and farm documents are stored privately. Only you and an administrator can open them - they are never public.",
+            "A report you send, and its photos, are seen only by you and administrators. The seller is not shown who reported them.",
           ]}
         />
       </Section>
@@ -60,8 +63,9 @@ export default function Privacy() {
         <p>
           We keep your information for as long as your account exists. When you use{" "}
           <strong>Delete Account</strong> in your profile (confirmed with a code emailed to you), your
-          account, products, orders, ratings, profile photo and verification documents are permanently
-          removed.
+          account, products, orders, ratings, profile photo, verification documents and the reports you
+          sent (with their photos) are permanently removed. A seller who deletes their account also has
+          the reports about them removed.
         </p>
       </Section>
 

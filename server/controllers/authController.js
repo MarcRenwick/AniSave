@@ -5,7 +5,9 @@ const User = require("../models/User");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
+const Report = require("../models/Report");
 const generateToken = require("../utils/generateToken");
+const { restrictionMessage } = require("../utils/restriction");
 const sendEmail = require("../utils/sendEmail");
 const { imagePath, documentPath, deleteImageFile } = require("../utils/fileUtils");
 const { effectiveVerificationStatus } = require("../utils/verification");
@@ -240,7 +242,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   if (user.isBanned) {
     res.status(403);
-    throw new Error("This account has been banned. Contact support for more information.");
+    throw new Error(restrictionMessage(user));
   }
 
   if (needsTwoStep(user)) {
@@ -288,7 +290,7 @@ const verifyLoginMfa = asyncHandler(async (req, res) => {
 
   if (user.isBanned) {
     res.status(403);
-    throw new Error("This account has been banned. Contact support for more information.");
+    throw new Error(restrictionMessage(user));
   }
 
   // A code is good for exactly one sign-in.
@@ -370,7 +372,7 @@ const loginWithOtp = asyncHandler(async (req, res) => {
 
   if (user.isBanned) {
     res.status(403);
-    throw new Error("This account has been banned. Contact support for more information.");
+    throw new Error(restrictionMessage(user));
   }
 
   // A code is good for exactly one login.
@@ -619,6 +621,11 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   await Product.deleteMany({ farmer: user._id });
   await Order.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
   await Rating.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
+  // Reports they sent (and, for a farmer, reports about them) go too - with the
+  // evidence photos attached to them.
+  const reports = await Report.find({ $or: [{ reporter: user._id }, { farmer: user._id }] });
+  reports.forEach((report) => report.evidence.forEach(deleteImageFile));
+  await Report.deleteMany({ $or: [{ reporter: user._id }, { farmer: user._id }] });
   if (user.avatar) deleteImageFile(user.avatar);
   // A farmer's ID and farm documents are the most sensitive thing kept about
   // anyone - they go too, not just the account they were attached to.
@@ -683,11 +690,13 @@ const submitVerification = asyncHandler(async (req, res) => {
 // @access  Private
 const exportMyData = asyncHandler(async (req, res) => {
   const me = req.user;
-  const [orders, ratings, products] = await Promise.all([
+  const [orders, ratings, reports, products] = await Promise.all([
     Order.find({ $or: [{ buyer: me._id }, { farmer: me._id }] })
       .select("productTitle pricePerKilo quantity total status createdAt acceptedAt readyAt doneAt cancelledAt")
       .lean(),
     Rating.find({ buyer: me._id }).select("stars comment createdAt").lean(),
+    // Only the reports this person sent - what others reported about them isn't theirs to export.
+    Report.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     me.role === "farmer"
       ? Product.find({ farmer: me._id }).select("title category productType price salePrice stock location description createdAt").lean()
       : [],
@@ -717,6 +726,7 @@ const exportMyData = asyncHandler(async (req, res) => {
     },
     orders,
     ratingsIWrote: ratings,
+    reportsIFiled: reports,
     myProducts: products,
   };
 

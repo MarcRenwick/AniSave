@@ -1,15 +1,18 @@
-import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { BadgeCheck, ImageOff, MapPin, Phone } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
+import { BadgeCheck, Flag, ImageOff, MapPin, MoreVertical, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import Avatar from "../../components/Avatar";
+import Modal from "../../components/Modal";
 import PriceTag from "../../components/products/PriceTag";
 import shopBackground from "../../assets/bckgrnd.jpg";
+import { useAuth } from "../../context/AuthContext";
 import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api";
 import { activeAgo, timeAgo } from "../../utils/activity";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { formatDistance } from "../../utils/address";
+import { useSmoothNavigate } from "../../utils/pageTransition";
 
 const tabs = [
   { key: "home", label: "Home" },
@@ -79,6 +82,18 @@ function ProductGrid({ products, empty }) {
 
 export default function FarmerProfile() {
   const { id } = useParams();
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const smoothNavigate = useSmoothNavigate();
+
+  // Buyers (and visitors, who are asked to log in first) can report a shop;
+  // farmers and admins can't.
+  const canReport = !user || user.role === "buyer";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  // Coming back from the report form with { reported: true } shows the confirmation once.
+  const [reported, setReported] = useState(Boolean(location.state?.reported));
 
   const [farmer, setFarmer] = useState(null);
   const [products, setProducts] = useState([]);
@@ -105,7 +120,27 @@ export default function FarmerProfile() {
       .finally(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, [menuOpen]);
+
+  // The confirmation is shown once: clear it from the history entry so a refresh doesn't repeat it.
+  useEffect(() => {
+    if (location.state?.reported) navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const shopName = farmer?.farmName || farmer?.name || "Shop";
+
+  const startReport = () => {
+    setMenuOpen(false);
+    smoothNavigate(user ? `/buyer/farmers/${id}/report` : "/login");
+  };
 
   return (
     <BuyerLayout>
@@ -115,53 +150,81 @@ export default function FarmerProfile() {
 
         {!loading && !error && farmer && (
           <>
-            <div
-              className="relative overflow-hidden rounded-t-2xl bg-cover bg-center"
-              style={{ backgroundImage: `url(${shopBackground})` }}
-            >
-              <div className="absolute inset-0 bg-white/85" />
+            <div className="relative">
+              <div
+                className="relative overflow-hidden rounded-t-2xl bg-cover bg-center"
+                style={{ backgroundImage: `url(${shopBackground})` }}
+              >
+                <div className="absolute inset-0 bg-white/85" />
 
-              <div className="relative flex flex-wrap items-center justify-between gap-6 p-6">
-                <div className="flex items-center gap-4">
-                  <Avatar
-                    src={farmer.avatar}
-                    alt={shopName}
-                    className="h-20 w-20 rounded-full border-4 border-white bg-green-100 text-[#2f8f66] shadow-sm"
-                    iconClass="h-10 w-10"
-                  />
-                  <div>
-                    <p className="flex items-center gap-2 text-xl font-bold text-gray-900">
-                      {shopName}
-                      {farmer.isVerified && <BadgeCheck className="h-5 w-5 text-[#2f8f66]" />}
-                    </p>
-                    {activeAgo(farmer.lastActiveAt) && (
-                      <p className="text-sm text-gray-600">{activeAgo(farmer.lastActiveAt)}</p>
-                    )}
-                    {farmer.phone && (
-                      <a
-                        href={`tel:${farmer.phone}`}
-                        className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95"
-                      >
-                        <Phone className="h-4 w-4" />
-                        Call Now
-                      </a>
-                    )}
+                <div className={`relative flex flex-wrap items-center justify-between gap-6 p-6 ${canReport ? "pt-10" : ""}`}>
+                  <div className="flex items-center gap-4">
+                    <Avatar
+                      src={farmer.avatar}
+                      alt={shopName}
+                      className="h-20 w-20 rounded-full border-4 border-white bg-green-100 text-[#2f8f66] shadow-sm"
+                      iconClass="h-10 w-10"
+                    />
+                    <div>
+                      <p className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                        {shopName}
+                        {farmer.isVerified && <BadgeCheck className="h-5 w-5 text-[#2f8f66]" />}
+                      </p>
+                      {activeAgo(farmer.lastActiveAt) && (
+                        <p className="text-sm text-gray-600">{activeAgo(farmer.lastActiveAt)}</p>
+                      )}
+                      {farmer.phone && (
+                        <a
+                          href={`tel:${farmer.phone}`}
+                          className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95"
+                        >
+                          <Phone className="h-4 w-4" />
+                          Call Now
+                        </a>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Stat
+                      label="Ratings"
+                      value={
+                        farmer.ratingCount > 0
+                          ? `${farmer.rating.toFixed(1)} (${farmer.ratingCount})`
+                          : "None yet"
+                      }
+                    />
+                    <Stat label="Joined" value={timeAgo(farmer.createdAt)} />
+                    <Stat label="Products" value={farmer.productCount} />
                   </div>
                 </div>
-
-                <div className="space-y-1.5">
-                  <Stat
-                    label="Ratings"
-                    value={
-                      farmer.ratingCount > 0
-                        ? `${farmer.rating.toFixed(1)} (${farmer.ratingCount})`
-                        : "None yet"
-                    }
-                  />
-                  <Stat label="Joined" value={timeAgo(farmer.createdAt)} />
-                  <Stat label="Products" value={farmer.productCount} />
-                </div>
               </div>
+
+              {canReport && (
+                <div ref={menuRef} className="absolute right-3 top-3 z-20">
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen((open) => !open)}
+                    aria-label="More options"
+                    aria-expanded={menuOpen}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-gray-700 shadow-sm hover:bg-white"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </button>
+
+                  {menuOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-52 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5">
+                      <button
+                        type="button"
+                        onClick={startReport}
+                        className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Flag className="h-4 w-4 text-[#2f8f66]" /> Report this user
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-2 rounded-b-2xl bg-[#2f8f66] px-4 py-3">
@@ -262,6 +325,21 @@ export default function FarmerProfile() {
           </p>
         )}
       </div>
+
+      {reported && (
+        <Modal title="Successfully Reported" onClose={() => setReported(false)}>
+          <p className="text-sm text-gray-600">
+            Your report has been submitted successfully. We&apos;ll review the information provided.
+          </p>
+          <button
+            type="button"
+            onClick={() => setReported(false)}
+            className="mt-5 w-full rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56]"
+          >
+            OK
+          </button>
+        </Modal>
+      )}
     </BuyerLayout>
   );
 }

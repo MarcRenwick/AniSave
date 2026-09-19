@@ -33,4 +33,7 @@ const emailLimiter = limiter({ limit: 8 });
 // Creating accounts: a few per hour from one address.
 const registerLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 20 });
 
-module.exports = { apiLimiter, guessLimiter, emailLimiter, registerLimiter };
+// Sending reports: a few an hour from one address (on top of a per-account daily cap).
+const reportLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 10 });
+
+module.exports = { apiLimiter, guessLimiter, emailLimiter, registerLimiter, reportLimiter };

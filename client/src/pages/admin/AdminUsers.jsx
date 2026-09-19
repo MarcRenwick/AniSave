@@ -131,8 +131,11 @@ export default function AdminUsers() {
                       </td>
                       <td className="px-4 py-3">
                         {u.isBanned ? (
-                          <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700">
-                            Banned
+                          <span
+                            title={u.suspendedAt ? "Suspended after a report was reviewed" : undefined}
+                            className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700"
+                          >
+                            {u.suspendedAt ? "Suspended" : "Banned"}
                           </span>
                         ) : (
                           <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">

@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const { restrictionMessage } = require("../utils/restriction");
 
 // How stale a user's "last active" stamp may get before it's rewritten, so
 // presence display doesn't cost a database write on every single request.
@@ -28,7 +29,7 @@ async function userForToken(token) {
   if ((decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
     return { error: "Your session has ended. Please log in again." };
   }
-  if (user.isBanned) return { error: "This account has been banned. Contact support for more information." };
+  if (user.isBanned) return { error: restrictionMessage(user) };
 
   return { user };
 }

@@ -91,6 +91,14 @@ export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
 export const reviewFarmerVerification = (id, approved, note) =>
   api.patch(`/admin/users/${id}/verification`, { approved, note });
 
+// Reports: a buyer reports a farmer (multipart, with optional evidence photos);
+// admins review each one and make the final call.
+export const createReport = (formData) =>
+  api.post("/reports", formData, { headers: { "Content-Type": "multipart/form-data" } });
+export const getAdminReports = () => api.get("/admin/reports");
+export const markReportReviewed = (id) => api.patch(`/admin/reports/${id}/review`);
+export const decideReport = (id, action, note) => api.patch(`/admin/reports/${id}/decision`, { action, note });
+
 export const requestAdminOtp = (email) => api.post("/admin-auth/request-otp", { email });
 export const registerAdmin = (data) => api.post("/admin-auth/register", data);
 

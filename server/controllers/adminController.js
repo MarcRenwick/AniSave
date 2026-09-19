@@ -55,6 +55,9 @@ const unbanUser = asyncHandler(async (req, res) => {
   }
 
   user.isBanned = false;
+  // A suspension (from a report) ends with the unban, too.
+  user.suspendedAt = undefined;
+  user.suspensionReason = undefined;
   await user.save();
   res.json(withStatus(user));
 });

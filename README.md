@@ -98,6 +98,15 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 - **Errors and headers** — errors never include stack traces or internal text (details go to the server log), `helmet` sets security headers, and CORS only allows `CLIENT_URL`.
 - **Tests** — with `NODE_ENV=test` no email is ever sent (messages are written to a file in the temp folder); add `RATE_LIMIT=off` to run bulk tests. Set `NODE_ENV=production` when deployed.
 
+## Reports
+
+Buyers can report a farmer from the farmer's shop page (the menu at the top right → **Report this user**): pick a reason, describe what happened (up to 320 characters) and optionally attach up to 5 photos.
+
+- Reports go to the admin's **Reports** page (`/admin/reports`, `GET /api/admin/reports`). Each has a status: **Pending** → **Reviewed** (an admin has opened it) → **Dismissed** or **Suspended** (the admin's final decision, `PATCH /api/admin/reports/:id/decision`).
+- **Suspending** a farmer restricts their account like a ban (they're signed out immediately and can't log in - they're told the account is *suspended*), and hides their shop and products from buyers. Unbanning them from the Users page lifts it.
+- Evidence photos are private (`server/private/reports`), readable only by the buyer who sent them and admins (`GET /api/report-evidence/:file`).
+- A buyer can have one open report per farmer and send up to 5 a day. Deleting an account also deletes the reports it sent (or, for a farmer, reports about them).
+
 ## Viewing the Database
 
 MongoDB Compass (a GUI) is installed on this machine — open it from the Start Menu, connect to `mongodb://127.0.0.1:27017`, then open the `anisave` database → `users` collection to see registered accounts. Passwords are stored bcrypt-hashed, not in plain text.

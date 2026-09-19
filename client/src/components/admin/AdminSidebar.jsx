@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Users, LogOut } from "lucide-react";
+import { Users, Flag, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
 import { withPageTransition } from "../../utils/pageTransition";
 
-const navItems = [{ to: "/admin/users", label: "Users", icon: Users }];
+const navItems = [
+  { to: "/admin/users", label: "Users", icon: Users },
+  { to: "/admin/reports", label: "Reports", icon: Flag },
+];
 
 export default function AdminSidebar() {
   const { logout } = useAuth();

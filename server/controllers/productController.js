@@ -13,11 +13,12 @@ const parseSalePrice = (value) => (value === undefined || value === "" ? null : 
 
 const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
-const FARMER_FIELDS = "name farmName location rating isVerified avatar";
+const FARMER_FIELDS = "name farmName location rating isVerified isBanned avatar";
 
 // Listings only reach buyers once an admin has approved the farmer behind
-// them, so a rejected or still-pending farmer effectively can't sell.
-const sellable = (product) => Boolean(product.farmer?.isVerified);
+// them, so a rejected or still-pending farmer effectively can't sell - and a
+// banned or suspended one is out of the marketplace altogether.
+const sellable = (product) => Boolean(product.farmer?.isVerified) && !product.farmer?.isBanned;
 
 // multer has already written a request's files to disk by the time the
 // request is rejected, so they have to be removed again explicitly.
@@ -229,7 +230,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
 const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id).populate("farmer", FARMER_FIELDS);
 
-  if (!product) {
+  // A suspended farmer's listings aren't reachable, even by a direct link.
+  if (!product || product.farmer?.isBanned) {
     res.status(404);
     throw new Error("Product not found");
   }

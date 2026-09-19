@@ -15,7 +15,7 @@ const publicPlace = (address) => ({ city: address?.city, province: address?.prov
 // @access  Public (distances need a signed-in viewer)
 const getFarmers = asyncHandler(async (req, res) => {
   // Only farmers an admin has approved can sell, so only they are worth listing.
-  const found = await User.find({ role: "farmer", isVerified: true })
+  const found = await User.find({ role: "farmer", isVerified: true, isBanned: { $ne: true } })
     .select("name farmName location rating createdAt address")
     .sort({ createdAt: -1 })
     .lean();
@@ -39,7 +39,7 @@ const getFarmers = asyncHandler(async (req, res) => {
 const getFarmerProfile = asyncHandler(async (req, res) => {
   // A farmer's phone number is only shown to someone signed in - the page is
   // public, and a public number is one anybody can collect.
-  const farmer = await User.findOne({ _id: req.params.id, role: "farmer" }).select(
+  const farmer = await User.findOne({ _id: req.params.id, role: "farmer", isBanned: { $ne: true } }).select(
     `name farmName farmDescription location certifications isVerified createdAt lastActiveAt avatar address${req.user ? " phone" : ""}`
   );
 

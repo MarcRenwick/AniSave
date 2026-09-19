@@ -33,6 +33,7 @@ export default function Terms() {
           items={[
             "An order is a request to a farmer, who may accept it or not. Arrange pick-up or delivery with the farmer.",
             "Only rate products you have actually received, and keep ratings honest and respectful.",
+            "Use “Report this user” on a farmer's shop only for a real problem, with an honest description. Knowingly false reports can lead to action against your account.",
           ]}
         />
       </Section>
@@ -46,8 +47,9 @@ export default function Terms() {
 
       <Section title="Moderation">
         <p>
-          Administrators may reject a farmer&apos;s verification or ban an account that breaks these
-          terms. A banned account can&apos;t log in.
+          Administrators may reject a farmer&apos;s verification, or ban or suspend an account that breaks
+          these terms - for example after reviewing a report. A banned or suspended account can&apos;t
+          log in, and a suspended farmer&apos;s shop and products are hidden from buyers.
         </p>
       </Section>
 

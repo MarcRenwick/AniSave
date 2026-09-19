@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { SERVER_URL, getDocumentFile } from "../services/api";
 
-// A farmer's ID and farm documents are private: the server only gives them to
-// their owner or an administrator, and only to a request that carries the login
-// token. An <img src="..."> can't send that, so the file is fetched with the
-// token and shown from a temporary copy held in the browser.
+// A farmer's ID and farm documents, and the photos attached to a report, are
+// private: the server only gives them to the people they belong to (and admins),
+// and only to a request that carries the login token. An <img src="..."> can't
+// send that, so the file is fetched with the token and shown from a temporary
+// copy held in the browser.
 //
 // (Documents uploaded before private storage existed still have a public
 // /uploads path; those load directly until they've been moved.)
-const isPrivate = (path) => typeof path === "string" && path.startsWith("/documents/");
+const PRIVATE_PREFIXES = ["/documents/", "/report-evidence/"];
+const isPrivate = (path) => typeof path === "string" && PRIVATE_PREFIXES.some((prefix) => path.startsWith(prefix));
 
 // The address to show a document from - and whether fetching it failed.
 export function useDocumentUrl(path) {

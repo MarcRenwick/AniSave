@@ -2,9 +2,9 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const { UPLOAD_DIR, DOCUMENT_DIR } = require("../utils/fileUtils");
+const { UPLOAD_DIR, DOCUMENT_DIR, REPORT_DIR } = require("../utils/fileUtils");
 
-[UPLOAD_DIR, DOCUMENT_DIR].forEach((dir) => {
+[UPLOAD_DIR, DOCUMENT_DIR, REPORT_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -92,5 +92,10 @@ const upload = wrap(multer({ storage: storageIn(UPLOAD_DIR), fileFilter, limits 
 
 // Private documents (a farmer's ID and farm papers): `upload.documents.fields(...)`.
 upload.documents = wrap(multer({ storage: storageIn(DOCUMENT_DIR), fileFilter, limits }));
+
+// Photos attached to a report (private): `upload.reports.array("evidence", 5)`.
+upload.reports = wrap(
+  multer({ storage: storageIn(REPORT_DIR), fileFilter, limits: { fileSize: 5 * 1024 * 1024, files: 5, fields: 10, fieldSize: 64 * 1024 } })
+);
 
 module.exports = upload;

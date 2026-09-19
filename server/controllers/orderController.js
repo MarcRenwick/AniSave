@@ -15,8 +15,8 @@ const createOrder = asyncHandler(async (req, res) => {
     throw new Error("A product and a positive quantity are required");
   }
 
-  const product = await Product.findById(productId).populate("farmer", "isVerified");
-  if (!product) {
+  const product = await Product.findById(productId).populate("farmer", "isVerified isBanned");
+  if (!product || product.farmer?.isBanned) {
     res.status(404);
     throw new Error("Product not found");
   }
