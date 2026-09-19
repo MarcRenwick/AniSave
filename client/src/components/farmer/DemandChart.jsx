@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-// Total kilos sold - completed orders only, a buyer placing one doesn't
-// count until the farmer's actually fulfilled it - over a period the farmer
-// picks. One series, so no legend - the card title says what is plotted.
-// Individual products are deliberately not broken out here: the farmer
-// already has per-product leaderboards beside this chart, and naming
-// products made the chart's shape change every time the mix changed.
+// Revenue from completed orders only - a buyer placing one doesn't count
+// until the farmer's actually fulfilled it - over a period the farmer picks.
+// One series, so no legend - the card title says what is plotted. Individual
+// products are deliberately not broken out here: the farmer already has
+// per-product leaderboards beside this chart, and naming products made the
+// chart's shape change every time the mix changed.
 const PERIODS = [
   { key: "today", label: "Today" },
   { key: "week", label: "This Week" },
@@ -100,7 +100,8 @@ function smoothPath(points) {
   return d;
 }
 
-const formatKg = (n) => (Number.isInteger(n) ? n : Number(n.toFixed(1))).toLocaleString();
+// Money everywhere else in the app is shown in whole pesos, no centavos.
+const formatMoney = (n) => `₱${Math.round(n).toLocaleString()}`;
 
 function buildRange(period, custom, now) {
   if (period === "today") {
@@ -223,11 +224,11 @@ export default function DemandChart({ orders, loading }) {
       if (completed >= from && completed < to) {
         const i = bucketIndex(completed, from, granularity);
         if (buckets[i]) {
-          buckets[i].value += order.quantity;
-          total += order.quantity;
+          buckets[i].value += order.total;
+          total += order.total;
         }
       } else if (completed >= prevFrom && completed < from) {
-        previousTotal += order.quantity;
+        previousTotal += order.total;
       }
     });
 
@@ -291,9 +292,9 @@ export default function DemandChart({ orders, loading }) {
 
       <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-2 pt-5">
         <div>
-          <p className="text-xs text-gray-500">Completed orders · {chart.rangeLabel}</p>
+          <p className="text-xs text-gray-500">Revenue · {chart.rangeLabel}</p>
           <p className="mt-0.5 text-3xl font-semibold text-gray-900">
-            {loading ? "—" : `${formatKg(chart.total)} kg`}
+            {loading ? "—" : formatMoney(chart.total)}
           </p>
           {chart.change !== null && !loading && (
             <p
@@ -372,7 +373,7 @@ export default function DemandChart({ orders, loading }) {
                 className="absolute right-2 -translate-y-1/2"
                 style={{ top: `${(i / Y_TICKS) * 100}%` }}
               >
-                {formatKg((max * (Y_TICKS - i)) / Y_TICKS)}
+                {formatMoney((max * (Y_TICKS - i)) / Y_TICKS)}
               </span>
             ))}
           </div>
@@ -380,7 +381,7 @@ export default function DemandChart({ orders, loading }) {
           <div
             role="img"
             tabIndex={0}
-            aria-label={`Kilos sold, ${chart.rangeLabel}. Total ${formatKg(chart.total)} kilos.`}
+            aria-label={`Revenue, ${chart.rangeLabel}. Total ${formatMoney(chart.total)}.`}
             onMouseMove={moveHover}
             onMouseLeave={() => setHovered(null)}
             onFocus={() => setHovered(count - 1)}
@@ -438,7 +439,7 @@ export default function DemandChart({ orders, loading }) {
                 className="pointer-events-none absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white/90 px-1.5 text-[10px] font-semibold tabular-nums text-gray-700"
                 style={{ left: `${xAt(chart.peak)}%`, top: `calc(${yAt(buckets[chart.peak].value)}% - 8px)` }}
               >
-                {formatKg(buckets[chart.peak].value)} kg
+                {formatMoney(buckets[chart.peak].value)}
               </span>
             )}
 
@@ -465,7 +466,7 @@ export default function DemandChart({ orders, loading }) {
                   }}
                 >
                   <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900">
-                    {formatKg(active.value)} kg
+                    {formatMoney(active.value)}
                   </p>
                   <p className="whitespace-nowrap text-[10px] text-gray-500">{active.label}</p>
                 </div>
@@ -496,18 +497,18 @@ export default function DemandChart({ orders, loading }) {
             full size and inflates the page's scrollable height. */}
         <div className="sr-only">
           <table>
-            <caption>Kilos sold, {chart.rangeLabel}</caption>
+            <caption>Revenue, {chart.rangeLabel}</caption>
             <thead>
               <tr>
                 <th scope="col">Period</th>
-                <th scope="col">Kilos sold</th>
+                <th scope="col">Revenue</th>
               </tr>
             </thead>
             <tbody>
               {buckets.map((b, i) => (
                 <tr key={i}>
                   <th scope="row">{b.label}</th>
-                  <td>{formatKg(b.value)}</td>
+                  <td>{formatMoney(b.value)}</td>
                 </tr>
               ))}
             </tbody>

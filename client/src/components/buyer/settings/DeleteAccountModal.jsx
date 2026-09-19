@@ -1,8 +1,10 @@
 import { useState } from "react";
 import Modal from "../../Modal";
+import { useAuth } from "../../../context/AuthContext";
 import { requestAccountDeletion, confirmAccountDeletion } from "../../../services/api";
 
 export default function DeleteAccountModal({ onClose, onDeleted }) {
+  const { user } = useAuth();
   const [step, setStep] = useState("warn"); // "warn" | "otp"
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -46,7 +48,14 @@ export default function DeleteAccountModal({ onClose, onDeleted }) {
             account and your order history. This cannot be undone.
           </p>
           <p className="mt-3 text-sm text-gray-600">
-            To confirm, we&apos;ll send a one-time OTP to your registered email.
+            To confirm, we&apos;ll send a one-time OTP to your registered email
+            {user?.email && (
+              <>
+                {" "}
+                (<span className="font-medium text-gray-800">{user.email}</span>)
+              </>
+            )}
+            .
           </p>
           <div className="mt-5 flex gap-3">
             <button
@@ -69,7 +78,7 @@ export default function DeleteAccountModal({ onClose, onDeleted }) {
       ) : (
         <form onSubmit={handleConfirm} className="space-y-4">
           <p className="text-sm text-gray-600">
-            Enter the OTP sent to your email to permanently delete your account.
+            Enter the OTP sent to {user?.email || "your email"} to permanently delete your account.
           </p>
           <input
             type="text"

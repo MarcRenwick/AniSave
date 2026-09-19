@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Archive, ArchiveRestore, ImageOff, MapPin, Phone, Star, User as UserIcon } from "lucide-react";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
@@ -216,6 +216,13 @@ export default function OrderDetail() {
                 </div>
               )
             )}
+
+            <Link
+              to="/buyer/home"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 py-2.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-gray-50 active:scale-[0.98]"
+            >
+              Back to Home
+            </Link>
           </>
         )}
       </div>

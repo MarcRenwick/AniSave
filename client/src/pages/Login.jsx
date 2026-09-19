@@ -60,8 +60,11 @@ export default function Login() {
     setNotice("");
     setSubmitting(true);
     try {
-      const { data } = await requestLoginOtp(email.trim());
-      setNotice(data.message);
+      await requestLoginOtp(email.trim());
+      // The server's own message deliberately never confirms whether the
+      // account exists (so this can't be used to test emails), but naming
+      // the address back is safe - it's only repeating what was just typed.
+      setNotice(`If ${email.trim()} is registered, a login code has been sent to it.`);
       setOtpStep("verify");
     } catch (err) {
       setError(err.response?.data?.message || "Could not send a code. Please try again.");
