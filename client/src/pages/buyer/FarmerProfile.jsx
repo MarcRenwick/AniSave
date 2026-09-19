@@ -3,9 +3,11 @@ import { useParams, Link } from "react-router-dom";
 import { BadgeCheck, ImageOff, MapPin, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import Avatar from "../../components/Avatar";
+import PriceTag from "../../components/products/PriceTag";
 import shopBackground from "../../assets/bckgrnd.jpg";
 import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api";
 import { activeAgo, timeAgo } from "../../utils/activity";
+import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const tabs = [
@@ -58,10 +60,15 @@ function ProductGrid({ products, empty }) {
                 </span>
               )
             )}
+            {onFlashSale(product) && (
+              <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                -{discountPercent(product)}%
+              </span>
+            )}
           </div>
           <div className="p-3">
             <p className="truncate font-semibold text-gray-900">{product.title}</p>
-            <p className="text-sm text-[#2f8f66]">₱{product.price} per kilo</p>
+            <PriceTag product={product} size="sm" suffix=" per kilo" />
           </div>
         </Link>
       ))}

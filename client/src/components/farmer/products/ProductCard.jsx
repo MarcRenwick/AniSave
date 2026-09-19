@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, ImageOff } from "lucide-react";
 import { SERVER_URL } from "../../../services/api";
+import { onFlashSale, discountPercent } from "../../../utils/pricing";
 
 export default function ProductCard({ product, isNew, onViewDetails, onRestock, onEdit, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -37,6 +38,13 @@ export default function ProductCard({ product, isNew, onViewDetails, onRestock, 
       {isNew && (
         <span className="absolute left-2 top-2 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
           New
+        </span>
+      )}
+      {onFlashSale(product) && (
+        <span
+          className={`absolute left-2 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ${isNew ? "top-8" : "top-2"}`}
+        >
+          -{discountPercent(product)}% Sale
         </span>
       )}
 

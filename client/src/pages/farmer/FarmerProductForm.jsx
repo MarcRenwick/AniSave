@@ -11,6 +11,7 @@ const emptyForm = {
   title: "",
   stock: "",
   price: "",
+  salePrice: "",
   category: "vegetable",
   productType: "sale",
   description: "",
@@ -72,6 +73,7 @@ export default function FarmerProductForm() {
           title: data.title,
           stock: data.stock,
           price: data.price,
+          salePrice: data.salePrice ?? "",
           category: data.category,
           productType: data.productType || "sale",
           description: data.description || "",
@@ -117,6 +119,10 @@ export default function FarmerProductForm() {
 
     if (photos.length === 0) {
       setError("Add at least one photo of the product.");
+      return;
+    }
+    if (form.salePrice !== "" && Number(form.salePrice) >= Number(form.price)) {
+      setError("Sale price must be less than the regular price.");
       return;
     }
 
@@ -269,6 +275,27 @@ export default function FarmerProductForm() {
                   placeholder="₱ per kilo"
                   className={inputClass}
                 />
+              </div>
+
+              <div>
+                <label htmlFor="salePrice" className="font-medium text-gray-900">
+                  Flash Sale Price{" "}
+                  <span className="text-xs font-normal text-gray-400">(optional)</span>
+                </label>
+                <input
+                  id="salePrice"
+                  name="salePrice"
+                  type="number"
+                  min="0"
+                  value={form.salePrice}
+                  onChange={handleChange}
+                  placeholder="Leave blank for no sale"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Set a lower price to discount this listing - good for old stock that hasn&apos;t
+                  sold. It stays discounted until you clear this or edit it back up.
+                </p>
               </div>
 
               <div className="flex items-start gap-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm">

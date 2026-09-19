@@ -6,6 +6,10 @@ const Rating = require("../models/Rating");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 const { effectiveVerificationStatus } = require("../utils/verification");
 
+// A blank string means "clear the sale"; anything else becomes a number for
+// the model's own less-than-price validation to check.
+const parseSalePrice = (value) => (value === undefined || value === "" ? null : Number(value));
+
 const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
 const FARMER_FIELDS = "name farmName location rating isVerified avatar";
@@ -34,7 +38,7 @@ const createProduct = asyncHandler(async (req, res) => {
     );
   }
 
-  const { title, stock, price, category, description, productType } = req.body;
+  const { title, stock, price, category, description, productType, salePrice } = req.body;
 
   if (!title || stock === undefined || price === undefined || !category) {
     discardUploads(req);
@@ -65,6 +69,7 @@ const createProduct = asyncHandler(async (req, res) => {
       location: req.user.location,
       description,
       productType,
+      salePrice: parseSalePrice(salePrice),
       images,
       image: images[0],
     });
@@ -161,6 +166,27 @@ const getAllProducts = asyncHandler(async (req, res) => {
     return res.json(products.filter(sellable));
   }
 
+  // Flash Sale listings: whatever the farmer has discounted, biggest
+  // discount first. Sorting by percentage off needs it computed in the
+  // aggregation, since Mongo can't sort by an expression directly.
+  if (sort === "flash-sale") {
+    const products = await Product.aggregate([
+      { $match: { ...filter, salePrice: { $ne: null }, $expr: { $lt: ["$salePrice", "$price"] } } },
+      {
+        $addFields: {
+          discountPct: {
+            $multiply: [{ $divide: [{ $subtract: ["$price", "$salePrice"] }, "$price"] }, 100],
+          },
+        },
+      },
+      { $sort: { discountPct: -1, createdAt: -1 } },
+    ]);
+
+    await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
+
+    return res.json(products.filter(sellable));
+  }
+
   const products = await Product.find(filter)
     .populate("farmer", FARMER_FIELDS)
     .sort({ createdAt: -1 });
@@ -218,7 +244,8 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 
-  const { title, stock, price, category, description, productType, imageOrder } = req.body;
+  const { title, stock, price, category, description, productType, imageOrder, salePrice } =
+    req.body;
 
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -232,6 +259,9 @@ const updateProduct = asyncHandler(async (req, res) => {
   if (category !== undefined) product.category = category;
   if (description !== undefined) product.description = description;
   if (productType !== undefined) product.productType = productType;
+  // A blank field from the form means "clear the sale", not "leave it alone" -
+  // unlike the fields above, omitting this one entirely is what leaves it be.
+  if (salePrice !== undefined) product.salePrice = parseSalePrice(salePrice);
   // Re-follows the farmer's registered address, so editing a listing also
   // brings it up to date if they've since moved.
   product.location = req.user.location;

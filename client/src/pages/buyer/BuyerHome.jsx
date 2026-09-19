@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ImageOff, Sprout, Star, Sparkles, MapPin, LayoutGrid } from "lucide-react";
+import { ImageOff, Sprout, Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import HomeBanner from "../../components/buyer/HomeBanner";
+import PriceTag from "../../components/products/PriceTag";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
+import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 
 const sortOptions = [
   { key: "newest", label: "Newest Products", icon: Sparkles },
-  { key: "recommended", label: "Recommended for You", icon: Star },
+  { key: "flash-sale", label: "Flash Sale", icon: Zap },
   { key: "nearest", label: "Nearest to You", icon: MapPin },
   { key: "all", label: "All Products", icon: LayoutGrid },
 ];
@@ -50,10 +52,15 @@ function ProductGrid({ products, navigate }) {
                 Pre-order
               </span>
             )}
+            {onFlashSale(product) && (
+              <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+                -{discountPercent(product)}%
+              </span>
+            )}
           </div>
           <div className="bg-[#2f8f66] px-3 py-2 text-white">
             <p className="truncate text-sm font-semibold">{product.title}</p>
-            <p className="text-xs text-white/90">₱{product.price} per kilo</p>
+            <PriceTag product={product} tone="light" size="sm" suffix=" per kilo" />
             <p className="truncate text-[11px] text-white/70">
               {product.location || product.farmer?.location || "Location not set"}
             </p>
@@ -77,7 +84,7 @@ export default function BuyerHome() {
 
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
-  const [recommendedProducts, setRecommendedProducts] = useState([]);
+  const [flashSaleProducts, setFlashSaleProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -100,12 +107,12 @@ export default function BuyerHome() {
     if (browsing) {
       const params = {};
       if (search.trim()) params.search = search.trim();
-      // "recommended" is filtered/ranked server-side (real ratings+sales).
+      // "flash-sale" is filtered/ranked server-side (biggest discount first).
       // "newest" and "all" both just want the full, unfiltered catalog -
       // "nearest" starts from that same catalog and is then re-sorted
       // client-side by comparing each product's own location to the
       // buyer's, the same way Nearest Farmers already works.
-      if (sort === "recommended") params.sort = "recommended";
+      if (sort === "flash-sale") params.sort = "flash-sale";
 
       getAllProducts(params)
         .then(({ data }) => {
@@ -124,10 +131,10 @@ export default function BuyerHome() {
       return;
     }
 
-    Promise.all([getAllProducts(), getAllProducts({ sort: "recommended" }), getFarmers()])
-      .then(([newestRes, recommendedRes, farmersRes]) => {
+    Promise.all([getAllProducts(), getAllProducts({ sort: "flash-sale" }), getFarmers()])
+      .then(([newestRes, flashSaleRes, farmersRes]) => {
         setNewestProducts(newestRes.data.slice(0, 4));
-        setRecommendedProducts(recommendedRes.data.slice(0, 4));
+        setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
         setFarmers(farmersRes.data);
       })
       .catch(() => setError("Could not load the home page. Is the server running?"))
@@ -139,15 +146,15 @@ export default function BuyerHome() {
     .sort((a, b) => locationScore(b.location, user?.location) - locationScore(a.location, user?.location))
     .slice(0, 4);
 
-  // Real listings for the banner: well-rated ones first, topped up with the
+  // Real listings for the banner: Flash Sale items first, topped up with the
   // newest, and only ones with a photo to show.
-  const recommendedIds = new Set(recommendedProducts.map((p) => p._id));
-  const featured = [...recommendedProducts, ...newestProducts]
+  const flashSaleIds = new Set(flashSaleProducts.map((p) => p._id));
+  const featured = [...flashSaleProducts, ...newestProducts]
     .filter((p, i, all) => p.image && all.findIndex((q) => q._id === p._id) === i)
     .slice(0, FEATURED_SLIDES)
     .map((product) => ({
       product,
-      tag: recommendedIds.has(product._id) ? "Top Rated" : "Just Listed",
+      tag: flashSaleIds.has(product._id) ? "Flash Sale" : "Just Listed",
     }));
 
   const handleShopNow = () => {
@@ -219,13 +226,15 @@ export default function BuyerHome() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for You</h2>
-              {recommendedProducts.length === 0 ? (
+              <h2 className="mb-3 flex items-center gap-1.5 text-lg font-semibold text-gray-900">
+                <Zap className="h-5 w-5 text-red-500" /> Flash Sale
+              </h2>
+              {flashSaleProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No highly-rated products yet - check back once buyers start rating orders.
+                  No flash sales right now - check back soon.
                 </p>
               ) : (
-                <ProductGrid products={recommendedProducts} navigate={navigate} />
+                <ProductGrid products={flashSaleProducts} navigate={navigate} />
               )}
             </section>
 

@@ -2,6 +2,7 @@ const asyncHandler = require("express-async-handler");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Rating = require("../models/Rating");
+const { effectivePrice } = require("../utils/pricing");
 
 // @desc    Place an order for a product
 // @route   POST /api/orders
@@ -35,14 +36,18 @@ const createOrder = asyncHandler(async (req, res) => {
     throw new Error(`Only ${product.stock}kg of ${product.title} left in stock`);
   }
 
-  const total = product.price * quantity;
+  // Charges whatever price is live on the product right now - the sale price
+  // during an active Flash Sale - rather than trusting anything the buyer's
+  // cart sent.
+  const pricePerKilo = effectivePrice(product);
+  const total = pricePerKilo * quantity;
 
   const order = await Order.create({
     buyer: req.user._id,
     farmer: product.farmer._id,
     product: product._id,
     productTitle: product.title,
-    pricePerKilo: product.price,
+    pricePerKilo,
     quantity,
     total,
     status: isPreOrder ? "preorder" : "new",

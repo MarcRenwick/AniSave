@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, MapPin, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Zap } from "lucide-react";
 import fieldPhoto from "../../assets/lndingpge.jpg";
 import farmPhoto from "../../assets/bckgrnd.jpg";
 import { SERVER_URL } from "../../services/api";
+import PriceTag from "../products/PriceTag";
 
 const AUTO_ADVANCE_MS = 4000;
 
@@ -72,7 +73,9 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
             {tag}
           </span>
           <h2 className="mt-3 line-clamp-2 text-3xl font-bold leading-tight">{product.title}</h2>
-          <p className="mt-1 text-lg font-medium">₱{product.price} per kilo</p>
+          <p className="mt-1">
+            <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
+          </p>
           <p className="truncate text-sm text-white/90">
             {product.farmer?.farmName || product.farmer?.name}
           </p>
@@ -164,12 +167,12 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 lg:grid-rows-2">
         <button
           type="button"
-          onClick={() => onBrowse("recommended")}
-          className="flex flex-col justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-5 text-left text-white"
+          onClick={() => onBrowse("flash-sale")}
+          className="flex flex-col justify-center rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 p-5 text-left text-white"
         >
-          <Star className="h-7 w-7 fill-white" />
-          <p className="mt-2 text-lg font-bold">Recommended for You</p>
-          <p className="text-sm text-white/90">Only products buyers rated 4★ and up</p>
+          <Zap className="h-7 w-7 fill-white" />
+          <p className="mt-2 text-lg font-bold">Flash Sale</p>
+          <p className="text-sm text-white/90">Discounted listings while stocks last</p>
         </button>
         <button
           type="button"

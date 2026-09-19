@@ -139,7 +139,12 @@ export default function Checkout() {
                     </div>
                     <span className="truncate text-base text-gray-900">{item.title}</span>
                   </div>
-                  <span className="text-base text-gray-600">₱{item.price}</span>
+                  <span className="text-base text-gray-600">
+                    {item.originalPrice > item.price && (
+                      <span className="mr-1.5 text-gray-400 line-through">₱{item.originalPrice}</span>
+                    )}
+                    ₱{item.price}
+                  </span>
                   <span className="text-base text-gray-600">{item.quantity}</span>
                   <span className="text-base font-semibold text-gray-900">
                     ₱{item.price * item.quantity}

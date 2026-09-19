@@ -19,6 +19,7 @@ import {
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import Avatar from "../../components/Avatar";
+import PriceTag from "../../components/products/PriceTag";
 import VerificationModal from "../../components/farmer/VerificationModal";
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
@@ -299,7 +300,7 @@ export default function FarmerSettings() {
                     </div>
                     <div className="bg-[#2f8f66] px-2 py-1.5 text-white">
                       <p className="truncate text-xs font-semibold">{p.title}</p>
-                      <p className="text-[10px] text-white/90">₱{p.price}/kg</p>
+                      <PriceTag product={p} tone="light" size="sm" suffix="/kg" />
                     </div>
                   </button>
                 ))}

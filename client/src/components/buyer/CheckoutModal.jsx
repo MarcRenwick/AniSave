@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import Modal from "../Modal";
+import PriceTag from "../products/PriceTag";
 import { SERVER_URL } from "../../services/api";
+import { effectivePrice } from "../../utils/pricing";
 
 export default function CheckoutModal({ product, preorder = false, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
@@ -15,7 +17,7 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
     setQuantity(!e.target.value || Number.isNaN(value) ? 1 : clamp(Math.floor(value)));
   };
 
-  const total = product.price * quantity;
+  const total = effectivePrice(product) * quantity;
 
   return (
     <Modal title={preorder ? "Pre-Order" : "Checkout"} onClose={onClose}>
@@ -33,7 +35,7 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
         </div>
         <div className="min-w-0">
           <p className="truncate font-medium text-gray-900">{product.title}</p>
-          <p className="text-sm text-gray-500">₱{product.price} per kilo</p>
+          <PriceTag product={product} size="sm" suffix=" per kilo" />
         </div>
       </div>
 

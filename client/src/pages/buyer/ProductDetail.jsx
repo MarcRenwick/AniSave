@@ -6,11 +6,13 @@ import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import AddToCartModal from "../../components/buyer/AddToCartModal";
 import CheckoutModal from "../../components/buyer/CheckoutModal";
 import ProductGallery from "../../components/products/ProductGallery";
+import PriceTag from "../../components/products/PriceTag";
 import Avatar from "../../components/Avatar";
 import { getProduct, getFarmerProfile } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { activeAgo, timeAgo } from "../../utils/activity";
+import { effectivePrice } from "../../utils/pricing";
 
 function Stat({ label, value }) {
   return (
@@ -66,7 +68,8 @@ export default function ProductDetail() {
           {
             productId: product._id,
             title: product.title,
-            price: product.price,
+            price: effectivePrice(product),
+            originalPrice: product.price,
             image: product.image,
             farmerId: product.farmer?._id,
             farmerName: product.farmer?.farmName || product.farmer?.name || "Unknown Farmer",
@@ -168,8 +171,8 @@ export default function ProductDetail() {
                 · Sold {product.sold || 0}
               </p>
 
-              <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2 text-lg font-semibold text-white">
-                ₱{product.price} per kilo
+              <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2">
+                <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
               </div>
 
               <dl className="mt-4 space-y-3 text-sm">

@@ -45,6 +45,20 @@ const productSchema = new mongoose.Schema(
       enum: ["vegetable", "fruit"],
       required: [true, "Category is required"],
     },
+    // A discounted price the farmer sets to move old stock - null means no
+    // Flash Sale is running. There's no expiry: it stays discounted until the
+    // farmer clears this or raises it back above the regular price.
+    salePrice: {
+      type: Number,
+      min: [0, "Sale price cannot be negative"],
+      default: null,
+      validate: {
+        validator: function (value) {
+          return value == null || value < this.price;
+        },
+        message: "Sale price must be less than the regular price",
+      },
+    },
     location: {
       type: String,
       trim: true,

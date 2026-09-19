@@ -1,4 +1,5 @@
 import { createContext, useContext, useState } from "react";
+import { effectivePrice } from "../utils/pricing";
 
 const CartContext = createContext(null);
 
@@ -32,7 +33,11 @@ export function CartProvider({ children }) {
           {
             productId: product._id,
             title: product.title,
-            price: product.price,
+            // The price the buyer saw when they added it - if it's on Flash
+            // Sale, that's the sale price, with the regular price kept
+            // alongside for the strikethrough at checkout.
+            price: effectivePrice(product),
+            originalPrice: product.price,
             image: product.image,
             stock: product.stock,
             farmerId: product.farmer?._id,

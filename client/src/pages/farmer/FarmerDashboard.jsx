@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingDown, Coins, Banknote, TrendingUp, Award, Star } from "lucide-react";
+import { Coins, Banknote, TrendingUp, Award, CalendarCheck, Percent } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
@@ -13,6 +13,22 @@ const monthColors = ["bg-amber-400", "bg-rose-400", "bg-indigo-400"];
 // bar scaled to 100% never overflows past its label like it used to.
 const DEMAND_LABEL_HEIGHT = 20;
 const DEMAND_BAR_MAX_HEIGHT = 130;
+// "Old stock nobody bought" - long enough that a normal slow week doesn't
+// get flagged as needing a discount.
+const STALE_PRODUCT_DAYS = 14;
+
+// Shared by the all-time and this-month leaderboards below - only the set of
+// orders considered differs between them.
+function rankByQuantitySold(orders) {
+  const salesByProduct = new Map();
+  orders.forEach((order) => {
+    const key = order.product;
+    const entry = salesByProduct.get(key) || { title: order.productTitle, qty: 0 };
+    entry.qty += order.quantity;
+    salesByProduct.set(key, entry);
+  });
+  return [...salesByProduct.values()].sort((a, b) => b.qty - a.qty).slice(0, 6);
+}
 
 function CardHeader({ children }) {
   return (
@@ -48,32 +64,49 @@ export default function FarmerDashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  const outOfStock = useMemo(() => products.filter((p) => p.stock === 0), [products]);
   const lowStock = useMemo(
     () => products.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD),
     [products]
   );
   const totalStockKg = useMemo(() => products.reduce((sum, p) => sum + p.stock, 0), [products]);
 
-  const topProducts = useMemo(() => {
-    const salesByProduct = new Map();
-    orders
-      .filter((order) => order.status !== "cancelled")
-      .forEach((order) => {
-        const key = order.product;
-        const entry = salesByProduct.get(key) || { title: order.productTitle, qty: 0 };
-        entry.qty += order.quantity;
-        salesByProduct.set(key, entry);
-      });
-    return [...salesByProduct.values()].sort((a, b) => b.qty - a.qty).slice(0, 6);
-  }, [orders]);
+  const activeOrders = useMemo(() => orders.filter((o) => o.status !== "cancelled"), [orders]);
+
+  // All-time demand, by total quantity ordered.
+  const topProducts = useMemo(() => rankByQuantitySold(activeOrders), [activeOrders]);
+
+  // Same ranking, narrowed to this calendar month.
+  const topProductsThisMonth = useMemo(() => {
+    const now = new Date();
+    const thisMonth = activeOrders.filter((order) => {
+      const d = new Date(order.createdAt);
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    });
+    return rankByQuantitySold(thisMonth);
+  }, [activeOrders]);
+
+  // Flash Sale candidates: still in stock, never ordered, not already
+  // discounted, and old enough that it isn't just a normal slow week.
+  const staleStock = useMemo(() => {
+    const everOrdered = new Set(activeOrders.map((o) => o.product));
+    const cutoff = new Date().getTime() - STALE_PRODUCT_DAYS * 24 * 60 * 60 * 1000;
+    return products
+      .filter(
+        (p) =>
+          p.stock > 0 &&
+          !p.salePrice &&
+          !everOrdered.has(p._id) &&
+          new Date(p.createdAt).getTime() <= cutoff
+      )
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(0, 6);
+  }, [products, activeOrders]);
 
   // Real month-by-month demand: each of the last 3 calendar months, showing
   // the farmer's own top-ordered products that month, scaled relative to
   // that month's own busiest product.
   const demandChart = useMemo(() => {
     const now = new Date();
-    const activeOrders = orders.filter((o) => o.status !== "cancelled");
 
     return [2, 1, 0].map((monthsAgo, idx) => {
       const target = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
@@ -99,16 +132,7 @@ export default function FarmerDashboard() {
         })),
       };
     });
-  }, [orders]);
-
-  const topRatedProducts = useMemo(
-    () =>
-      products
-        .filter((p) => p.ratingCount > 0)
-        .sort((a, b) => b.rating - a.rating || b.ratingCount - a.ratingCount)
-        .slice(0, 6),
-    [products]
-  );
+  }, [activeOrders]);
 
   const todaysSales = useMemo(
     () =>
@@ -242,27 +266,8 @@ export default function FarmerDashboard() {
 
         <div className="space-y-6">
           <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Out-of-Stock Products</p>
-            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">⚠ Out of Stock</p>
-            <div className="mt-3 flex items-start justify-between gap-2">
-              {loading ? (
-                <p className="text-sm text-gray-400">Loading...</p>
-              ) : outOfStock.length === 0 ? (
-                <p className="text-sm text-gray-400">Nothing out of stock 🎉</p>
-              ) : (
-                <ul className="space-y-1 text-sm text-gray-700">
-                  {outOfStock.map((p) => (
-                    <li key={p._id}>-{p.title}</li>
-                  ))}
-                </ul>
-              )}
-              <TrendingDown className="mt-2 h-8 w-8 shrink-0 text-red-500" />
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Best Selling Products</p>
-            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">🏆 Top Products</p>
+            <p className="text-sm text-gray-500">Top Crops Demand</p>
+            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">🏆 Best Sellers</p>
             <div className="mt-3 flex items-start justify-between gap-2">
               {loading ? (
                 <p className="text-sm text-gray-400">Loading...</p>
@@ -282,26 +287,51 @@ export default function FarmerDashboard() {
           </div>
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Top Rated Products</p>
-            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">⭐ Top Ratings</p>
+            <p className="text-sm text-gray-500">Top Purchase this Month</p>
+            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">📅 This Month</p>
             <div className="mt-3 flex items-start justify-between gap-2">
               {loading ? (
                 <p className="text-sm text-gray-400">Loading...</p>
-              ) : topRatedProducts.length === 0 ? (
-                <p className="text-sm text-gray-400">No ratings yet</p>
+              ) : topProductsThisMonth.length === 0 ? (
+                <p className="text-sm text-gray-400">No orders yet this month</p>
               ) : (
                 <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-700">
-                  {topRatedProducts.map((p) => (
-                    <li key={p._id}>
-                      {p.title}{" "}
-                      <span className="text-gray-400">
-                        ({p.rating.toFixed(1)}★, {p.ratingCount} rating{p.ratingCount === 1 ? "" : "s"})
-                      </span>
+                  {topProductsThisMonth.map((p) => (
+                    <li key={p.title}>
+                      {p.title} <span className="text-gray-400">({p.qty}kg sold)</span>
                     </li>
                   ))}
                 </ol>
               )}
-              <Star className="mt-2 h-8 w-8 shrink-0 fill-amber-400 text-amber-400" />
+              <CalendarCheck className="mt-2 h-8 w-8 shrink-0 text-blue-500" />
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <p className="text-sm text-gray-500">Recommended Flash Sales</p>
+            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">🔥 Old Stock</p>
+            <div className="mt-3 flex items-start justify-between gap-2">
+              {loading ? (
+                <p className="text-sm text-gray-400">Loading...</p>
+              ) : staleStock.length === 0 ? (
+                <p className="text-sm text-gray-400">Nothing sitting idle - nice!</p>
+              ) : (
+                <ul className="w-full space-y-1.5 text-sm text-gray-700">
+                  {staleStock.map((p) => (
+                    <li key={p._id}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/farmer/products/${p._id}/edit`)}
+                        className="flex w-full items-center justify-between gap-2 text-left hover:text-[#2f8f66] hover:underline"
+                      >
+                        <span className="truncate">{p.title}</span>
+                        <span className="shrink-0 text-xs text-gray-400">{p.stock}kg left</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Percent className="mt-2 h-8 w-8 shrink-0 text-red-500" />
             </div>
           </div>
         </div>

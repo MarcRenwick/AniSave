@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Package, Star } from "lucide-react";
 import ProductGallery from "../../components/products/ProductGallery";
+import PriceTag from "../../components/products/PriceTag";
 import { getProduct } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
 
@@ -100,8 +101,8 @@ export default function FarmerProductDetail() {
                   <span>Sold {product.sold}</span>
                 </div>
 
-                <div className="mt-5 rounded-md bg-[#2f8f66] px-4 py-2 text-lg font-semibold text-white">
-                  ₱{product.price} per kilo
+                <div className="mt-5 rounded-md bg-[#2f8f66] px-4 py-2">
+                  <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
                 </div>
 
                 <dl className="mt-6 space-y-5 text-sm">
