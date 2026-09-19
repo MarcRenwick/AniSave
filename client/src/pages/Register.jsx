@@ -385,10 +385,8 @@ export default function Register() {
       )}
 
       {step === 3 && (
-        <form onSubmit={handleDocumentsSubmit} className="mt-6 space-y-6">
-          {/* The ID only ever needs two tiles; farm documents get the extra room. */}
+        <form onSubmit={handleDocumentsSubmit} className="mt-4 space-y-3">
           <VerificationDocumentFields
-            className="grid gap-6 sm:grid-cols-[2fr_3fr]"
             governmentId={governmentId}
             farmDocuments={farmDocuments}
             onGovernmentIdChange={setGovernmentId}

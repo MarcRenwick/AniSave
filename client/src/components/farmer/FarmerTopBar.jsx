@@ -63,7 +63,7 @@ export default function FarmerTopBar({ children, showActions = true }) {
           {open && (
             <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl bg-white shadow-xl">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                <p className="font-semibold text-gray-900">🔔 Notifications</p>
+                <p className="font-semibold text-gray-900">Notifications</p>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}

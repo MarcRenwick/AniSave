@@ -91,7 +91,7 @@ export default function VerificationModal({ onClose }) {
       )}
 
       {editing ? (
-        <form onSubmit={handleSubmit} className="mt-5 space-y-5">
+        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           <VerificationDocumentFields
             governmentId={governmentId}
             farmDocuments={farmDocuments}
@@ -131,12 +131,11 @@ export default function VerificationModal({ onClose }) {
               <p className="text-xs font-semibold uppercase text-gray-400">Documents on file</p>
               <div className="mt-2">
                 <VerificationDocumentFields
+                  readOnly
                   governmentId={null}
                   farmDocuments={[]}
                   existingGovernmentId={user.governmentId}
                   existingFarmDocuments={user.farmDocuments || []}
-                  onGovernmentIdChange={() => setEditing(true)}
-                  onFarmDocumentsChange={() => setEditing(true)}
                 />
               </div>
             </div>

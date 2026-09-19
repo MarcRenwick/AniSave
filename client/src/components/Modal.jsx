@@ -1,7 +1,11 @@
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export default function Modal({ title, onClose, children, maxWidth = "max-w-sm" }) {
-  return (
+  // Drawn on <body>, not where it was written: a sticky sidebar is a stacking
+  // context of its own, so a modal opened from inside it used to end up
+  // underneath the dashboard chart beside it.
+  return createPortal(
     <div className="fixed inset-0 z-30 overflow-y-auto bg-black/40 p-4" onClick={onClose}>
       {/* min-h-full keeps short modals centred, while a modal taller than the
           screen grows past it and scrolls instead of being cut off. */}
@@ -19,6 +23,7 @@ export default function Modal({ title, onClose, children, maxWidth = "max-w-sm" 
           <div className="p-5">{children}</div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

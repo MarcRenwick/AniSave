@@ -124,7 +124,7 @@ export default function FarmerDashboard() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-xl font-semibold text-gray-900">Hello, {user?.name}!😁</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Hello, {user?.name}!</h1>
       </FarmerTopBar>
 
       <div className="px-8 pt-6">
@@ -158,7 +158,7 @@ export default function FarmerDashboard() {
                   <p className="text-lg font-bold text-gray-900">{totalStockKg} kg</p>
                   <p>{products.length} products</p>
                   {lowStock.length > 0 && (
-                    <p className="text-amber-600">⚠ {lowStock.length} product(s) low in stock</p>
+                    <p className="text-amber-600">{lowStock.length} product(s) low in stock</p>
                   )}
                 </div>
                 <TrendingUp className="h-8 w-8 shrink-0 text-blue-500" />
@@ -201,7 +201,7 @@ export default function FarmerDashboard() {
         <div className="space-y-6">
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <p className="text-sm text-gray-500">Top Crops Demand</p>
-            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">🏆 Best Sellers</p>
+            <p className="mt-1 font-bold text-amber-600">Best Sellers</p>
             <div className="mt-3 flex items-start justify-between gap-2">
               {loading ? (
                 <p className="text-sm text-gray-400">Loading...</p>
@@ -222,7 +222,7 @@ export default function FarmerDashboard() {
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <p className="text-sm text-gray-500">Top Purchase this Month</p>
-            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">📅 This Month</p>
+            <p className="mt-1 font-bold text-amber-600">This Month</p>
             <div className="mt-3 flex items-start justify-between gap-2">
               {loading ? (
                 <p className="text-sm text-gray-400">Loading...</p>
@@ -243,7 +243,7 @@ export default function FarmerDashboard() {
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <p className="text-sm text-gray-500">Recommended Flash Sales</p>
-            <p className="mt-1 flex items-center gap-1 font-bold text-amber-600">🔥 Old Stock</p>
+            <p className="mt-1 font-bold text-amber-600">Old Stock</p>
             <div className="mt-3 flex items-start justify-between gap-2">
               {loading ? (
                 <p className="text-sm text-gray-400">Loading...</p>

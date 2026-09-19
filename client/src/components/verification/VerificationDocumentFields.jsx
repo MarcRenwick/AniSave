@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { IdCard, FileText, Plus, X } from "lucide-react";
+import { Check, IdCard, FileText, Plus, Upload, X } from "lucide-react";
 import { SERVER_URL } from "../../services/api";
 import { MAX_UPLOAD_BYTES, shrinkImage } from "../../utils/imageUpload";
 
-export const FARM_DOCUMENT_EXAMPLES = [
-  "Farm ownership or authorization document",
-  "Farmer registration document, where applicable",
-  "Barangay certification or similar certification",
-  "Any other farm-related document the administrator accepts",
+const ACCEPTED_FARM_DOCUMENTS = [
+  "Farm ownership or authorization",
+  "Farmer registration",
+  "Barangay certification",
+  "Other farm-related document",
 ];
 
 const MAX_FARM_DOCUMENTS = 5;
@@ -34,14 +34,13 @@ function usePreviews(files) {
   return urls;
 }
 
+const formatSize = (bytes) =>
+  bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+
 function Thumb({ src, alt, onRemove }) {
   return (
-    <div className="relative">
-      <img
-        src={src}
-        alt={alt}
-        className="h-24 w-24 rounded-lg border border-gray-300 object-cover"
-      />
+    <div className="relative shrink-0">
+      <img src={src} alt={alt} className="h-16 w-16 rounded-lg border border-gray-200 object-cover" />
       {onRemove && (
         <button
           type="button"
@@ -56,15 +55,69 @@ function Thumb({ src, alt, onRemove }) {
   );
 }
 
+// One card per document. Both cards share this layout - icon, title, a short
+// line on what to upload, a status on the right, and the upload area below - so
+// they read as a matching pair.
+function DocumentCard({ icon: Icon, title, required, hint, status, done, children }) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-3.5">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-green-50 text-[#2f8f66]">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">
+              {title}
+              {required && <span className="ml-1 text-red-600">*</span>}
+            </h3>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                done ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+              }`}
+            >
+              {status}
+            </span>
+          </div>
+          {hint && <p className="mt-0.5 text-xs text-gray-500">{hint}</p>}
+        </div>
+      </div>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function DropZone({ label, preparing, multiple, onPick }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-2.5 text-gray-500 transition focus-within:ring-2 focus-within:ring-[#2f8f66] hover:border-[#2f8f66] hover:bg-green-50 hover:text-[#2f8f66]">
+      <Upload className="h-5 w-5 shrink-0" />
+      <span className="text-left leading-tight">
+        <span className="block text-sm font-semibold text-gray-700">{preparing ? "Preparing..." : label}</span>
+        <span className="block text-xs text-gray-500">Photo (JPG or PNG), up to 5 MB</span>
+      </span>
+      <input
+        type="file"
+        accept="image/*"
+        multiple={multiple}
+        disabled={preparing}
+        className="sr-only"
+        onChange={onPick}
+      />
+    </label>
+  );
+}
+
 // Shared by registration and the resubmit form on the farmer's profile.
+// `readOnly` shows what's on file without any way to change it.
 export default function VerificationDocumentFields({
-  className = "space-y-6",
+  className = "space-y-3",
   governmentId,
   farmDocuments,
   existingGovernmentId,
   existingFarmDocuments = [],
   onGovernmentIdChange,
   onFarmDocumentsChange,
+  readOnly = false,
 }) {
   const [govPreview] = usePreviews(governmentId ? [governmentId] : []);
   const farmPreviews = usePreviews(farmDocuments);
@@ -109,94 +162,123 @@ export default function VerificationDocumentFields({
     if (ready.length) onFarmDocumentsChange([...farmDocuments, ...ready]);
   };
 
+  const hasId = Boolean(governmentId || existingGovernmentId);
+  const farmCount = farmDocuments.length || existingFarmDocuments.length;
+  const farmStatus = readOnly
+    ? `${farmCount} on file`
+    : farmDocuments.length
+      ? `${farmDocuments.length} of ${MAX_FARM_DOCUMENTS} added`
+      : farmCount
+        ? `${farmCount} on file`
+        : "Not uploaded";
+
   return (
     <div>
       <div className={className}>
-        <section>
-          <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <IdCard className="h-4 w-4 text-[#2f8f66]" />
-            Identity verification
-            <span className="text-red-600">*</span>
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
-            A photo of a valid government-issued ID. The administrator checks that the name and
-            details match what you entered.
-          </p>
+        <DocumentCard
+          icon={IdCard}
+          title="Government-issued ID"
+          required
+          hint={readOnly ? null : "A clear photo of a valid ID. Its name and details must match what you entered."}
+          status={hasId ? (readOnly || !governmentId ? "On file" : "Uploaded") : "Not uploaded"}
+          done={hasId}
+        >
+          {hasId ? (
+            <div className="flex items-center gap-3">
+              {governmentId ? (
+                govPreview ? (
+                  <Thumb src={govPreview} alt="Government ID" onRemove={() => onGovernmentIdChange(null)} />
+                ) : (
+                  <div className="h-16 w-16 shrink-0 rounded-lg bg-gray-100" />
+                )
+              ) : (
+                <Thumb src={`${SERVER_URL}${existingGovernmentId}`} alt="Government ID on file" />
+              )}
+              <div className="min-w-0 flex-1 text-xs">
+                <p className="truncate font-medium text-gray-800">
+                  {governmentId ? governmentId.name : "ID photo on file"}
+                </p>
+                <p className="text-gray-500">{governmentId ? formatSize(governmentId.size) : "Submitted earlier"}</p>
+              </div>
+              {!readOnly && (
+                <label className="cursor-pointer rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 focus-within:ring-2 focus-within:ring-[#2f8f66] hover:bg-gray-50">
+                  {preparing ? "Preparing..." : "Replace"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    disabled={preparing}
+                    className="sr-only"
+                    onChange={pickGovernmentId}
+                  />
+                </label>
+              )}
+            </div>
+          ) : (
+            !readOnly && <DropZone label="Upload ID photo" preparing={preparing} onPick={pickGovernmentId} />
+          )}
+        </DocumentCard>
 
-          <div className="mt-3 flex items-center gap-3">
-            {govPreview ? (
-              <Thumb src={govPreview} alt="Government ID" onRemove={() => onGovernmentIdChange(null)} />
-            ) : existingGovernmentId ? (
-              <Thumb src={`${SERVER_URL}${existingGovernmentId}`} alt="Government ID on file" />
-            ) : null}
+        <DocumentCard
+          icon={FileText}
+          title="Farm documents"
+          required
+          hint={readOnly ? null : "At least one document showing you farm or have legitimate farming activity."}
+          status={farmStatus}
+          done={farmCount > 0}
+        >
+          {!readOnly && (
+            <ul className="mb-3 grid gap-x-4 gap-y-1 text-xs text-gray-600 sm:grid-cols-2">
+              {ACCEPTED_FARM_DOCUMENTS.map((example) => (
+                <li key={example} className="flex items-center gap-1.5">
+                  <Check className="h-3.5 w-3.5 shrink-0 text-[#2f8f66]" />
+                  {example}
+                </li>
+              ))}
+            </ul>
+          )}
 
-            <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 text-gray-500 hover:border-[#2f8f66]">
-              <Plus className="h-5 w-5" />
-              <span className="text-[10px]">
-                {preparing ? "Preparing..." : existingGovernmentId || govPreview ? "Replace" : "Upload ID"}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                disabled={preparing}
-                className="hidden"
-                onChange={pickGovernmentId}
-              />
-            </label>
-          </div>
-        </section>
+          {farmCount === 0 ? (
+            !readOnly && (
+              <DropZone label="Upload farm documents" preparing={preparing} multiple onPick={addFarmDocuments} />
+            )
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              {existingFarmDocuments.map((path) => (
+                <Thumb key={path} src={`${SERVER_URL}${path}`} alt="Farm document on file" />
+              ))}
 
-        <section>
-          <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <FileText className="h-4 w-4 text-[#2f8f66]" />
-            Farmer verification
-            <span className="text-red-600">*</span>
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
-            At least one document showing you farm or have legitimate farming activity:
-          </p>
-          <ul className="mt-1.5 list-outside list-disc pl-4 text-xs text-gray-500">
-            {FARM_DOCUMENT_EXAMPLES.map((example) => (
-              <li key={example}>{example}</li>
-            ))}
-          </ul>
-
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            {existingFarmDocuments.map((path) => (
-              <Thumb key={path} src={`${SERVER_URL}${path}`} alt="Farm document on file" />
-            ))}
-
-            {farmPreviews.map((src, i) => (
-              <Thumb
-                key={src}
-                src={src}
-                alt={`Farm document ${i + 1}`}
-                onRemove={() => onFarmDocumentsChange(farmDocuments.filter((_, index) => index !== i))}
-              />
-            ))}
-
-            {farmDocuments.length < MAX_FARM_DOCUMENTS && (
-              <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-400 bg-gray-50 text-gray-500 hover:border-[#2f8f66]">
-                <Plus className="h-5 w-5" />
-                <span className="text-[10px]">{preparing ? "Preparing..." : "Add document"}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  disabled={preparing}
-                  className="hidden"
-                  onChange={addFarmDocuments}
+              {farmPreviews.map((src, i) => (
+                <Thumb
+                  key={src}
+                  src={src}
+                  alt={`Farm document ${i + 1}`}
+                  onRemove={() => onFarmDocumentsChange(farmDocuments.filter((_, index) => index !== i))}
                 />
-              </label>
-            )}
-          </div>
+              ))}
 
-          {existingFarmDocuments.length > 0 && farmDocuments.length > 0 && (
+              {!readOnly && farmDocuments.length < MAX_FARM_DOCUMENTS && (
+                <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 focus-within:ring-2 focus-within:ring-[#2f8f66] hover:border-[#2f8f66] hover:text-[#2f8f66]">
+                  <Plus className="h-4 w-4" />
+                  <span className="text-[10px]">{preparing ? "..." : "Add"}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    disabled={preparing}
+                    className="sr-only"
+                    onChange={addFarmDocuments}
+                  />
+                </label>
+              )}
+            </div>
+          )}
+
+          {!readOnly && existingFarmDocuments.length > 0 && farmDocuments.length > 0 && (
             <p className="mt-2 text-xs text-amber-700">
               The documents you add here replace the ones already on file.
             </p>
           )}
-        </section>
+        </DocumentCard>
       </div>
 
       {pickError && <p className="mt-3 text-xs text-red-600">{pickError}</p>}
