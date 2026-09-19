@@ -4,8 +4,10 @@ import { ArrowLeft, Check, ShoppingBasket, Sprout } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
+import AddressPicker from "../components/AddressPicker";
 import VerificationDocumentFields from "../components/verification/VerificationDocumentFields";
 import { getPasswordError } from "../utils/password";
+import { emptyAddress, isAddressComplete } from "../utils/address";
 
 const initialForm = {
   name: "",
@@ -13,7 +15,6 @@ const initialForm = {
   email: "",
   password: "",
   confirmPassword: "",
-  location: "",
   farmName: "",
   farmDescription: "",
 };
@@ -30,6 +31,9 @@ export default function Register() {
   const [role, setRole] = useState(null);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(initialForm);
+  // Picked from the Province > Municipality/City > Barangay lists; the server
+  // works out the coordinates from these codes.
+  const [address, setAddress] = useState(emptyAddress);
   const [governmentId, setGovernmentId] = useState(null);
   const [farmDocuments, setFarmDocuments] = useState([]);
   const [error, setError] = useState("");
@@ -61,6 +65,7 @@ export default function Register() {
     }
     setRole(null);
     setForm(initialForm);
+    setAddress(emptyAddress);
     setStep(1);
   };
 
@@ -75,6 +80,10 @@ export default function Register() {
     }
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+    if (!isAddressComplete(address)) {
+      setError("Choose your province, municipality/city and barangay.");
       return;
     }
 
@@ -104,7 +113,8 @@ export default function Register() {
     setSubmitting(true);
     setError("");
     try {
-      const { confirmPassword: _confirmPassword, ...details } = form;
+      const { confirmPassword: _confirmPassword, ...rest } = form;
+      const details = { ...rest, ...address };
 
       if (role === "farmer") {
         // One request, so the account only exists if its documents were
@@ -240,7 +250,7 @@ export default function Register() {
 
       {step === 2 && (
         <form onSubmit={handleDetailsSubmit} className="mt-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor="name" className={labelClass}>
                 Full Name
@@ -272,7 +282,8 @@ export default function Register() {
               />
             </div>
 
-            <div>
+            {/* A buyer has nothing to pair the email with, so it takes the row. */}
+            <div className={role === "farmer" ? "" : "sm:col-span-2"}>
               <label htmlFor="email" className={labelClass}>
                 Your Email
               </label>
@@ -288,20 +299,22 @@ export default function Register() {
               />
             </div>
 
-            <div>
-              <label htmlFor="location" className={labelClass}>
-                Address
-              </label>
-              <input
-                id="location"
-                name="location"
-                required
-                value={form.location}
-                onChange={handleChange}
-                placeholder="e.g. Dagupan City"
-                className={`mt-1 ${inputClass}`}
-              />
-            </div>
+            {role === "farmer" && (
+              <div>
+                <label htmlFor="farmName" className={labelClass}>
+                  Farm Name
+                </label>
+                <input
+                  id="farmName"
+                  name="farmName"
+                  required
+                  value={form.farmName}
+                  onChange={handleChange}
+                  placeholder="Your farm name"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
+            )}
 
             <div>
               <label htmlFor="password" className={labelClass}>
@@ -333,37 +346,31 @@ export default function Register() {
               />
             </div>
 
-            {role === "farmer" && (
-              <>
-                <div>
-                  <label htmlFor="farmName" className={labelClass}>
-                    Farm Name
-                  </label>
-                  <input
-                    id="farmName"
-                    name="farmName"
-                    required
-                    value={form.farmName}
-                    onChange={handleChange}
-                    placeholder="Your farm name"
-                    className={`mt-1 ${inputClass}`}
-                  />
-                </div>
+            {/* Where you are - the "nearest" lists are worked out from this. */}
+            <div className="sm:col-span-2">
+              <AddressPicker
+                required
+                value={address}
+                onChange={setAddress}
+                selectClass={inputClass}
+                className="grid gap-3 sm:grid-cols-3"
+              />
+            </div>
 
-                <div>
-                  <label htmlFor="farmDescription" className={labelClass}>
-                    Farm Details
-                  </label>
-                  <input
-                    id="farmDescription"
-                    name="farmDescription"
-                    value={form.farmDescription}
-                    onChange={handleChange}
-                    placeholder="Crops, farm size (optional)"
-                    className={`mt-1 ${inputClass}`}
-                  />
-                </div>
-              </>
+            {role === "farmer" && (
+              <div className="sm:col-span-2">
+                <label htmlFor="farmDescription" className={labelClass}>
+                  Farm Details
+                </label>
+                <input
+                  id="farmDescription"
+                  name="farmDescription"
+                  value={form.farmDescription}
+                  onChange={handleChange}
+                  placeholder="Crops, farm size (optional)"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
             )}
           </div>
 

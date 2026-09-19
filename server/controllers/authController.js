@@ -8,9 +8,12 @@ const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 const { effectiveVerificationStatus } = require("../utils/verification");
+const { resolveAddress } = require("../utils/locations");
 
 // What a client needs to start a session. A farmer's pages read the
-// verification fields to decide whether to show the pending/rejected banner.
+// verification fields to decide whether to show the pending/rejected banner,
+// and everyone's read `address` to pre-fill the address pickers and to know
+// whether "nearest" can be worked out for them.
 const sessionPayload = (user) => ({
   _id: user._id,
   name: user.name,
@@ -18,6 +21,7 @@ const sessionPayload = (user) => ({
   email: user.email,
   role: user.role,
   location: user.location,
+  address: user.get("address"),
   avatar: user.avatar,
   isVerified: user.isVerified,
   verificationStatus: effectiveVerificationStatus(user),
@@ -38,7 +42,9 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     role,
-    location,
+    provinceCode,
+    cityCode,
+    barangayCode,
     farmName,
     farmDescription,
   } = req.body;
@@ -63,6 +69,10 @@ const registerUser = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error("Role must be either 'farmer' or 'buyer'");
     }
+
+    // Farmers and buyers both pick where they are; the coordinates that
+    // "nearest" is worked out from come from that pick, never from the client.
+    const { address, label } = resolveAddress({ provinceCode, cityCode, barangayCode });
 
     const isFarmer = role === "farmer";
     if (isFarmer && !governmentIdFile) {
@@ -92,7 +102,8 @@ const registerUser = asyncHandler(async (req, res) => {
       email,
       password,
       role,
-      location,
+      location: label,
+      address,
       farmName: isFarmer ? farmName : undefined,
       farmDescription: isFarmer ? farmDescription : undefined,
       // A farmer has to get their documents past an admin before selling.
@@ -286,17 +297,32 @@ const resetPassword = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/profile
 // @access  Private
 const updateProfile = asyncHandler(async (req, res) => {
-  const { name, location, phone, farmName, farmDescription } = req.body;
+  const { name, phone, farmName, farmDescription, provinceCode, cityCode, barangayCode } = req.body;
+
+  // The address is only ever changed by picking one from the lists (free-typed
+  // text is ignored). Sending none of the three leaves it alone; sending some
+  // but not all is refused, so a half-changed address can't be saved.
+  const changingAddress = [provinceCode, cityCode, barangayCode].some(Boolean);
+  const resolved = changingAddress ? resolveAddress({ provinceCode, cityCode, barangayCode }) : null;
 
   if (name !== undefined) req.user.name = name;
-  if (location !== undefined) req.user.location = location;
   if (phone !== undefined) req.user.phone = phone;
+  if (resolved) {
+    req.user.address = resolved.address;
+    req.user.location = resolved.label;
+  }
   if (req.user.role === "farmer") {
     if (farmName !== undefined) req.user.farmName = farmName;
     if (farmDescription !== undefined) req.user.farmDescription = farmDescription;
   }
 
   await req.user.save();
+
+  // A farmer's listings are picked up at their registered address, so they
+  // follow it when it changes rather than keeping the old one until each is edited.
+  if (resolved && req.user.role === "farmer") {
+    await Product.updateMany({ farmer: req.user._id }, { $set: { location: resolved.label } });
+  }
 
   res.json({
     _id: req.user._id,
@@ -305,6 +331,7 @@ const updateProfile = asyncHandler(async (req, res) => {
     email: req.user.email,
     role: req.user.role,
     location: req.user.location,
+    address: req.user.get("address"),
     phone: req.user.phone,
     avatar: req.user.avatar,
     farmName: req.user.farmName,

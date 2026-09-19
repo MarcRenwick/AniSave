@@ -3,7 +3,9 @@ import { Camera } from "lucide-react";
 import Modal from "../Modal";
 import Avatar from "../Avatar";
 import ImageCropperModal from "../ImageCropperModal";
+import AddressPicker from "../AddressPicker";
 import { updateProfile, uploadAvatar } from "../../services/api";
+import { addressFromUser, isAddressComplete, sameAddress } from "../../utils/address";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
@@ -12,10 +14,13 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
   const [form, setForm] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
-    location: user?.location || "",
     farmName: user?.farmName || "",
     farmDescription: user?.farmDescription || "",
   });
+  // The address is picked from the Province > Municipality/City > Barangay
+  // lists, starting from what's saved. It is only sent if it was changed.
+  const [savedAddress] = useState(() => addressFromUser(user));
+  const [address, setAddress] = useState(savedAddress);
   const [avatar, setAvatar] = useState(user?.avatar || null);
   const [cropping, setCropping] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -53,9 +58,16 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    const addressChanged = !sameAddress(address, savedAddress);
+    if (addressChanged && !isAddressComplete(address)) {
+      setError("Finish choosing your address - province, municipality/city and barangay.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const { data } = await updateProfile(form);
+      const { data } = await updateProfile(addressChanged ? { ...form, ...address } : form);
       onSaved(data);
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
@@ -110,18 +122,24 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
           />
         </div>
         <div>
-          <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-            Address
-          </label>
-          <input
-            id="location"
-            name="location"
-            value={form.location}
-            onChange={handleChange}
-            className={inputClass}
-          />
-          {user?.role === "farmer" && (
+          <p className="block text-sm font-medium text-gray-700">Address</p>
+          {/* Accounts from before addresses were picked from lists only have text. */}
+          {!user?.address?.barangayCode && user?.location && (
             <p className="mt-1 text-xs text-gray-500">
+              Currently saved as &ldquo;{user.location}&rdquo;. Pick your barangay below so buyers and
+              sellers near you can be found.
+            </p>
+          )}
+          <div className="mt-2">
+            <AddressPicker
+              value={address}
+              onChange={setAddress}
+              className="space-y-3"
+              idPrefix="profile-address"
+            />
+          </div>
+          {user?.role === "farmer" && (
+            <p className="mt-2 text-xs text-gray-500">
               Your products are picked up here, so this address shows on all of your listings.
             </p>
           )}

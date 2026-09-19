@@ -9,6 +9,7 @@ import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api
 import { activeAgo, timeAgo } from "../../utils/activity";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import { formatDistance } from "../../utils/address";
 
 const tabs = [
   { key: "home", label: "Home" },
@@ -220,6 +221,9 @@ export default function FarmerProfile() {
                       <dd className="flex items-center gap-1.5 font-medium text-gray-900">
                         <MapPin className="h-4 w-4 text-gray-400" />
                         {farmer.location || "Not set"}
+                        {formatDistance(farmer) && (
+                          <span className="font-normal text-[#2f8f66]">· {formatDistance(farmer)} from you</span>
+                        )}
                       </dd>
                     </div>
                   </dl>

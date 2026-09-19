@@ -5,6 +5,7 @@ const Order = require("../models/Order");
 const Rating = require("../models/Rating");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 const { effectiveVerificationStatus } = require("../utils/verification");
+const { distanceFields, byNearest } = require("../utils/geo");
 
 // A blank string means "clear the sale"; anything else becomes a number for
 // the model's own less-than-price validation to check.
@@ -164,6 +165,34 @@ const getAllProducts = asyncHandler(async (req, res) => {
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
 
     return res.json(products.filter(sellable));
+  }
+
+  // "Nearest" ranks by how far each farmer's registered address is from the
+  // viewer's own - real distances in km, not a text match on the town name.
+  // The farmers' coordinates are used here and then dropped, so all a client
+  // gets back is the distance. Without a registered address for the viewer
+  // there's nothing to measure from, so the list comes back in its usual order.
+  if (sort === "nearest") {
+    const found = await Product.find(filter)
+      .populate("farmer", `${FARMER_FIELDS} address`)
+      .sort({ createdAt: -1 });
+
+    const origin = req.user?.address;
+    const products = found.filter(sellable).map((product) => {
+      const { address, ...farmer } = product.farmer.toObject();
+      return {
+        ...product.toObject(),
+        farmer: {
+          ...farmer,
+          city: address?.city,
+          province: address?.province,
+          ...distanceFields(origin, address),
+        },
+      };
+    });
+
+    products.sort(byNearest((p) => p.farmer.distanceKm));
+    return res.json(products);
   }
 
   // Flash Sale listings: whatever the farmer has discounted, biggest

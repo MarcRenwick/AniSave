@@ -8,13 +8,14 @@ const {
   restockProduct,
   deleteProduct,
 } = require("../controllers/productController");
-const { protect, authorize } = require("../middleware/authMiddleware");
+const { protect, authorize, optionalProtect } = require("../middleware/authMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
-// Public - marketplace browsing works for guests too
-router.get("/", getAllProducts);
+// Public - marketplace browsing works for guests too. A signed-in viewer with a
+// registered address can also sort by nearest (see getAllProducts).
+router.get("/", optionalProtect, getAllProducts);
 
 // Farmer-only - "/mine" must be registered before the public "/:id" route
 // below, since Express would otherwise match GET /products/mine against

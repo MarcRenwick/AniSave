@@ -20,9 +20,11 @@ AniSave/
     ├── config/                # DB connection
     ├── controllers/           # Route handler logic
     ├── middleware/            # Auth + error handling
+    ├── data/                  # locations.json - Province > City > Barangay list + coordinates
     ├── models/                # Mongoose schemas
     ├── routes/                # Express routers
-    ├── utils/                 # Helpers (JWT signing, etc.)
+    ├── scripts/               # One-off scripts (build location data, backfill addresses, create admin)
+    ├── utils/                 # Helpers (JWT signing, distances, address lookup, etc.)
     └── server.js               # Entry point
 ```
 
@@ -64,13 +66,22 @@ Open http://localhost:5173, register as a Farmer or Buyer, then log in.
 
 ## Auth Flow (currently implemented)
 
-- `POST /api/auth/register` — creates a user (`farmer` or `buyer`), hashes the password, returns a JWT
+- `POST /api/auth/register` — creates a user (`farmer` or `buyer`) with the address they picked (`provinceCode`, `cityCode`, `barangayCode`), hashes the password, returns a JWT
 - `POST /api/auth/login` — logs in with **username** (not email) + password, returns a JWT
 - `GET /api/auth/me` — returns the logged-in user (requires `Authorization: Bearer <token>`)
 
 Login uses **username**, not email — email is collected at registration only so it's available for a future "forgot password" flow. Passwords must be 6-12 characters with at least one capital letter and one special character (enforced both client-side in `Register.jsx` and server-side in the `User` model, so the API rejects a weak password even if someone bypasses the form).
 
 The client stores the JWT + user info in `localStorage` via `AuthContext` and attaches it to future API requests automatically.
+
+## Addresses and "nearest"
+
+Everyone registers with a **Province → Municipality/City → Barangay** address picked from dropdowns (the same pickers appear in Edit Profile). Nobody types a latitude or longitude and the app never asks for a live GPS location: the server looks the coordinates up from the codes that were picked and saves them on the user (`address.latitude` / `address.longitude`, plus `address.precision`, which says whether that's the barangay's own point or its city/municipality's centre).
+
+- `GET /api/locations/provinces`, `/provinces/:code/cities`, `/cities/:code/barangays` feed the dropdowns.
+- "Nearest" compares the signed-in buyer's registered coordinates with each farmer's using the haversine formula, and sorts nearest → farthest: `GET /api/farmers?sort=nearest` and `GET /api/products?sort=nearest`. Each result carries `distanceKm`; farmers' coordinates are never sent to the client.
+- Accounts made before this existed only have free-typed `location` text. `node scripts/backfillAddresses.js --dry-run` (then without `--dry-run`) gives them a city-level address where their text names exactly one city/municipality; everyone else can pick one in Edit Profile.
+- The address list lives in `server/data/locations.json` and is committed. To rebuild it (PSGC + Wikidata + OpenStreetMap, see `server/data/README.md`): `node scripts/buildLocations.js`.
 
 ## Viewing the Database
 

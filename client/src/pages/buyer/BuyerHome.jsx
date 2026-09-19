@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ImageOff, Sprout, Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import HomeBanner from "../../components/buyer/HomeBanner";
@@ -8,6 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import { cityAndProvince, formatDistance, hasAddressPoint } from "../../utils/address";
 
 // The filter row shows these four. Flash Sale is a real, valid sort (kept
 // here so the URL param and the "Sorted by ..." label still resolve) but
@@ -22,15 +23,6 @@ const sortOptions = [
 const chipOptions = sortOptions.filter((o) => o.key !== "flash-sale");
 
 const FEATURED_SLIDES = 3;
-
-function locationScore(farmerLocation, buyerLocation) {
-  if (!buyerLocation || !farmerLocation) return 0;
-  const f = farmerLocation.toLowerCase();
-  const b = buyerLocation.toLowerCase();
-  if (f === b) return 2;
-  if (f.includes(b) || b.includes(f)) return 1;
-  return 0;
-}
 
 function ProductGrid({ products, navigate }) {
   return (
@@ -67,6 +59,9 @@ function ProductGrid({ products, navigate }) {
             <p className="truncate text-sm font-semibold">{product.title}</p>
             <PriceTag product={product} tone="light" size="sm" suffix=" per kilo" />
             <p className="truncate text-[11px] text-white/70">
+              {formatDistance(product.farmer) && (
+                <span className="font-semibold text-white">{formatDistance(product.farmer)} · </span>
+              )}
               {product.location || product.farmer?.location || "Location not set"}
             </p>
           </div>
@@ -114,25 +109,13 @@ export default function BuyerHome() {
     if (browsing) {
       const params = {};
       if (search.trim()) params.search = search.trim();
-      // "recommended" and "flash-sale" are filtered/ranked server-side.
-      // "newest" and "all" both just want the full, unfiltered catalog -
-      // "nearest" starts from that same catalog and is then re-sorted
-      // client-side by comparing each product's own location to the
-      // buyer's, the same way Nearest Farmers already works.
-      if (sort === "recommended" || sort === "flash-sale") params.sort = sort;
+      // "recommended", "flash-sale" and "nearest" are ranked server-side -
+      // nearest by real distance in km between registered addresses.
+      // "newest" and "all" both just want the full, unfiltered catalog.
+      if (sort === "recommended" || sort === "flash-sale" || sort === "nearest") params.sort = sort;
 
       getAllProducts(params)
-        .then(({ data }) => {
-          const ordered =
-            sort === "nearest"
-              ? [...data].sort(
-                  (a, b) =>
-                    locationScore(b.location || b.farmer?.location, user?.location) -
-                    locationScore(a.location || a.farmer?.location, user?.location)
-                )
-              : data;
-          setProducts(ordered);
-        })
+        .then(({ data }) => setProducts(data))
         .catch(() => setError("Could not load products. Is the server running?"))
         .finally(() => setLoading(false));
       return;
@@ -144,7 +127,7 @@ export default function BuyerHome() {
       getAllProducts(),
       getAllProducts({ sort: "flash-sale" }),
       getAllProducts({ sort: "recommended" }),
-      getFarmers(),
+      getFarmers({ sort: "nearest" }),
     ])
       .then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
         setNewestProducts(newestRes.data.slice(0, 4));
@@ -160,9 +143,27 @@ export default function BuyerHome() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, sort]);
 
-  const nearestFarmers = [...farmers]
-    .sort((a, b) => locationScore(b.location, user?.location) - locationScore(a.location, user?.location))
-    .slice(0, 4);
+  // Already nearest-first from the server when this account has a registered
+  // address, so it's just the top of the list.
+  const nearestFarmers = farmers.slice(0, 4);
+
+  // "Nearest" is measured from a registered address, so say so when there isn't one.
+  const noAddressHint = hasAddressPoint(user) ? null : user ? (
+    <>
+      Add your address in your{" "}
+      <Link to="/buyer/settings" className="font-semibold underline">
+        Profile
+      </Link>{" "}
+      to see how far away each farmer is.
+    </>
+  ) : (
+    <>
+      <Link to="/login" className="font-semibold underline">
+        Log in
+      </Link>{" "}
+      with your registered address to see how far away each farmer is.
+    </>
+  );
 
   // Real listings for the banner: Flash Sale items first, topped up with the
   // newest, and only ones with a photo to show.
@@ -189,7 +190,7 @@ export default function BuyerHome() {
         <div className="mb-8">
           <HomeBanner
             featured={featured}
-            buyerLocation={user?.location}
+            buyerLocation={user?.address?.city || user?.location}
             onShop={handleShopNow}
             onBrowse={setSort}
             onOpenProduct={(id) => navigate(`/buyer/products/${id}`)}
@@ -224,6 +225,9 @@ export default function BuyerHome() {
                 · Sorted by {sortOptions.find((o) => o.key === (sort || "newest"))?.label}
               </span>
             </h2>
+            {sort === "nearest" && noAddressHint && (
+              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{noAddressHint}</p>
+            )}
             {products.length === 0 ? (
               <p className="text-sm text-gray-500">No products found.</p>
             ) : (
@@ -256,6 +260,9 @@ export default function BuyerHome() {
 
             <section>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Nearest Farmers</h2>
+              {noAddressHint && (
+                <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{noAddressHint}</p>
+              )}
               {nearestFarmers.length === 0 ? (
                 <p className="text-sm text-gray-500">No farmers yet.</p>
               ) : (
@@ -273,7 +280,14 @@ export default function BuyerHome() {
                       <p className="truncate text-sm font-semibold text-gray-900">
                         {farmer.farmName || farmer.name}
                       </p>
-                      <p className="truncate text-xs text-gray-500">{farmer.location || "Location not set"}</p>
+                      <p className="max-w-full truncate text-xs text-gray-500">
+                        {cityAndProvince(farmer) || farmer.location || "Location not set"}
+                      </p>
+                      {formatDistance(farmer) && (
+                        <p className="flex items-center gap-1 text-xs font-semibold text-[#2f8f66]">
+                          <MapPin className="h-3 w-3" /> {formatDistance(farmer)}
+                        </p>
+                      )}
                       {farmer.rating > 0 && (
                         <p className="flex items-center gap-1 text-xs text-amber-500">
                           <Star className="h-3 w-3 fill-current" /> {farmer.rating.toFixed(1)}

@@ -2,20 +2,12 @@ import { useState } from "react";
 import { ImageOff } from "lucide-react";
 import Modal from "../Modal";
 import PriceTag from "../products/PriceTag";
+import QuantityInput from "./QuantityInput";
 import { SERVER_URL } from "../../services/api";
 import { effectivePrice } from "../../utils/pricing";
 
 export default function CheckoutModal({ product, preorder = false, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
-
-  // A pre-order isn't capped by current stock - the farmer fills it as the
-  // produce comes in.
-  const clamp = (value) => Math.max(1, preorder ? value : Math.min(product.stock, value));
-  const adjust = (delta) => setQuantity((q) => clamp(q + delta));
-  const handleTyped = (e) => {
-    const value = Number(e.target.value);
-    setQuantity(!e.target.value || Number.isNaN(value) ? 1 : clamp(Math.floor(value)));
-  };
 
   const total = effectivePrice(product) * quantity;
 
@@ -39,30 +31,9 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-center gap-4">
-        <button
-          type="button"
-          onClick={() => adjust(-1)}
-          className="h-10 w-10 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-        >
-          −
-        </button>
-        <input
-          type="number"
-          min="1"
-          max={preorder ? undefined : product.stock}
-          value={quantity}
-          onChange={handleTyped}
-          className="w-16 rounded-md border border-gray-300 py-1.5 text-center text-xl font-semibold text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
-        />
-        <button
-          type="button"
-          onClick={() => adjust(1)}
-          className="h-10 w-10 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-        >
-          +
-        </button>
-      </div>
+      {/* A pre-order isn't capped by current stock - the farmer fills it as
+          the produce comes in. */}
+      <QuantityInput value={quantity} onChange={setQuantity} max={preorder ? undefined : product.stock} />
       <p className="mt-2 text-center text-xs text-gray-400">
         {preorder
           ? "Pre-order - the farmer prepares this once it's available"

@@ -29,7 +29,9 @@ export default function AuthShell({ tagline, blurb, aside, wide = false, childre
         </div>
       </div>
 
-      <div className="flex w-full flex-col justify-center px-6 py-10 sm:px-12 lg:w-1/2 lg:px-16">
+      <div
+        className={`flex w-full flex-col justify-center px-6 sm:px-12 lg:w-1/2 lg:px-16 ${wide ? "py-6" : "py-10"}`}
+      >
         <div className={`mx-auto w-full ${wide ? "max-w-xl" : "max-w-sm"}`}>{children}</div>
       </div>
     </div>

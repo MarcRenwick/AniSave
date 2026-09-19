@@ -41,9 +41,28 @@ const userSchema = new mongoose.Schema(
       enum: ["farmer", "buyer", "admin"],
       required: [true, "Role is required"],
     },
+    // A readable one-line version of `address` ("Poblacion, Lingayen,
+    // Pangasinan"), kept because pages and product listings show it as text.
+    // Accounts made before addresses were structured only have this, free-typed.
     location: {
       type: String,
       trim: true,
+    },
+    // The registered address, picked from the Province > City/Municipality >
+    // Barangay lists. The coordinates are filled in by the server from that
+    // selection (see utils/locations.js) - nobody types them, and they are never
+    // a live location. `precision` records whether they're the barangay's own
+    // point or fall back to its city/municipality's centre.
+    address: {
+      provinceCode: String,
+      province: String,
+      cityCode: String,
+      city: String,
+      barangayCode: String,
+      barangay: String,
+      latitude: Number,
+      longitude: Number,
+      precision: { type: String, enum: ["barangay", "city"] },
     },
     phone: {
       type: String,
