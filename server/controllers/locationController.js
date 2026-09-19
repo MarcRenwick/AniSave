@@ -27,17 +27,4 @@ const getCities = asyncHandler(async (req, res) => {
   res.json(cities);
 });
 
-// @desc    The barangays of one city or municipality, A-Z
-// @route   GET /api/locations/cities/:cityCode/barangays
-// @access  Public
-const getBarangays = asyncHandler(async (req, res) => {
-  const barangays = locations.listBarangays(req.params.cityCode);
-  if (!barangays) {
-    res.status(404);
-    throw new Error("Municipality/city not found");
-  }
-  cacheAWhile(res);
-  res.json(barangays);
-});
-
-module.exports = { getProvinces, getCities, getBarangays };
+module.exports = { getProvinces, getCities };

@@ -44,7 +44,6 @@ const registerUser = asyncHandler(async (req, res) => {
     role,
     provinceCode,
     cityCode,
-    barangayCode,
     farmName,
     farmDescription,
   } = req.body;
@@ -72,7 +71,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
     // Farmers and buyers both pick where they are; the coordinates that
     // "nearest" is worked out from come from that pick, never from the client.
-    const { address, label } = resolveAddress({ provinceCode, cityCode, barangayCode });
+    const { address, label } = resolveAddress({ provinceCode, cityCode });
 
     const isFarmer = role === "farmer";
     if (isFarmer && !governmentIdFile) {
@@ -297,13 +296,13 @@ const resetPassword = asyncHandler(async (req, res) => {
 // @route   PUT /api/auth/profile
 // @access  Private
 const updateProfile = asyncHandler(async (req, res) => {
-  const { name, phone, farmName, farmDescription, provinceCode, cityCode, barangayCode } = req.body;
+  const { name, phone, farmName, farmDescription, provinceCode, cityCode } = req.body;
 
   // The address is only ever changed by picking one from the lists (free-typed
-  // text is ignored). Sending none of the three leaves it alone; sending some
-  // but not all is refused, so a half-changed address can't be saved.
-  const changingAddress = [provinceCode, cityCode, barangayCode].some(Boolean);
-  const resolved = changingAddress ? resolveAddress({ provinceCode, cityCode, barangayCode }) : null;
+  // text is ignored). Sending neither code leaves it alone; sending only one is
+  // refused, so a half-changed address can't be saved.
+  const changingAddress = [provinceCode, cityCode].some(Boolean);
+  const resolved = changingAddress ? resolveAddress({ provinceCode, cityCode }) : null;
 
   if (name !== undefined) req.user.name = name;
   if (phone !== undefined) req.user.phone = phone;

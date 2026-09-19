@@ -17,8 +17,8 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
     farmName: user?.farmName || "",
     farmDescription: user?.farmDescription || "",
   });
-  // The address is picked from the Province > Municipality/City > Barangay
-  // lists, starting from what's saved. It is only sent if it was changed.
+  // The address is picked from the Province > Municipality/City lists,
+  // starting from what's saved. It is only sent if it was changed.
   const [savedAddress] = useState(() => addressFromUser(user));
   const [address, setAddress] = useState(savedAddress);
   const [avatar, setAvatar] = useState(user?.avatar || null);
@@ -61,7 +61,7 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
 
     const addressChanged = !sameAddress(address, savedAddress);
     if (addressChanged && !isAddressComplete(address)) {
-      setError("Finish choosing your address - province, municipality/city and barangay.");
+      setError("Finish choosing your address - province and municipality/city.");
       return;
     }
 
@@ -124,10 +124,10 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
         <div>
           <p className="block text-sm font-medium text-gray-700">Address</p>
           {/* Accounts from before addresses were picked from lists only have text. */}
-          {!user?.address?.barangayCode && user?.location && (
+          {!user?.address?.cityCode && user?.location && (
             <p className="mt-1 text-xs text-gray-500">
-              Currently saved as &ldquo;{user.location}&rdquo;. Pick your barangay below so buyers and
-              sellers near you can be found.
+              Currently saved as &ldquo;{user.location}&rdquo;. Pick your province and municipality/city
+              below so buyers and sellers near you can be found.
             </p>
           )}
           <div className="mt-2">

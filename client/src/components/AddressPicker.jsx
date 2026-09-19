@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getProvinces, getCities, getBarangays } from "../services/api";
+import { getProvinces, getCities } from "../services/api";
 
 // The lists barely change, so anything fetched is kept for the life of the
 // page - going back to a province you already opened is instant. A failed
@@ -24,30 +24,29 @@ function load(key, fetcher) {
 const defaultSelectClass =
   "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66] disabled:bg-gray-50 disabled:text-gray-400";
 
-// Province > Municipality/City > Barangay, each list opening once the one
-// before it is chosen. It only ever reports the codes that were picked - the
-// server works out the coordinates from them, so nobody enters a latitude or
-// longitude, and nothing here reads a live location.
+// Province > Municipality/City, the second list opening once a province is
+// chosen. It only ever reports the codes that were picked - the server works
+// out the coordinates from them, so nobody enters a latitude or longitude, and
+// nothing here reads a live location.
 //
-// `value` is { provinceCode, cityCode, barangayCode }; `onChange` gets the
-// whole next value, with the lower levels cleared whenever a higher one
-// changes so a barangay can't be left over from a different town.
+// `value` is { provinceCode, cityCode }; `onChange` gets the whole next value,
+// with the city cleared whenever the province changes so a city can't be left
+// over from a different province.
 export default function AddressPicker({
   value,
   onChange,
   required = false,
-  className = "grid gap-4 sm:grid-cols-3",
+  className = "grid gap-4 sm:grid-cols-2",
   labelClass = "block text-sm font-medium text-gray-700",
   selectClass = defaultSelectClass,
   idPrefix = "address",
 }) {
-  const { provinceCode, cityCode, barangayCode } = value;
+  const { provinceCode, cityCode } = value;
 
-  // Each list remembers which parent it belongs to, so switching province
-  // never shows the previous province's towns while the new ones load.
+  // The city list remembers which province it belongs to, so switching
+  // province never shows the previous province's towns while the new ones load.
   const [provinces, setProvinces] = useState(null);
   const [cities, setCities] = useState({ for: null, list: null });
-  const [barangays, setBarangays] = useState({ for: null, list: null });
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
 
@@ -80,23 +79,7 @@ export default function AddressPicker({
     };
   }, [provinceCode, attempt]);
 
-  useEffect(() => {
-    if (!cityCode) return undefined;
-    let cancelled = false;
-    load(`barangays:${cityCode}`, () => getBarangays(cityCode))
-      .then((list) => {
-        if (!cancelled) setBarangays({ for: cityCode, list });
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [cityCode, attempt]);
-
   const cityList = cities.for === provinceCode ? cities.list : null;
-  const barangayList = barangays.for === cityCode ? barangays.list : null;
 
   const retry = () => {
     setFailed(false);
@@ -123,7 +106,7 @@ export default function AddressPicker({
             required={required}
             value={provinceCode}
             disabled={!provinces}
-            onChange={(e) => onChange({ provinceCode: e.target.value, cityCode: "", barangayCode: "" })}
+            onChange={(e) => onChange({ provinceCode: e.target.value, cityCode: "" })}
             className={selectClass}
           >
             <option value="">{provinces ? "Select province" : "Loading..."}</option>
@@ -143,7 +126,7 @@ export default function AddressPicker({
             required={required}
             value={cityCode}
             disabled={!provinceCode || !cityList}
-            onChange={(e) => onChange({ provinceCode, cityCode: e.target.value, barangayCode: "" })}
+            onChange={(e) => onChange({ provinceCode, cityCode: e.target.value })}
             className={selectClass}
           >
             <option value="">
@@ -152,28 +135,6 @@ export default function AddressPicker({
             {(cityList || []).map((c) => (
               <option key={c.code} value={c.code}>
                 {c.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {field(
-          "barangay",
-          "Barangay",
-          <select
-            id={`${idPrefix}-barangay`}
-            required={required}
-            value={barangayCode}
-            disabled={!cityCode || !barangayList}
-            onChange={(e) => onChange({ provinceCode, cityCode, barangayCode: e.target.value })}
-            className={selectClass}
-          >
-            <option value="">
-              {!cityCode ? "Select municipality / city first" : barangayList ? "Select barangay" : "Loading..."}
-            </option>
-            {(barangayList || []).map((b) => (
-              <option key={b.code} value={b.code}>
-                {b.name}
               </option>
             ))}
           </select>

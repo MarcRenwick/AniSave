@@ -1,9 +1,9 @@
 // Distances between two people's registered addresses.
 //
 // Only registered-address coordinates are ever compared - never a live
-// location - and each address is a place's centre point (a barangay's where
-// known, otherwise its city or municipality's), so these are "as the crow
-// flies" distances between those points, not driving distances.
+// location - and each is the centre point of the person's municipality or city,
+// so these are "as the crow flies" distances between those points, not driving
+// distances.
 
 const EARTH_RADIUS_KM = 6371;
 const toRadians = (degrees) => (degrees * Math.PI) / 180;

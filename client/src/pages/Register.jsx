@@ -31,8 +31,8 @@ export default function Register() {
   const [role, setRole] = useState(null);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState(initialForm);
-  // Picked from the Province > Municipality/City > Barangay lists; the server
-  // works out the coordinates from these codes.
+  // Picked from the Province > Municipality/City lists; the server works out
+  // the coordinates from these codes.
   const [address, setAddress] = useState(emptyAddress);
   const [governmentId, setGovernmentId] = useState(null);
   const [farmDocuments, setFarmDocuments] = useState([]);
@@ -83,7 +83,7 @@ export default function Register() {
       return;
     }
     if (!isAddressComplete(address)) {
-      setError("Choose your province, municipality/city and barangay.");
+      setError("Choose your province and municipality/city.");
       return;
     }
 
@@ -353,7 +353,7 @@ export default function Register() {
                 value={address}
                 onChange={setAddress}
                 selectClass={inputClass}
-                className="grid gap-3 sm:grid-cols-3"
+                className="grid gap-3 sm:grid-cols-2"
               />
             </div>
 

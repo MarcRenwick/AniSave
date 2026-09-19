@@ -6,8 +6,8 @@
 const displayName = (name) => String(name).replace(/^City of (.+)$/i, "$1 City");
 
 // Puts a place name in a form two spellings of the same place will share:
-// no accents, no "(Pob.)" or "(Capital)", no "City of" / "Barangay", and the
-// usual abbreviations spelled out.
+// no accents, no "(Capital)", no "City of", and the usual abbreviations
+// spelled out.
 function normalizeName(value) {
   return String(value || "")
     .toLowerCase()
@@ -15,7 +15,6 @@ function normalizeName(value) {
     .replace(/[̀-ͯ]/g, "")
     .replace(/\(.*?\)/g, " ")
     .replace(/\b(city of|municipality of|city)\b/g, " ")
-    .replace(/\b(barangay|brgy|bgy)\b\.?/g, " ")
     .replace(/\bsta\b\.?/g, "santa")
     .replace(/\bsto\b\.?/g, "santo")
     .replace(/\bgen\b\.?/g, "general")

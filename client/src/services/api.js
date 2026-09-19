@@ -39,10 +39,9 @@ export const getAllProducts = (params) => api.get("/products", { params });
 export const getFarmers = (params) => api.get("/farmers", { params });
 export const getFarmerProfile = (id) => api.get(`/farmers/${id}`);
 
-// The Province > City/Municipality > Barangay lists for address pickers
+// The Province > Municipality/City lists for address pickers
 export const getProvinces = () => api.get("/locations/provinces");
 export const getCities = (provinceCode) => api.get(`/locations/provinces/${provinceCode}/cities`);
-export const getBarangays = (cityCode) => api.get(`/locations/cities/${cityCode}/barangays`);
 export const getProduct = (id) => api.get(`/products/${id}`);
 export const createProduct = (formData) =>
   api.post("/products", formData, { headers: { "Content-Type": "multipart/form-data" } });

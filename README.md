@@ -20,7 +20,7 @@ AniSave/
     ├── config/                # DB connection
     ├── controllers/           # Route handler logic
     ├── middleware/            # Auth + error handling
-    ├── data/                  # locations.json - Province > City > Barangay list + coordinates
+    ├── data/                  # locations.json - Province > Municipality/City list + coordinates
     ├── models/                # Mongoose schemas
     ├── routes/                # Express routers
     ├── scripts/               # One-off scripts (build location data, backfill addresses, create admin)
@@ -66,7 +66,7 @@ Open http://localhost:5173, register as a Farmer or Buyer, then log in.
 
 ## Auth Flow (currently implemented)
 
-- `POST /api/auth/register` — creates a user (`farmer` or `buyer`) with the address they picked (`provinceCode`, `cityCode`, `barangayCode`), hashes the password, returns a JWT
+- `POST /api/auth/register` — creates a user (`farmer` or `buyer`) with the address they picked (`provinceCode`, `cityCode`), hashes the password, returns a JWT
 - `POST /api/auth/login` — logs in with **username** (not email) + password, returns a JWT
 - `GET /api/auth/me` — returns the logged-in user (requires `Authorization: Bearer <token>`)
 
@@ -76,12 +76,12 @@ The client stores the JWT + user info in `localStorage` via `AuthContext` and at
 
 ## Addresses and "nearest"
 
-Everyone registers with a **Province → Municipality/City → Barangay** address picked from dropdowns (the same pickers appear in Edit Profile). Nobody types a latitude or longitude and the app never asks for a live GPS location: the server looks the coordinates up from the codes that were picked and saves them on the user (`address.latitude` / `address.longitude`, plus `address.precision`, which says whether that's the barangay's own point or its city/municipality's centre).
+Everyone registers with a **Province → Municipality/City** address picked from dropdowns (the same pickers appear in Edit Profile). Nobody types a latitude or longitude and the app never asks for a live GPS location: the server looks up the picked city's centre point from its code and saves it on the user (`address.latitude` / `address.longitude`).
 
-- `GET /api/locations/provinces`, `/provinces/:code/cities`, `/cities/:code/barangays` feed the dropdowns.
-- "Nearest" compares the signed-in buyer's registered coordinates with each farmer's using the haversine formula, and sorts nearest → farthest: `GET /api/farmers?sort=nearest` and `GET /api/products?sort=nearest`. Each result carries `distanceKm`; farmers' coordinates are never sent to the client.
-- Accounts made before this existed only have free-typed `location` text. `node scripts/backfillAddresses.js --dry-run` (then without `--dry-run`) gives them a city-level address where their text names exactly one city/municipality; everyone else can pick one in Edit Profile.
-- The address list lives in `server/data/locations.json` and is committed. To rebuild it (PSGC + Wikidata + OpenStreetMap, see `server/data/README.md`): `node scripts/buildLocations.js`.
+- `GET /api/locations/provinces` and `/provinces/:code/cities` feed the dropdowns.
+- "Nearest" compares the signed-in buyer's registered city coordinates with each farmer's using the haversine formula, and sorts nearest → farthest: `GET /api/farmers?sort=nearest` and `GET /api/products?sort=nearest`. Each result carries `distanceKm`; farmers' coordinates are never sent to the client.
+- Accounts made before this existed only have free-typed `location` text (or a barangay from an earlier version). `node scripts/backfillAddresses.js --dry-run` (then without `--dry-run`) gives them a city-level address where their text names exactly one city/municipality; everyone else can pick one in Edit Profile.
+- The address list lives in `server/data/locations.json` and is committed - every one of the country's 1,634 cities and municipalities has coordinates in it. It is generated, not typed: to rebuild it (PSGC + Wikidata, see `server/data/README.md`) run `node scripts/buildLocations.js`.
 
 ## Viewing the Database
 
