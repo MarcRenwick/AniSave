@@ -107,4 +107,14 @@ export const createRating = (orderId, stars, comment) =>
 export const getProductRatings = (productId) => api.get(`/ratings/product/${productId}`);
 export const toggleRatingLike = (ratingId) => api.post(`/ratings/${ratingId}/like`);
 
+// Reporting a review takes an emailed OTP: ask for one (the server checks the
+// report first), then send the report with the code. `report` is
+// { ratingId, reason, description? }. Admins review each one and decide.
+export const requestReviewReportCode = (report) => api.post("/review-reports/request-otp", report);
+export const createReviewReport = (report, code) => api.post("/review-reports", { ...report, code });
+export const getAdminReviewReports = () => api.get("/admin/review-reports");
+export const markReviewReportReviewed = (id) => api.patch(`/admin/review-reports/${id}/review`);
+export const decideReviewReport = (id, action, note) =>
+  api.patch(`/admin/review-reports/${id}/decision`, { action, note });
+
 export default api;

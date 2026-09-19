@@ -19,6 +19,7 @@ const locationRoutes = require("./routes/locationRoutes");
 const documentRoutes = require("./routes/documentRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const reportEvidenceRoutes = require("./routes/reportEvidenceRoutes");
+const reviewReportRoutes = require("./routes/reviewReportRoutes");
 
 // Every session token is signed with this. Without it nobody could log in; a
 // short one could be guessed - so the server won't start in production with one.
@@ -74,6 +75,7 @@ app.use("/api/locations", locationRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/report-evidence", reportEvidenceRoutes);
+app.use("/api/review-reports", reviewReportRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

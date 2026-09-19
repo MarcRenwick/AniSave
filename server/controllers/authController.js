@@ -6,6 +6,7 @@ const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
 const Report = require("../models/Report");
+const ReviewReport = require("../models/ReviewReport");
 const generateToken = require("../utils/generateToken");
 const { restrictionMessage } = require("../utils/restriction");
 const sendEmail = require("../utils/sendEmail");
@@ -620,6 +621,12 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   );
   await Product.deleteMany({ farmer: user._id });
   await Order.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
+  // Reports about reviews go with the reviews they were about, and with
+  // whoever sent them or wrote the review.
+  const ratingIds = await Rating.distinct("_id", { $or: [{ farmer: user._id }, { buyer: user._id }] });
+  await ReviewReport.deleteMany({
+    $or: [{ reporter: user._id }, { reviewAuthor: user._id }, { rating: { $in: ratingIds } }],
+  });
   await Rating.deleteMany({ $or: [{ farmer: user._id }, { buyer: user._id }] });
   // Reports they sent (and, for a farmer, reports about them) go too - with the
   // evidence photos attached to them.
@@ -690,13 +697,14 @@ const submitVerification = asyncHandler(async (req, res) => {
 // @access  Private
 const exportMyData = asyncHandler(async (req, res) => {
   const me = req.user;
-  const [orders, ratings, reports, products] = await Promise.all([
+  const [orders, ratings, reports, reviewReports, products] = await Promise.all([
     Order.find({ $or: [{ buyer: me._id }, { farmer: me._id }] })
       .select("productTitle pricePerKilo quantity total status createdAt acceptedAt readyAt doneAt cancelledAt")
       .lean(),
     Rating.find({ buyer: me._id }).select("stars comment createdAt").lean(),
     // Only the reports this person sent - what others reported about them isn't theirs to export.
     Report.find({ reporter: me._id }).select("reason description status createdAt").lean(),
+    ReviewReport.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     me.role === "farmer"
       ? Product.find({ farmer: me._id }).select("title category productType price salePrice stock location description createdAt").lean()
       : [],
@@ -727,6 +735,7 @@ const exportMyData = asyncHandler(async (req, res) => {
     orders,
     ratingsIWrote: ratings,
     reportsIFiled: reports,
+    reviewReportsIFiled: reviewReports,
     myProducts: products,
   };
 

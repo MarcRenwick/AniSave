@@ -28,6 +28,8 @@ import OrderDetail from "./pages/buyer/OrderDetail";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminReports from "./pages/admin/AdminReports";
 import ReportFarmer from "./pages/buyer/ReportFarmer";
+import ReportReview from "./pages/ReportReview";
+import AdminReviewReports from "./pages/admin/AdminReviewReports";
 import AdminRegister from "./pages/AdminRegister";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -103,6 +105,14 @@ export default function App() {
               }
             />
             <Route
+              path="/farmer/products/:id/ratings/:ratingId/report"
+              element={
+                <ProtectedRoute role="farmer">
+                  <ReportReview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/farmer/orders"
               element={
                 <ProtectedRoute role="farmer">
@@ -148,6 +158,14 @@ export default function App() {
             />
             <Route path="/buyer/products/:id" element={<ProductDetail />} />
             <Route path="/buyer/products/:id/ratings" element={<ProductRatings />} />
+            <Route
+              path="/buyer/products/:id/ratings/:ratingId/report"
+              element={
+                <ProtectedRoute role="buyer">
+                  <ReportReview />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/buyer/cart" element={<CartPage />} />
             <Route
               path="/buyer/checkout"
@@ -196,6 +214,15 @@ export default function App() {
               element={
                 <ProtectedRoute role="admin">
                   <AdminReports />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/review-reports"
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminReviewReports />
                 </ProtectedRoute>
               }
             />

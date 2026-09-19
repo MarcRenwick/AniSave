@@ -24,6 +24,7 @@ export default function Terms() {
             "You can sell only after an administrator approves your ID and farm documents, and the documents must be genuine.",
             "Describe your products, prices and stock honestly, and keep them current.",
             "Accept, prepare and complete the orders you take, or decline them promptly.",
+            "Use “Report review” only on reviews of your own products that break the rules - abusive, fake, spam or revealing personal information - not simply because a rating is low.",
           ]}
         />
       </Section>
@@ -34,6 +35,7 @@ export default function Terms() {
             "An order is a request to a farmer, who may accept it or not. Arrange pick-up or delivery with the farmer.",
             "Only rate products you have actually received, and keep ratings honest and respectful.",
             "Use “Report this user” on a farmer's shop only for a real problem, with an honest description. Knowingly false reports can lead to action against your account.",
+            "Reviews that are abusive, fake, spam, misleading or reveal someone's personal information can be reported, and an administrator can remove them - or suspend whoever wrote them.",
           ]}
         />
       </Section>
@@ -47,8 +49,8 @@ export default function Terms() {
 
       <Section title="Moderation">
         <p>
-          Administrators may reject a farmer&apos;s verification, or ban or suspend an account that breaks
-          these terms - for example after reviewing a report. A banned or suspended account can&apos;t
+          Administrators may reject a farmer&apos;s verification, remove a review, or ban or suspend an
+          account that breaks these terms - for example after reviewing a report. A banned or suspended account can&apos;t
           log in, and a suspended farmer&apos;s shop and products are hidden from buyers.
         </p>
       </Section>

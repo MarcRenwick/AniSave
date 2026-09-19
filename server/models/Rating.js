@@ -35,6 +35,10 @@ const ratingSchema = new mongoose.Schema(
     },
     // Buyers who marked this review helpful, at most once each.
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    // Set when an admin takes the review down after a report. It stops being
+    // shown and counted, but the row stays: the order is still rated, so the
+    // buyer can't simply post it again.
+    removedAt: { type: Date },
   },
   { timestamps: true }
 );

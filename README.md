@@ -107,6 +107,15 @@ Buyers can report a farmer from the farmer's shop page (the menu at the top righ
 - Evidence photos are private (`server/private/reports`), readable only by the buyer who sent them and admins (`GET /api/report-evidence/:file`).
 - A buyer can have one open report per farmer and send up to 5 a day. Deleting an account also deletes the reports it sent (or, for a farmer, reports about them).
 
+### Reporting a review
+
+On a product's **Ratings** page every review has a **Report review** button - buyers can report other people's reviews, and a farmer the reviews of their own products. Pick a reason (Adult or Sexual Content, Spam, Rude or Abusive, Exposing Personal Information, Suspected Fake, Misleading or Inaccurate, or **Other Violations**, which has to be explained) and press **Submit**.
+
+- **Confirmed with an emailed OTP.** Submitting first asks the server to email a 6-digit code to the reporter's registered address (`POST /api/review-reports/request-otp`), then sends the report with the code (`POST /api/review-reports`). It uses the same one-time-code helpers as deleting an account (`server/utils/otp.js`) - only the set of fields it's kept in (`reviewReportCode...` on the user) is new, so a code for one purpose can't be spent on another. The server checks the report *before* emailing anything.
+- Reports go to the admin's **Review Reports** page (`/admin/review-reports`, `GET /api/admin/review-reports`). Status: **Pending** → **Reviewed** (an admin has opened it) → **Dismissed**, **Removed** (the review is taken down) or **Suspended** (the review is taken down and its author is suspended, like a ban; a note is required) - `PATCH /api/admin/review-reports/:id/decision`.
+- A removed review is hidden and no longer counts towards the product's or the farmer's rating (`removedAt` on the rating). Nobody can report the same review twice, and one account can send 10 a day.
+- Deleting an account also deletes the review reports it sent or was the subject of.
+
 ## Viewing the Database
 
 MongoDB Compass (a GUI) is installed on this machine — open it from the Start Menu, connect to `mongodb://127.0.0.1:27017`, then open the `anisave` database → `users` collection to see registered accounts. Passwords are stored bcrypt-hashed, not in plain text.

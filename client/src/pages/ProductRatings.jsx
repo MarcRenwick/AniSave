@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Star, ThumbsUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import Avatar from "../components/Avatar";
+import ReportSentDialog from "../components/reports/ReportSentDialog";
 import { getProduct, getProductRatings, toggleRatingLike } from "../services/api";
 import useScrollReveal from "../hooks/useScrollReveal";
 import usePreserveScroll from "../hooks/usePreserveScroll";
+import { useSmoothNavigate } from "../utils/pageTransition";
 
 function Stars({ value, className = "h-4 w-4" }) {
   return (
@@ -23,12 +25,17 @@ function Stars({ value, className = "h-4 w-4" }) {
 }
 
 // Shared by both portals: a farmer sees the reviews and their helpful counts,
-// and a signed-in buyer can also mark other people's reviews helpful.
+// and a signed-in buyer can also mark other people's reviews helpful. Buyers can
+// report other people's reviews, and a farmer the ones on their own products.
 export default function ProductRatings() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const smoothNavigate = useSmoothNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const canLike = user?.role === "buyer";
+  // Coming back from the report form with { reportSent: true } shows the thank-you once.
+  const [reportSent, setReportSent] = useState(Boolean(location.state?.reportSent));
 
   const [productTitle, setProductTitle] = useState("");
   const [ratings, setRatings] = useState([]);
@@ -50,6 +57,16 @@ export default function ProductRatings() {
       .catch(() => setError("Could not load these ratings."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // The thank-you is shown once: clear it from the history entry so a refresh doesn't repeat it.
+  useEffect(() => {
+    if (location.state?.reportSent) navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A visitor who isn't signed in is asked to log in first.
+  const startReport = (rating) =>
+    smoothNavigate(user ? `/${user.role}/products/${id}/ratings/${rating._id}/report` : "/login");
 
   const handleLike = async (rating) => {
     setLikeError("");
@@ -150,20 +167,36 @@ export default function ProductRatings() {
 
               {visible.map((r) => (
                 <div key={r._id} className="p-6">
-                  <div className="flex items-start gap-3">
-                    <Avatar
-                      src={r.buyerAvatar}
-                      alt={r.buyerName}
-                      className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
-                      iconClass="h-5 w-5"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{r.buyerName}</p>
-                      <Stars value={r.stars} className="h-3.5 w-3.5" />
-                      <p className="text-xs text-gray-400">
-                        {new Date(r.createdAt).toLocaleDateString("en-CA")}
-                      </p>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <Avatar
+                        src={r.buyerAvatar}
+                        alt={r.buyerName}
+                        className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                        iconClass="h-5 w-5"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{r.buyerName}</p>
+                        <Stars value={r.stars} className="h-3.5 w-3.5" />
+                        <p className="text-xs text-gray-400">
+                          {new Date(r.createdAt).toLocaleDateString("en-CA")}
+                        </p>
+                      </div>
                     </div>
+
+                    {r.reportedByMe ? (
+                      <span className="shrink-0 px-3 py-1 text-xs text-gray-400">Reported</span>
+                    ) : (
+                      (!user || r.canReport) && (
+                        <button
+                          type="button"
+                          onClick={() => startReport(r)}
+                          className="shrink-0 rounded border border-gray-400 px-4 py-1 text-xs text-gray-800 transition hover:bg-gray-50 active:scale-95"
+                        >
+                          Report review
+                        </button>
+                      )
+                    )}
                   </div>
 
                   {r.comment && <p className="mt-3 pl-13 text-sm text-gray-800 sm:pl-[3.25rem]">{r.comment}</p>}
@@ -196,6 +229,8 @@ export default function ProductRatings() {
           </div>
         )}
       </div>
+
+      {reportSent && <ReportSentDialog onClose={() => setReportSent(false)} />}
     </div>
   );
 }

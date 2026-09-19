@@ -89,7 +89,7 @@ const getMyProducts = asyncHandler(async (req, res) => {
   const products = await Product.find({ farmer: req.user._id }).sort({ createdAt: -1 });
 
   const ratingStats = await Rating.aggregate([
-    { $match: { farmer: req.user._id } },
+    { $match: { farmer: req.user._id, removedAt: null } },
     { $group: { _id: "$product", avg: { $avg: "$stars" }, count: { $sum: 1 } } },
   ]);
   const statsByProduct = new Map(ratingStats.map((s) => [s._id.toString(), s]));
@@ -137,7 +137,13 @@ const getAllProducts = asyncHandler(async (req, res) => {
     const products = await Product.aggregate([
       { $match: filter },
       {
-        $lookup: { from: "ratings", localField: "_id", foreignField: "product", as: "ratings" },
+        // Reviews an admin has taken down don't count towards the ranking.
+        $lookup: {
+          from: "ratings",
+          let: { productId: "$_id" },
+          pipeline: [{ $match: { $expr: { $eq: ["$product", "$$productId"] }, removedAt: null } }],
+          as: "ratings",
+        },
       },
       {
         $lookup: {
@@ -243,7 +249,7 @@ const getProductById = asyncHandler(async (req, res) => {
   ]);
 
   const ratingStats = await Rating.aggregate([
-    { $match: { product: product._id } },
+    { $match: { product: product._id, removedAt: null } },
     { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
   ]);
 

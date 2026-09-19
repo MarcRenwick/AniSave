@@ -49,7 +49,7 @@ const getFarmerProfile = asyncHandler(async (req, res) => {
   }
 
   const ratingStats = await Rating.aggregate([
-    { $match: { farmer: farmer._id } },
+    { $match: { farmer: farmer._id, removedAt: null } },
     { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
   ]);
 

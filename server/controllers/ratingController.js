@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
+const ReviewReport = require("../models/ReviewReport");
 
 // @desc    Rate a completed order's product
 // @route   POST /api/ratings
@@ -52,33 +53,51 @@ const createRating = asyncHandler(async (req, res) => {
 
 // @desc    List a product's ratings, newest first
 // @route   GET /api/ratings/product/:productId
-// @access  Public (a signed-in viewer also learns which reviews they liked)
+// @access  Public (a signed-in viewer also learns which reviews they liked, and
+//          which they can report)
 const getProductRatings = asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.productId)) {
     res.status(404);
     throw new Error("Product not found");
   }
 
-  const ratings = await Rating.find({ product: req.params.productId })
+  // A review an admin has taken down after a report is no longer shown.
+  const ratings = await Rating.find({ product: req.params.productId, removedAt: null })
     .populate("buyer", "name avatar")
     .sort({ createdAt: -1 });
 
   const viewerId = req.user?._id?.toString();
 
+  const reported = viewerId
+    ? new Set(
+        (await ReviewReport.find({ reporter: viewerId, rating: { $in: ratings.map((r) => r._id) } }).select("rating").lean()).map(
+          (report) => report.rating.toString()
+        )
+      )
+    : new Set();
+
   res.json(
-    ratings.map((r) => ({
-      _id: r._id,
-      stars: r.stars,
-      comment: r.comment,
-      createdAt: r.createdAt,
-      // The reviewer's display name, not their username - that's also their
-      // login handle, and shouldn't be published on every review.
-      buyerName: r.buyer?.name || "AniSave buyer",
-      buyerAvatar: r.buyer?.avatar || null,
-      isMine: Boolean(viewerId) && r.buyer?._id?.toString() === viewerId,
-      likeCount: r.likes.length,
-      likedByMe: Boolean(viewerId) && r.likes.some((id) => id.toString() === viewerId),
-    }))
+    ratings.map((r) => {
+      const isMine = Boolean(viewerId) && r.buyer?._id?.toString() === viewerId;
+      return {
+        _id: r._id,
+        stars: r.stars,
+        comment: r.comment,
+        createdAt: r.createdAt,
+        // The reviewer's display name, not their username - that's also their
+        // login handle, and shouldn't be published on every review.
+        buyerName: r.buyer?.name || "AniSave buyer",
+        buyerAvatar: r.buyer?.avatar || null,
+        isMine,
+        likeCount: r.likes.length,
+        likedByMe: Boolean(viewerId) && r.likes.some((id) => id.toString() === viewerId),
+        // Buyers can report other people's reviews, and a farmer the ones on
+        // their own products (the report route enforces this too).
+        canReport:
+          req.user?.role === "buyer" ? !isMine : req.user?.role === "farmer" && r.farmer.toString() === viewerId,
+        reportedByMe: reported.has(r._id.toString()),
+      };
+    })
   );
 });
 

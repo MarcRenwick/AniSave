@@ -6,6 +6,11 @@ const {
   reviewFarmerVerification,
 } = require("../controllers/adminController");
 const { getReports, markReviewed, decideReport } = require("../controllers/reportController");
+const {
+  getReviewReports,
+  markReviewed: markReviewReportReviewed,
+  decideReviewReport,
+} = require("../controllers/reviewReportController");
 const { protect, authorize } = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -21,5 +26,10 @@ router.patch("/users/:id/verification", reviewFarmerVerification);
 router.get("/reports", getReports);
 router.patch("/reports/:id/review", markReviewed);
 router.patch("/reports/:id/decision", decideReport);
+
+// Reports about reviews: review each one, then dismiss it, remove the review or suspend its author.
+router.get("/review-reports", getReviewReports);
+router.patch("/review-reports/:id/review", markReviewReportReviewed);
+router.patch("/review-reports/:id/decision", decideReviewReport);
 
 module.exports = router;
