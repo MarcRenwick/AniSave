@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Coins, Banknote, TrendingUp, Award, CalendarCheck, Percent } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
@@ -139,29 +138,24 @@ export default function FarmerDashboard() {
           <div className="grid grid-cols-3 gap-6">
             <div className="overflow-hidden rounded-xl bg-white shadow-sm">
               <CardHeader>Today&apos;s Sales</CardHeader>
-              <div className="flex items-center gap-3 p-4">
-                <Coins className="h-8 w-8 text-amber-500" />
+              <div className="p-4">
                 <span className="text-2xl font-bold text-gray-900">₱{todaysSales}</span>
               </div>
             </div>
             <div className="overflow-hidden rounded-xl bg-white shadow-sm">
               <CardHeader>Profit</CardHeader>
-              <div className="flex items-center gap-3 p-4">
-                <Banknote className="h-8 w-8 text-green-600" />
+              <div className="p-4">
                 <span className="text-lg font-bold text-gray-400">N/A</span>
               </div>
             </div>
             <div className="overflow-hidden rounded-xl bg-white shadow-sm">
               <CardHeader>Stock</CardHeader>
-              <div className="flex items-center justify-between p-4">
-                <div className="text-sm text-gray-700">
-                  <p className="text-lg font-bold text-gray-900">{totalStockKg} kg</p>
-                  <p>{products.length} products</p>
-                  {lowStock.length > 0 && (
-                    <p className="text-amber-600">{lowStock.length} product(s) low in stock</p>
-                  )}
-                </div>
-                <TrendingUp className="h-8 w-8 shrink-0 text-blue-500" />
+              <div className="p-4 text-sm text-gray-700">
+                <p className="text-lg font-bold text-gray-900">{totalStockKg} kg</p>
+                <p>{products.length} products</p>
+                {lowStock.length > 0 && (
+                  <p className="text-amber-600">{lowStock.length} product(s) low in stock</p>
+                )}
               </div>
             </div>
           </div>
@@ -184,12 +178,7 @@ export default function FarmerDashboard() {
               <div className="grid grid-cols-3 gap-4 p-4">
                 {notifications.slice(0, 3).map((note) => (
                   <div key={note.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-white ${note.color}`}>
-                        <note.icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="text-sm font-semibold text-gray-800">{note.title}</span>
-                    </div>
+                    <p className="mb-2 text-sm font-semibold text-gray-800">{note.title}</p>
                     <p className="text-xs text-gray-600">{note.description}</p>
                   </div>
                 ))}
@@ -216,7 +205,6 @@ export default function FarmerDashboard() {
                   ))}
                 </ol>
               )}
-              <Award className="mt-2 h-8 w-8 shrink-0 text-yellow-500" />
             </div>
           </div>
 
@@ -237,7 +225,6 @@ export default function FarmerDashboard() {
                   ))}
                 </ol>
               )}
-              <CalendarCheck className="mt-2 h-8 w-8 shrink-0 text-blue-500" />
             </div>
           </div>
 
@@ -265,7 +252,6 @@ export default function FarmerDashboard() {
                   ))}
                 </ul>
               )}
-              <Percent className="mt-2 h-8 w-8 shrink-0 text-red-500" />
             </div>
           </div>
         </div>
