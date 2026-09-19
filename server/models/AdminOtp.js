@@ -10,6 +10,7 @@ const adminOtpSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    // Stored as an HMAC (see utils/otp.js), never the code itself
     code: {
       type: String,
       required: true,
@@ -17,6 +18,11 @@ const adminOtpSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
+    },
+    // Wrong guesses so far - the code stops working after a few
+    attempts: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

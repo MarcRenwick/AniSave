@@ -11,6 +11,7 @@ import {
   Package,
   Pencil,
   KeyRound,
+  Lock,
   Trash2,
   LogOut,
   Menu,
@@ -25,6 +26,7 @@ import LogoutConfirmModal from "../../components/LogoutConfirmModal";
 import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
+import PrivacySecurityModal from "../../components/settings/PrivacySecurityModal";
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../../services/api";
 
@@ -40,6 +42,7 @@ export default function FarmerSettings() {
 
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -172,6 +175,16 @@ export default function FarmerSettings() {
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
                     <KeyRound className="h-4 w-4 text-[#2f8f66]" /> Change Password
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowPrivacy(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    <Lock className="h-4 w-4 text-[#2f8f66]" /> Privacy &amp; Security
                   </button>
                   <button
                     type="button"
@@ -329,6 +342,7 @@ export default function FarmerSettings() {
         />
       )}
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+      {showPrivacy && <PrivacySecurityModal onClose={() => setShowPrivacy(false)} />}
       {showVerification && <VerificationModal onClose={() => setShowVerification(false)} />}
       {showDelete && (
         <DeleteAccountModal onClose={() => setShowDelete(false)} onDeleted={handleAccountDeleted} />

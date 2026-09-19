@@ -36,6 +36,18 @@ export function writeStoredUser(user) {
   store.setItem(USER_KEY, JSON.stringify(user));
 }
 
+// Swaps in a fresh token (after a password change) in whichever store holds the session.
+export function replaceToken(token) {
+  const store = localStorage.getItem(TOKEN_KEY) !== null ? localStorage : sessionStorage;
+  store.setItem(TOKEN_KEY, token);
+  try {
+    const stored = store.getItem(USER_KEY);
+    if (stored) store.setItem(USER_KEY, JSON.stringify({ ...JSON.parse(stored), token }));
+  } catch {
+    // The token itself is what matters; the copy inside the user record is a convenience.
+  }
+}
+
 export function clearSession() {
   [localStorage, sessionStorage].forEach((store) => {
     store.removeItem(TOKEN_KEY);

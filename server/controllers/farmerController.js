@@ -37,8 +37,10 @@ const getFarmers = asyncHandler(async (req, res) => {
 // @route   GET /api/farmers/:id
 // @access  Public
 const getFarmerProfile = asyncHandler(async (req, res) => {
+  // A farmer's phone number is only shown to someone signed in - the page is
+  // public, and a public number is one anybody can collect.
   const farmer = await User.findOne({ _id: req.params.id, role: "farmer" }).select(
-    "name farmName farmDescription location certifications isVerified createdAt lastActiveAt avatar phone address"
+    `name farmName farmDescription location certifications isVerified createdAt lastActiveAt avatar address${req.user ? " phone" : ""}`
   );
 
   if (!farmer) {

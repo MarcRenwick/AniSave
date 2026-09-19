@@ -6,7 +6,7 @@ const notFound = (req, res, next) => {
 
 // eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
+  let statusCode = err.statusCode || err.status || (res.statusCode === 200 ? 500 : res.statusCode);
   let message = err.message;
 
   // An upload the user can fix (too big, too many) - not a server fault
@@ -14,6 +14,18 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 400;
     if (err.code === "LIMIT_FILE_SIZE") message = "Each photo must be 5 MB or smaller";
     if (err.code === "LIMIT_UNEXPECTED_FILE") message = "You can upload up to 5 photos";
+    if (err.code === "LIMIT_FILE_COUNT") message = "You can upload up to 5 photos";
+  }
+
+  // A request body that isn't valid JSON, or is too big - the parser's own
+  // wording quotes the offending text, so it isn't passed on.
+  if (err.type === "entity.parse.failed") {
+    statusCode = 400;
+    message = "The request couldn't be read. Please try again.";
+  }
+  if (err.type === "entity.too.large") {
+    statusCode = 413;
+    message = "That request is too large.";
   }
 
   // Mongoose bad ObjectId
@@ -37,10 +49,15 @@ const errorHandler = (err, req, res, next) => {
       .join(", ");
   }
 
-  res.status(statusCode).json({
-    message,
-    stack: process.env.NODE_ENV === "production" ? null : err.stack,
-  });
+  // Anything else that goes wrong on our side is written to the server log,
+  // where it can be fixed - and the person only gets a plain apology, never
+  // the internals (error text, file paths, a stack trace).
+  if (statusCode >= 500) {
+    console.error(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${statusCode}\n${err.stack || err}`);
+    message = "Something went wrong on our side. Please try again.";
+  }
+
+  res.status(statusCode).json({ message, ...(err.sessionEnded ? { sessionEnded: true } : {}) });
 };
 
 module.exports = { notFound, errorHandler };

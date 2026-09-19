@@ -5,3 +5,6 @@ uploads/*
 
 # Downloads cached by scripts/buildLocations.js
 data/.cache/
+
+# A farmer's ID and farm documents (served only by /api/documents)
+private/

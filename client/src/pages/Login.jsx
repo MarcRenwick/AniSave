@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { KeyRound, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
-import { requestLoginOtp, loginWithOtp } from "../services/api";
+import { requestLoginOtp, loginWithOtp, verifyLoginMfa, resendLoginMfa } from "../services/api";
 
 const inputClass =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
@@ -14,11 +14,15 @@ const labelClass = "block text-sm font-medium text-gray-700";
 export default function Login() {
   const { login, setSession } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [method, setMethod] = useState("password");
   const [remember, setRemember] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  // Sent here by an ended session (?expired=1): logged out elsewhere, a password change, a ban.
+  const [notice, setNotice] = useState(() =>
+    searchParams.get("expired") === "1" ? "Your session has ended. Please log in again." : ""
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const [form, setForm] = useState({ username: "", password: "" });
@@ -26,6 +30,11 @@ export default function Login() {
   const [otpStep, setOtpStep] = useState("request");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+
+  // Set once the password was right but the account signs in with two steps:
+  // the emailed code is entered next.
+  const [mfa, setMfa] = useState(null);
+  const [mfaCode, setMfaCode] = useState("");
 
   const goToPortal = (user) => {
     if (user.role === "farmer") navigate("/farmer/dashboard");
@@ -43,14 +52,49 @@ export default function Login() {
   const handlePasswordLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     setSubmitting(true);
     try {
-      const user = await login(form.username, form.password, remember);
-      goToPortal(user);
+      const data = await login(form.username, form.password, remember);
+      if (data.mfaRequired) {
+        setMfa({ token: data.mfaToken, email: data.email });
+        setMfaCode("");
+        setNotice(data.message);
+        return;
+      }
+      goToPortal(data);
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerifyMfa = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const { data } = await verifyLoginMfa(mfa.token, mfaCode);
+      setSession(data, remember);
+      goToPortal(data);
+    } catch (err) {
+      setError(err.response?.data?.message || "That code didn't work. Please try again.");
+      // The sign-in itself timed out: nothing left to type a code into.
+      if (err.response?.status === 401) setMfa(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResendMfa = async () => {
+    setError("");
+    setNotice("");
+    try {
+      const { data } = await resendLoginMfa(mfa.token);
+      setNotice(data.message);
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not send a new code. Please try again.");
     }
   };
 
@@ -99,7 +143,7 @@ export default function Login() {
         />
         Remember me
       </label>
-      {method === "password" && (
+      {method === "password" && !mfa && (
         <Link to="/forgot-password" className="text-sm font-medium text-[#2f8f66] hover:underline">
           Forgot password?
         </Link>
@@ -125,32 +169,34 @@ export default function Login() {
       <p className="text-sm text-gray-500">Welcome</p>
       <h1 className="mt-1 text-3xl font-bold text-gray-900">Log In</h1>
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => switchMethod("password")}
-          className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold transition ${
-            method === "password"
-              ? "border-[#2f8f66] bg-green-50 text-[#2f8f66]"
-              : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          <KeyRound className="h-4 w-4" />
-          Password
-        </button>
-        <button
-          type="button"
-          onClick={() => switchMethod("otp")}
-          className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold transition ${
-            method === "otp"
-              ? "border-[#2f8f66] bg-green-50 text-[#2f8f66]"
-              : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-          }`}
-        >
-          <Mail className="h-4 w-4" />
-          Email code
-        </button>
-      </div>
+      {!mfa && (
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => switchMethod("password")}
+            className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold transition ${
+              method === "password"
+                ? "border-[#2f8f66] bg-green-50 text-[#2f8f66]"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <KeyRound className="h-4 w-4" />
+            Password
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMethod("otp")}
+            className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold transition ${
+              method === "otp"
+                ? "border-[#2f8f66] bg-green-50 text-[#2f8f66]"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <Mail className="h-4 w-4" />
+            Email code
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
@@ -159,7 +205,53 @@ export default function Login() {
         <div className="mt-5 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
       )}
 
-      {method === "password" ? (
+      {mfa ? (
+        <form onSubmit={handleVerifyMfa} className="mt-6 space-y-4">
+          <div>
+            <label htmlFor="mfaCode" className={labelClass}>
+              Verification code
+            </label>
+            <input
+              id="mfaCode"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              required
+              autoFocus
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="------"
+              className={`mt-1 ${inputClass} text-center text-lg tracking-[0.5em]`}
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Your password was correct. As a second step, enter the 6-digit code we sent to{" "}
+              <span className="font-medium text-gray-700">{mfa.email}</span>. It expires in 10 minutes.
+            </p>
+          </div>
+
+          {rememberRow}
+          {submitButton("Verify and log in", "Verifying...")}
+
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <button type="button" onClick={handleResendMfa} className="hover:text-[#2f8f66] hover:underline">
+              Send a new code
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMfa(null);
+                setMfaCode("");
+                setError("");
+                setNotice("");
+              }}
+              className="hover:text-[#2f8f66] hover:underline"
+            >
+              Use a different account
+            </button>
+          </div>
+        </form>
+      ) : method === "password" ? (
         <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
           <div>
             <label htmlFor="username" className={labelClass}>
@@ -262,6 +354,15 @@ export default function Login() {
         Don&apos;t have an account?{" "}
         <Link to="/register" className="font-semibold text-[#2f8f66] hover:underline">
           Sign up
+        </Link>
+      </p>
+      <p className="mt-2 text-center text-xs text-gray-400">
+        <Link to="/terms" className="hover:text-[#2f8f66] hover:underline">
+          Terms of Use
+        </Link>
+        {" · "}
+        <Link to="/privacy" className="hover:text-[#2f8f66] hover:underline">
+          Privacy Policy
         </Link>
       </p>
     </AuthShell>

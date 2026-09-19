@@ -1,5 +1,5 @@
 import axios from "axios";
-import { readToken } from "../utils/session";
+import { readToken, clearSession } from "../utils/session";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -19,9 +19,33 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// When the server says the sign-in this browser is holding is no longer good
+// (logged out elsewhere, password changed, account banned, expired), go back to
+// the login page instead of leaving a dead session on screen. `sessionEnded`
+// is only sent for that - a wrong password or a failed check doesn't have it.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && error.response.data?.sessionEnded && readToken()) {
+      clearSession();
+      window.location.assign("/login?expired=1");
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const registerUser = (data) => api.post("/auth/register", data);
 export const loginUser = (data) => api.post("/auth/login", data);
+export const verifyLoginMfa = (mfaToken, code) => api.post("/auth/login/mfa", { mfaToken, code });
+export const resendLoginMfa = (mfaToken) => api.post("/auth/login/mfa/resend", { mfaToken });
+// Given the token explicitly: by the time this runs, the browser has already forgotten it.
+export const logoutSession = (token) =>
+  api.post("/auth/logout", null, { headers: { Authorization: `Bearer ${token}` } });
 export const getCurrentUser = () => api.get("/auth/me");
+export const setTwoStep = (enabled, password) => api.put("/auth/mfa", { enabled, password });
+export const exportMyData = () => api.get("/auth/me/export", { responseType: "blob" });
+// A farmer's ID and farm documents are private - fetched with the login token, as a file.
+export const getDocumentFile = (path) => api.get(path, { responseType: "blob" });
 export const requestLoginOtp = (email) => api.post("/auth/login-otp/request", { email });
 export const loginWithOtp = (email, code) => api.post("/auth/login-otp/verify", { email, code });
 export const forgotPassword = (email) => api.post("/auth/forgot-password", { email });

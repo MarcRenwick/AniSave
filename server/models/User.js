@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { EMAIL_PATTERN, USERNAME_PATTERN, PHONE_PATTERN } = require("../utils/validate");
 
 const userSchema = new mongoose.Schema(
   {
@@ -7,6 +8,9 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Name is required"],
       trim: true,
+      minlength: [2, "Name must be at least 2 characters"],
+      maxlength: [80, "Name must be 80 characters or fewer"],
+      match: [/^[^<>]*$/, "Name can't contain < or >"],
     },
     username: {
       type: String,
@@ -15,6 +19,8 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       minlength: [3, "Username must be at least 3 characters"],
+      maxlength: [30, "Username must be 30 characters or fewer"],
+      match: [USERNAME_PATTERN, "Username can only use letters, numbers, dots, dashes and underscores"],
     },
     email: {
       type: String,
@@ -22,6 +28,8 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      maxlength: [254, "Email is too long"],
+      match: [EMAIL_PATTERN, "Enter a valid email address"],
     },
     password: {
       type: String,
@@ -63,6 +71,8 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
+      maxlength: [20, "Phone number is too long"],
+      match: [PHONE_PATTERN, "Enter a valid phone number"],
     },
     // Uploaded profile photo, already cropped to a square by the client
     avatar: {
@@ -74,10 +84,12 @@ const userSchema = new mongoose.Schema(
     farmName: {
       type: String,
       trim: true,
+      maxlength: [100, "Farm name must be 100 characters or fewer"],
     },
     farmDescription: {
       type: String,
       trim: true,
+      maxlength: [1000, "Farm details must be 1000 characters or fewer"],
     },
     certifications: {
       type: [String],
@@ -135,13 +147,20 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
-    // One-time code for signing in by email instead of a password
+    // One-time code for signing in by email instead of a password. Every kind
+    // of code is stored hashed, with an expiry and a count of wrong guesses
+    // (see utils/otp.js), and none of it is ever selected by default.
     loginCode: {
       type: String,
       select: false,
     },
     loginCodeExpires: {
       type: Date,
+      select: false,
+    },
+    loginCodeAttempts: {
+      type: Number,
+      default: 0,
       select: false,
     },
 
@@ -153,6 +172,11 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    resetPasswordAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
 
     deleteAccountCode: {
       type: String,
@@ -162,9 +186,90 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    deleteAccountAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
+    // Two-step sign-in: after the password, an emailed code. Always on for
+    // admins; anyone else can switch it on in their settings.
+    mfaEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    mfaCode: {
+      type: String,
+      select: false,
+    },
+    mfaCodeExpires: {
+      type: Date,
+      select: false,
+    },
+    mfaCodeAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
+    // Wrong passwords in a row, and the moment a lock ends. Too many wrong
+    // guesses lock the account for a while, so a password can't be brute-forced.
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    lockUntil: {
+      type: Date,
+      select: false,
+    },
+
+    // Sessions are JWTs, which can't be recalled once issued. Each carries the
+    // number below; raising it (log out, password change or reset, ban) makes
+    // every older token stop working. See middleware/authMiddleware.js.
+    tokenVersion: {
+      type: Number,
+      default: 0,
+    },
+
+    // What the person agreed to when they signed up. Accounts made before this
+    // existed have none.
+    consent: {
+      termsVersion: String,
+      acceptedAt: Date,
+      // Farmers only: agreed to their ID and farm documents being kept and
+      // reviewed by an administrator to verify them.
+      documentsConsentAt: Date,
+    },
   },
   { timestamps: true, validateModifiedOnly: true }
 );
+
+// Whatever ends up in a response, these never do - even if a query selected them.
+const PRIVATE_FIELDS = [
+  "password",
+  "tokenVersion",
+  "failedLoginAttempts",
+  "lockUntil",
+  "loginCode",
+  "loginCodeExpires",
+  "loginCodeAttempts",
+  "resetPasswordCode",
+  "resetPasswordExpires",
+  "resetPasswordAttempts",
+  "deleteAccountCode",
+  "deleteAccountExpires",
+  "deleteAccountAttempts",
+  "mfaCode",
+  "mfaCodeExpires",
+  "mfaCodeAttempts",
+];
+const hidePrivateFields = (_doc, ret) => {
+  PRIVATE_FIELDS.forEach((field) => delete ret[field]);
+  return ret;
+};
+userSchema.set("toJSON", { transform: hidePrivateFields });
+userSchema.set("toObject", { transform: hidePrivateFields });
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

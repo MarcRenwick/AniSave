@@ -1,9 +1,13 @@
-const crypto = require("crypto");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 const AdminOtp = require("../models/AdminOtp");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
+const validate = require("../utils/validate");
+const otp = require("../utils/otp");
+
+const ADMIN_CODE_MS = 15 * 60 * 1000;
+const ADMIN_CODE_FIELDS = { code: "code", expires: "expiresAt", attempts: "attempts" };
 
 const isAuthorizedAdminEmail = (email) =>
   Boolean(email) &&
@@ -14,23 +18,25 @@ const isAuthorizedAdminEmail = (email) =>
 // @route   POST /api/admin-auth/request-otp
 // @access  Public
 const requestAdminOtp = asyncHandler(async (req, res) => {
-  const { email } = req.body;
-  if (!email) {
-    res.status(400);
-    throw new Error("Email is required");
-  }
+  const email = validate.email(validate.plainBody(req.body).email);
 
   if (!isAuthorizedAdminEmail(email)) {
     res.status(403);
     throw new Error("This email is not authorized to register an admin account");
   }
 
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
-  const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
+  // Asking again straight away doesn't send another code - nobody, the real
+  // admin's inbox included, should be flooded by repeated requests.
+  const existing = await AdminOtp.findOne({ email });
+  if (existing && otp.sentRecently(existing, ADMIN_CODE_FIELDS, ADMIN_CODE_MS)) {
+    return res.json({ message: "An OTP has been sent to your email." });
+  }
+
+  const code = otp.generateCode();
 
   await AdminOtp.findOneAndUpdate(
-    { email: email.toLowerCase() },
-    { code: hashedCode, expiresAt: Date.now() + 15 * 60 * 1000 },
+    { email },
+    { code: otp.hashCode(code), expiresAt: Date.now() + ADMIN_CODE_MS, attempts: 0 },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
@@ -51,44 +57,40 @@ const requestAdminOtp = asyncHandler(async (req, res) => {
 // @route   POST /api/admin-auth/register
 // @access  Public
 const registerAdmin = asyncHandler(async (req, res) => {
-  const { email, code, username, password, name } = req.body;
-
-  if (!email || !code || !username || !password || !name) {
-    res.status(400);
-    throw new Error("Email, OTP, username, password and name are required");
-  }
+  const body = validate.plainBody(req.body);
+  const email = validate.email(body.email);
+  const code = validate.codeInput(body.code);
+  const username = validate.username(body.username);
+  const password = validate.password(body.password);
+  const name = validate.fullName(body.name);
 
   if (!isAuthorizedAdminEmail(email)) {
     res.status(403);
     throw new Error("This email is not authorized to register an admin account");
   }
 
-  const hashedCode = crypto.createHash("sha256").update(code).digest("hex");
-  const otp = await AdminOtp.findOne({
-    email: email.toLowerCase(),
-    code: hashedCode,
-    expiresAt: { $gt: Date.now() },
-  });
-
-  if (!otp) {
+  // The code is looked up by email and then checked, so wrong guesses can be
+  // counted - it is dead after a few, however fast someone tries.
+  const otpRecord = await AdminOtp.findOne({ email });
+  if (!otpRecord || !(await otp.checkCode(otpRecord, ADMIN_CODE_FIELDS, code))) {
     res.status(400);
     throw new Error("That OTP is invalid or has expired");
   }
 
-  const usernameTaken = await User.findOne({ username: username.toLowerCase() });
+  const usernameTaken = await User.findOne({ username });
   if (usernameTaken) {
     res.status(400);
     throw new Error("Username is already taken");
   }
 
-  const emailTaken = await User.findOne({ email: email.toLowerCase() });
+  const emailTaken = await User.findOne({ email });
   if (emailTaken) {
     res.status(400);
     throw new Error("An account with this email already exists");
   }
 
-  const admin = await User.create({ name, username, email, password, role: "admin" });
-  await otp.deleteOne();
+  const admin = await User.create({ name, username, email, password, role: "admin", mfaEnabled: true });
+  await otpRecord.deleteOne();
 
   res.status(201).json({
     _id: admin._id,
@@ -96,7 +98,7 @@ const registerAdmin = asyncHandler(async (req, res) => {
     username: admin.username,
     email: admin.email,
     role: admin.role,
-    token: generateToken(admin._id, admin.role),
+    token: generateToken(admin._id, admin.role, admin.tokenVersion),
   });
 });
 

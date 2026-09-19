@@ -37,6 +37,9 @@ const banUser = asyncHandler(async (req, res) => {
   }
 
   user.isBanned = true;
+  // Any session they already have ends with the ban, and stays ended if they
+  // are ever unbanned - they log in again.
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
   res.json(withStatus(user));
 });

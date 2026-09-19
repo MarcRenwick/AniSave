@@ -24,6 +24,41 @@ const inputClass =
 
 const labelClass = "block text-sm font-medium text-gray-700";
 
+// One tick-box with its wording. Ticking is required, and the server enforces
+// it as well - the form is not the only thing standing between someone and an
+// account they never agreed to.
+function ConsentRow({ id, checked, onChange, children }) {
+  return (
+    <label htmlFor={id} className="flex items-start gap-2.5 text-xs leading-5 text-gray-600">
+      <input
+        id={id}
+        type="checkbox"
+        required
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[#2f8f66]"
+      />
+      <span>{children}</span>
+    </label>
+  );
+}
+
+const legalLink = "font-semibold text-[#2f8f66] hover:underline";
+
+const TermsConsent = ({ checked, onChange }) => (
+  <ConsentRow id="acceptTerms" checked={checked} onChange={onChange}>
+    I agree to the{" "}
+    <Link to="/terms" target="_blank" rel="noopener noreferrer" className={legalLink}>
+      Terms of Use
+    </Link>{" "}
+    and{" "}
+    <Link to="/privacy" target="_blank" rel="noopener noreferrer" className={legalLink}>
+      Privacy Policy
+    </Link>
+    .
+  </ConsentRow>
+);
+
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -36,6 +71,10 @@ export default function Register() {
   const [address, setAddress] = useState(emptyAddress);
   const [governmentId, setGovernmentId] = useState(null);
   const [farmDocuments, setFarmDocuments] = useState([]);
+  // Agreed to the Terms and Privacy Policy; and (farmers) to their documents
+  // being kept and reviewed. Both are sent to the server, which insists on them.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [consentDocuments, setConsentDocuments] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,6 +105,8 @@ export default function Register() {
     setRole(null);
     setForm(initialForm);
     setAddress(emptyAddress);
+    setAcceptedTerms(false);
+    setConsentDocuments(false);
     setStep(1);
   };
 
@@ -91,6 +132,10 @@ export default function Register() {
       setStep(3);
       return;
     }
+    if (!acceptedTerms) {
+      setError("Please accept the Terms of Use and Privacy Policy to create an account.");
+      return;
+    }
     submitRegistration();
   };
 
@@ -106,6 +151,10 @@ export default function Register() {
       setError("Add at least one farm-related document.");
       return;
     }
+    if (!acceptedTerms || !consentDocuments) {
+      setError("Please tick both boxes to agree before you submit.");
+      return;
+    }
     submitRegistration();
   };
 
@@ -114,13 +163,13 @@ export default function Register() {
     setError("");
     try {
       const { confirmPassword: _confirmPassword, ...rest } = form;
-      const details = { ...rest, ...address };
+      const details = { ...rest, ...address, acceptTerms: acceptedTerms };
 
       if (role === "farmer") {
         // One request, so the account only exists if its documents were
         // accepted too - a refused upload leaves nothing half-created.
         const data = new FormData();
-        Object.entries({ ...details, role }).forEach(([key, value]) => data.append(key, value));
+        Object.entries({ ...details, role, consentDocuments }).forEach(([key, value]) => data.append(key, value));
         data.append("governmentId", governmentId);
         farmDocuments.forEach((file) => data.append("farmDocuments", file));
         await register(data);
@@ -201,7 +250,7 @@ export default function Register() {
         </p>
       </div>
 
-      <p className="mt-8 text-sm text-gray-500">
+      <p className="mt-6 text-sm text-gray-500">
         {step === 1 && "How will you use AniSave?"}
         {step === 2 && "Tell us a little about yourself"}
         {step === 3 && "Documents an administrator will review"}
@@ -374,10 +423,19 @@ export default function Register() {
             )}
           </div>
 
+          {/* A farmer agrees on the last step, once they've seen what they're handing over. */}
+          {role === "buyer" && (
+            <div className="mt-4">
+              <TermsConsent checked={acceptedTerms} onChange={setAcceptedTerms} />
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={submitting}
-            className="mt-6 w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+            className={`w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60 ${
+              role === "buyer" ? "mt-4" : "mt-6"
+            }`}
           >
             {submitting ? "Creating account..." : role === "farmer" ? "Continue" : "Sign Up"}
           </button>
@@ -393,9 +451,16 @@ export default function Register() {
             onFarmDocumentsChange={setFarmDocuments}
           />
 
+          <div className="space-y-2">
+            <TermsConsent checked={acceptedTerms} onChange={setAcceptedTerms} />
+            <ConsentRow id="consentDocuments" checked={consentDocuments} onChange={setConsentDocuments}>
+              I consent to my ID and farm documents being kept and reviewed to verify me.
+            </ConsentRow>
+          </div>
+
           <p className="rounded-lg bg-green-50 px-3 py-2 text-xs text-[#1f5c42]">
-            After you submit, your account sits at <strong>Pending Verification</strong> until an
-            administrator reviews these documents. You can list products once approved.
+            Your account stays <strong>Pending Verification</strong> until an administrator approves these
+            documents.
           </p>
 
           <button

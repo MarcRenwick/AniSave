@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Check, X } from "lucide-react";
 import Modal from "../Modal";
-import { SERVER_URL, reviewFarmerVerification } from "../../services/api";
+import ProtectedImage from "../ProtectedImage";
+import { openDocument } from "../../utils/documents";
+import { reviewFarmerVerification } from "../../services/api";
 
 function Row({ label, value }) {
   return (
@@ -12,21 +14,17 @@ function Row({ label, value }) {
   );
 }
 
+// Documents are private, so opening one full size fetches it with the admin's
+// login rather than following a plain link.
 function DocumentLink({ path, label }) {
   return (
-    <a
-      href={`${SERVER_URL}${path}`}
-      target="_blank"
-      rel="noreferrer"
-      title="Open full size"
-      className="block"
-    >
-      <img
-        src={`${SERVER_URL}${path}`}
+    <button type="button" onClick={() => openDocument(path).catch(() => {})} title="Open full size" className="block">
+      <ProtectedImage
+        path={path}
         alt={label}
         className="h-28 w-28 rounded-lg border border-gray-300 object-cover transition hover:border-[#2f8f66]"
       />
-    </a>
+    </button>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "../Modal";
 import PasswordInput from "../PasswordInput";
+import { useAuth } from "../../context/AuthContext";
 import { changePassword } from "../../services/api";
 import { getPasswordError } from "../../utils/password";
 
@@ -8,6 +9,7 @@ const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
 
 export default function ChangePasswordModal({ onClose }) {
+  const { updateToken } = useAuth();
   const [form, setForm] = useState({
     currentPassword: "",
     newPassword: "",
@@ -36,7 +38,9 @@ export default function ChangePasswordModal({ onClose }) {
 
     setSaving(true);
     try {
-      await changePassword(form.currentPassword, form.newPassword);
+      const { data } = await changePassword(form.currentPassword, form.newPassword);
+      // Changing the password ends every other session; this one gets a fresh token so it stays signed in.
+      if (data.token) updateToken(data.token);
       setMessage("Password changed successfully.");
       setForm({ currentPassword: "", newPassword: "", confirmNewPassword: "" });
     } catch (err) {

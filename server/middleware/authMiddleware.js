@@ -6,28 +6,52 @@ const User = require("../models/User");
 // presence display doesn't cost a database write on every single request.
 const ACTIVE_STAMP_INTERVAL = 60 * 1000;
 
+// The algorithm is pinned, so a token can't choose how it gets checked.
+const verifyToken = (token) => jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+
+// Turns a token into the user it stands for, or says why not. A valid
+// signature isn't enough: the token also has to be a session token (not the
+// half-finished two-step sign-in one), be the user's current generation (log
+// out, a password change or a ban all raise it), and belong to an account that
+// isn't banned.
+async function userForToken(token) {
+  let decoded;
+  try {
+    decoded = verifyToken(token);
+  } catch {
+    return { error: "Not authorized, token invalid" };
+  }
+  if (decoded.purpose) return { error: "Not authorized, token invalid" };
+
+  const user = await User.findById(decoded.id);
+  if (!user) return { error: "Not authorized, user not found" };
+  if ((decoded.tv ?? 0) !== (user.tokenVersion ?? 0)) {
+    return { error: "Your session has ended. Please log in again." };
+  }
+  if (user.isBanned) return { error: "This account has been banned. Contact support for more information." };
+
+  return { user };
+}
+
 // Verifies the JWT and attaches the logged-in user to req.user
 const protect = asyncHandler(async (req, res, next) => {
-  let token = req.headers.authorization;
+  const header = req.headers.authorization;
 
-  if (!token || !token.startsWith("Bearer ")) {
+  if (!header || !header.startsWith("Bearer ")) {
     res.status(401);
     throw new Error("Not authorized, no token");
   }
 
-  try {
-    token = token.split(" ")[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
-  } catch (error) {
-    res.status(401);
-    throw new Error("Not authorized, token invalid");
+  const { user, error } = await userForToken(header.split(" ")[1]);
+  if (error) {
+    // `sessionEnded` tells the app this isn't a one-off failure: the sign-in
+    // it is holding is no longer good, so it should go back to the login page.
+    const failure = new Error(error);
+    failure.statusCode = 401;
+    failure.sessionEnded = true;
+    throw failure;
   }
-
-  if (!req.user) {
-    res.status(401);
-    throw new Error("Not authorized, user not found");
-  }
+  req.user = user;
 
   const lastActive = req.user.lastActiveAt?.getTime() || 0;
   if (Date.now() - lastActive > ACTIVE_STAMP_INTERVAL) {
@@ -54,8 +78,8 @@ const optionalProtect = asyncHandler(async (req, res, next) => {
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) {
     try {
-      const decoded = jwt.verify(header.split(" ")[1], process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id);
+      const { user } = await userForToken(header.split(" ")[1]);
+      req.user = user;
     } catch {
       req.user = undefined;
     }
