@@ -4,6 +4,10 @@ import Modal from "../Modal";
 import ProtectedImage from "../ProtectedImage";
 import { openDocument } from "../../utils/documents";
 import { reviewFarmerVerification } from "../../services/api";
+import { VERIFICATION_META, isVerificationDecided } from "../../utils/verification";
+
+const formatWhen = (date) =>
+  date ? new Date(date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
 
 function Row({ label, value }) {
   return (
@@ -28,11 +32,18 @@ function DocumentLink({ path, label }) {
   );
 }
 
+// A farmer's documents, and - until it has one - the decision on them. Once an
+// administrator has approved or rejected them it opens read-only, showing what
+// was decided: the same submission is never judged twice, so there is no way to
+// approve a farmer and then reject them a moment later.
 export default function VerificationReviewModal({ farmer, onClose, onReviewed }) {
   const [note, setNote] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const decided = isVerificationDecided(farmer);
+  const meta = VERIFICATION_META[farmer.verificationStatus];
 
   const submit = async (approved) => {
     setError("");
@@ -49,6 +60,15 @@ export default function VerificationReviewModal({ farmer, onClose, onReviewed })
   return (
     <Modal title="Review verification" onClose={onClose} maxWidth="max-w-lg">
       {error && <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+
+      {meta && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${meta.color}`}>{meta.label}</span>
+          {decided && farmer.verificationReviewedAt && (
+            <span className="text-xs text-gray-500">Decided {formatWhen(farmer.verificationReviewedAt)}</span>
+          )}
+        </div>
+      )}
 
       <p className="text-xs font-semibold uppercase text-gray-400">Registration details</p>
       <dl className="mt-2 space-y-1.5 text-sm">
@@ -80,6 +100,26 @@ export default function VerificationReviewModal({ farmer, onClose, onReviewed })
         )}
       </div>
 
+      {decided && (
+        <div
+          className={`mt-6 rounded-lg px-4 py-3 text-sm ${
+            farmer.verificationStatus === "approved" ? "bg-green-50 text-green-800" : "bg-red-50 text-red-800"
+          }`}
+        >
+          <p className="font-semibold">
+            {farmer.verificationStatus === "approved"
+              ? "Approved - this farmer can sell"
+              : "Rejected - this farmer can't sell yet"}
+          </p>
+          {farmer.verificationNote && <p className="mt-1 whitespace-pre-line">{farmer.verificationNote}</p>}
+          <p className="mt-2 text-xs">
+            {farmer.verificationStatus === "approved"
+              ? "The decision is final. Use Ban on the Users page to restrict this account."
+              : "The decision is final. It is reviewed again only if the farmer submits new documents."}
+          </p>
+        </div>
+      )}
+
       {rejecting && (
         <div className="mt-5">
           <label htmlFor="note" className="block text-sm font-medium text-gray-700">
@@ -97,7 +137,15 @@ export default function VerificationReviewModal({ farmer, onClose, onReviewed })
       )}
 
       <div className="mt-6 flex gap-3">
-        {rejecting ? (
+        {decided ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Close
+          </button>
+        ) : rejecting ? (
           <>
             <button
               type="button"

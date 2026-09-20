@@ -90,6 +90,17 @@ const reviewFarmerVerification = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("This farmer hasn't submitted their documents yet");
   }
+  // One decision per submission. Without this an administrator could approve a
+  // farmer and then reject the same documents a moment later (or the other way
+  // round), leaving the account's history saying two different things. A farmer
+  // who sends new documents goes back to pending and is reviewed again; an
+  // approved farmer who needs restricting is banned instead.
+  if (effectiveVerificationStatus(user) !== "pending") {
+    res.status(400);
+    throw new Error(
+      "This farmer's verification has already been decided. It can only be reviewed again if they submit new documents."
+    );
+  }
 
   user.verificationStatus = approved ? "approved" : "rejected";
   user.isVerified = approved;

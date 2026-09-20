@@ -6,29 +6,18 @@ import BanConfirmModal from "../../components/admin/BanConfirmModal";
 import VerificationReviewModal from "../../components/admin/VerificationReviewModal";
 import { getAdminUsers, banUser, unbanUser } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import {
+  VERIFICATION_META,
+  hasDocuments,
+  isVerificationDecided,
+  verificationKey,
+} from "../../utils/verification";
 
 const filters = [
   { key: "", label: "All" },
   { key: "farmer", label: "Farmers" },
   { key: "buyer", label: "Buyers" },
 ];
-
-const verificationMeta = {
-  pending: { label: "Pending", color: "bg-amber-100 text-amber-800" },
-  approved: { label: "Approved", color: "bg-green-100 text-green-700" },
-  rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
-  // Still pending, but they never uploaded anything, so there's nothing to review.
-  missing: {
-    label: "No documents",
-    color: "bg-gray-100 text-gray-600",
-    title: "This farmer hasn't uploaded a government ID and farm documents yet, so there is nothing to approve.",
-  },
-};
-
-const hasDocuments = (user) => Boolean(user.governmentId) && user.farmDocuments?.length > 0;
-
-const verificationKey = (user) =>
-  user.verificationStatus === "pending" && !hasDocuments(user) ? "missing" : user.verificationStatus;
 
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -110,7 +99,8 @@ export default function AdminUsers() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {users.map((u) => {
-                  const meta = verificationMeta[verificationKey(u)];
+                  const meta = VERIFICATION_META[verificationKey(u)];
+                  const decided = isVerificationDecided(u);
                   return (
                     <tr key={u._id}>
                       <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
@@ -149,10 +139,15 @@ export default function AdminUsers() {
                             <button
                               type="button"
                               onClick={() => setReviewing(u)}
+                              title={
+                                decided
+                                  ? "Already decided - the documents can still be looked at"
+                                  : undefined
+                              }
                               className="inline-flex items-center gap-1.5 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] hover:bg-green-50"
                             >
                               <FileSearch className="h-3.5 w-3.5" />
-                              Review
+                              {decided ? "View" : "Review"}
                             </button>
                           )}
                           <button
