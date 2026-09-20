@@ -3,6 +3,7 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Rating = require("../models/Rating");
 const { effectivePrice } = require("../utils/pricing");
+const { hasBlocked } = require("../utils/blocks");
 
 // @desc    Place an order for a product
 // @route   POST /api/orders
@@ -26,6 +27,18 @@ const createOrder = asyncHandler(async (req, res) => {
   if (!product.farmer?.isVerified) {
     res.status(403);
     throw new Error("This farmer isn't verified yet, so their products can't be ordered.");
+  }
+
+  // The other half of blocking: a blocked shop can't sell to this buyer,
+  // however they reached the listing - a cart filled before the block, a
+  // bookmark, or a request made outside the app altogether. Orders already
+  // placed are left alone; blocking stops what comes next, it doesn't undo
+  // what the two of them already agreed.
+  if (hasBlocked(req.user, product.farmer._id)) {
+    res.status(403);
+    throw new Error(
+      "You blocked this shop, so you can't order from them. Unblock them under Profile > Blocked Users first."
+    );
   }
 
   // Only a listing the farmer put up For Pre-Order takes pre-orders - an

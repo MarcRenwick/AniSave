@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil, KeyRound, ShieldCheck, Trash2, LogOut } from "lucide-react";
+import { Pencil, KeyRound, Ban, ShieldCheck, Trash2, LogOut } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import Avatar from "../../components/Avatar";
+import BlockedUsersModal from "../../components/buyer/settings/BlockedUsersModal";
 import DeleteAccountModal from "../../components/buyer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
@@ -28,6 +29,7 @@ export default function BuyerSettings() {
 
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
@@ -94,6 +96,14 @@ export default function BuyerSettings() {
               </button>
               <button
                 type="button"
+                onClick={() => setShowBlocked(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-2.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+              >
+                <Ban className="h-4 w-4" />
+                Blocked Users
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowPrivacy(true)}
                 className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-2.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
               >
@@ -133,6 +143,7 @@ export default function BuyerSettings() {
         />
       )}
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+      {showBlocked && <BlockedUsersModal onClose={() => setShowBlocked(false)} />}
       {showPrivacy && <PrivacySecurityModal onClose={() => setShowPrivacy(false)} />}
       {showDelete && (
         <DeleteAccountModal onClose={() => setShowDelete(false)} onDeleted={handleAccountDeleted} />

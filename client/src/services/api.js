@@ -101,6 +101,13 @@ export const getAdminReports = () => api.get("/admin/reports");
 export const markReportReviewed = (id) => api.patch(`/admin/reports/${id}/review`);
 export const decideReport = (id, action, note) => api.patch(`/admin/reports/${id}/decision`, { action, note });
 
+// Blocking: a buyer can block a farmer's shop, which hides it from them and
+// stops that farmer selling to them. The list is the buyer's own and is kept
+// on the server, so every one of those rules is enforced there too.
+export const getBlockedUsers = () => api.get("/blocks");
+export const blockUser = (farmerId) => api.post(`/blocks/${farmerId}`);
+export const unblockUser = (farmerId) => api.delete(`/blocks/${farmerId}`);
+
 export const requestAdminOtp = (email) => api.post("/admin-auth/request-otp", { email });
 export const registerAdmin = (data) => api.post("/admin-auth/register", data);
 

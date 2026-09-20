@@ -116,6 +116,16 @@ On a product's **Ratings** page every review has a **Report review** button - bu
 - A removed review is hidden and no longer counts towards the product's or the farmer's rating (`removedAt` on the rating). Nobody can report the same review twice, and one account can send 10 a day.
 - Deleting an account also deletes the review reports it sent or was the subject of.
 
+## Blocking a shop
+
+A buyer blocks a farmer from the shop page — the menu at the top right → **Block this user** — and confirms. The block is kept on the buyer's own account, and the server is what enforces it, not the page:
+
+- **The shop stops reaching that buyer.** It is dropped from the farmers list, from browsing, search and every sort (Recommended, Nearest, Flash Sale); a link straight to one of its listings, or to the reviews on one, returns 404. The shop's own page shows "You blocked ..." with an **Unblock** button instead of the shop.
+- **The farmer can no longer sell to them.** `POST /api/orders` is refused with 403 however the buyer reached the listing, and so is reviewing one of their products. Anything of theirs sitting in the cart is taken out when the block is made.
+- **Orders placed before the block are left alone** — blocking stops what comes next, it doesn't undo what the two of them already agreed.
+- **Profile → Blocked Users** (next to Edit Profile and Change Password) lists every blocked shop; **Unblock** there, or on the shop's page, puts everything back at once.
+- Endpoints: `GET /api/blocks`, `POST /api/blocks/:farmerId`, `DELETE /api/blocks/:farmerId`, buyers only. The list is private - it is left out of every other response, an admin's included - and one account can block up to 100 shops. Deleting a farmer's account clears them from everyone's list.
+
 ## Deleting a farmer account
 
 Farmer settings → the menu on the profile card → **Delete Account** opens `/farmer/delete-account`:

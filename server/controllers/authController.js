@@ -663,6 +663,8 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   const reports = await Report.find({ $or: [{ reporter: user._id }, { farmer: user._id }] });
   reports.forEach((report) => report.evidence.forEach(deleteImageFile));
   await Report.deleteMany({ $or: [{ reporter: user._id }, { farmer: user._id }] });
+  // A deleted farmer leaves nothing behind in anyone's block list either.
+  await User.updateMany({ blockedUsers: user._id }, { $pull: { blockedUsers: user._id } });
   if (user.avatar) deleteImageFile(user.avatar);
   // A farmer's ID and farm documents are the most sensitive thing kept about
   // anyone - they go too, not just the account they were attached to.
@@ -727,7 +729,7 @@ const submitVerification = asyncHandler(async (req, res) => {
 // @access  Private
 const exportMyData = asyncHandler(async (req, res) => {
   const me = req.user;
-  const [orders, ratings, reports, reviewReports, products] = await Promise.all([
+  const [orders, ratings, reports, reviewReports, products, blockedShops] = await Promise.all([
     Order.find({ $or: [{ buyer: me._id }, { farmer: me._id }] })
       .select("productTitle pricePerKilo quantity total status createdAt acceptedAt readyAt doneAt cancelledAt")
       .lean(),
@@ -737,6 +739,11 @@ const exportMyData = asyncHandler(async (req, res) => {
     ReviewReport.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     me.role === "farmer"
       ? Product.find({ farmer: me._id }).select("title category productType price salePrice stock location description createdAt").lean()
+      : [],
+    // Who a buyer has blocked is held about them, so it is theirs to take with
+    // them - by name, since an account id means nothing outside this database.
+    me.role === "buyer"
+      ? User.find({ _id: { $in: me.blockedUsers || [] } }).select("name farmName").lean()
       : [],
   ]);
 
@@ -767,6 +774,7 @@ const exportMyData = asyncHandler(async (req, res) => {
     reportsIFiled: reports,
     reviewReportsIFiled: reviewReports,
     myProducts: products,
+    shopsIBlocked: blockedShops.map((shop) => shop.farmName || shop.name),
   };
 
   res.set("Content-Disposition", 'attachment; filename="anisave-my-data.json"');

@@ -6,6 +6,7 @@ const Rating = require("../models/Rating");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 const { effectiveVerificationStatus } = require("../utils/verification");
 const { distanceFields, byNearest } = require("../utils/geo");
+const { blockedIdsFor, hasBlocked } = require("../utils/blocks");
 
 // A blank string means "clear the sale"; anything else becomes a number for
 // the model's own less-than-price validation to check.
@@ -117,7 +118,18 @@ const getAllProducts = asyncHandler(async (req, res) => {
     filter.$or = [{ stock: { $gt: 0 } }, { productType: "preorder" }];
   }
   if (category) filter.category = category;
-  if (farmer) filter.farmer = new mongoose.Types.ObjectId(farmer);
+
+  // Nothing from a shop this buyer has blocked reaches them: not while
+  // browsing, not in a search, not in any of the sorts below, and not on the
+  // shop's own page - which asks for one farmer by id and gets nothing back.
+  if (farmer) {
+    if (hasBlocked(req.user, farmer)) return res.json([]);
+    filter.farmer = new mongoose.Types.ObjectId(farmer);
+  } else {
+    const blocked = blockedIdsFor(req.user);
+    if (blocked.length > 0) filter.farmer = { $nin: blocked };
+  }
+
   if (minPrice || maxPrice) {
     filter.price = {};
     if (minPrice) filter.price.$gte = Number(minPrice);
@@ -236,8 +248,9 @@ const getAllProducts = asyncHandler(async (req, res) => {
 const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id).populate("farmer", FARMER_FIELDS);
 
-  // A suspended farmer's listings aren't reachable, even by a direct link.
-  if (!product || product.farmer?.isBanned) {
+  // A suspended farmer's listings aren't reachable, even by a direct link -
+  // and neither are a shop's listings for a buyer who blocked it.
+  if (!product || product.farmer?.isBanned || hasBlocked(req.user, product.farmer?._id)) {
     res.status(404);
     throw new Error("Product not found");
   }

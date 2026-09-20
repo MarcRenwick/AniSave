@@ -159,6 +159,16 @@ const userSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // Buyers only: the farmers this buyer has blocked. Their shop and listings
+    // stop reaching this buyer, and they can no longer sell to them - see
+    // utils/blocks.js. Who somebody has blocked is nobody else's business, so
+    // it is private like the fields below: it only leaves through
+    // controllers/blockController.js, to the buyer it belongs to.
+    blockedUsers: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      default: [],
+    },
+
     // One-time code for signing in by email instead of a password. Every kind
     // of code is stored hashed, with an expiry and a count of wrong guesses
     // (see utils/otp.js), and none of it is ever selected by default.
@@ -261,6 +271,7 @@ const userSchema = new mongoose.Schema(
 const PRIVATE_FIELDS = [
   "password",
   "suspensionReason",
+  "blockedUsers",
   "tokenVersion",
   "failedLoginAttempts",
   "lockUntil",

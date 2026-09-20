@@ -1,13 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { BadgeCheck, Flag, ImageOff, MapPin, MoreVertical, Phone } from "lucide-react";
+import { BadgeCheck, Ban, Flag, ImageOff, MapPin, MoreVertical, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import Avatar from "../../components/Avatar";
 import Modal from "../../components/Modal";
+import BlockUserModal from "../../components/buyer/BlockUserModal";
+import BlockResultDialog from "../../components/buyer/BlockResultDialog";
 import PriceTag from "../../components/products/PriceTag";
 import shopBackground from "../../assets/bckgrnd.jpg";
 import { useAuth } from "../../context/AuthContext";
-import { getFarmerProfile, getAllProducts, SERVER_URL } from "../../services/api";
+import { useCart } from "../../context/CartContext";
+import {
+  getFarmerProfile,
+  getAllProducts,
+  blockUser,
+  unblockUser,
+  SERVER_URL,
+} from "../../services/api";
 import { activeAgo, timeAgo } from "../../utils/activity";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
@@ -84,13 +93,23 @@ function ProductGrid({ products, empty }) {
 export default function FarmerProfile() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { items, removeItems } = useCart();
   const smoothNavigate = useSmoothNavigate();
 
-  // Buyers (and visitors, who are asked to log in first) can report a shop;
-  // farmers and admins can't.
+  // Buyers (and visitors, who are asked to log in first) can report or block a
+  // shop; farmers and admins can't.
   const canReport = !user || user.role === "buyer";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  // Blocking: the confirmation, then the note that it went through. `leave`
+  // says what closing that note does - after a block there is no shop left to
+  // come back to, so it goes home; after an unblock the shop is right here.
+  const [confirmingBlock, setConfirmingBlock] = useState(false);
+  const [blockError, setBlockError] = useState("");
+  const [blocking, setBlocking] = useState(false);
+  const [blockResult, setBlockResult] = useState(null);
+  const [reloadKey, setReloadKey] = useState(0);
   // A report just sent from the form left the time behind (utils/reports.js),
   // since stepping back here could not carry it. Shown until it is closed - but
   // not before the page transition that carried us back here has genuinely
@@ -123,7 +142,7 @@ export default function FarmerProfile() {
       })
       .catch(() => setError("Could not load this farmer's shop."))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, reloadKey]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -146,13 +165,92 @@ export default function FarmerProfile() {
     smoothNavigate(user ? `/buyer/farmers/${id}/report` : "/login");
   };
 
+  const startBlock = () => {
+    setMenuOpen(false);
+    if (!user) {
+      smoothNavigate("/login");
+      return;
+    }
+    setBlockError("");
+    setConfirmingBlock(true);
+  };
+
+  const handleBlock = async () => {
+    setBlockError("");
+    setBlocking(true);
+    try {
+      await blockUser(id);
+      // Anything of theirs still sitting in the cart goes with them - the
+      // server would refuse those orders now anyway.
+      removeItems(items.filter((item) => item.farmerId === id).map((item) => item.productId));
+      setConfirmingBlock(false);
+      setBlockResult({ message: "User Blocked Successfully", leave: true });
+    } catch (err) {
+      setBlockError(err.response?.data?.message || "Could not block them. Please try again.");
+    } finally {
+      setBlocking(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    setBlockError("");
+    setBlocking(true);
+    try {
+      await unblockUser(id);
+      setBlockResult({ message: "User Unblocked Successfully", leave: false });
+      // The shop is visible again, so load what was hidden a moment ago.
+      setReloadKey((key) => key + 1);
+    } catch (err) {
+      setBlockError(err.response?.data?.message || "Could not unblock them. Please try again.");
+    } finally {
+      setBlocking(false);
+    }
+  };
+
+  const closeBlockResult = () => {
+    const leave = blockResult?.leave;
+    setBlockResult(null);
+    if (leave) smoothNavigate("/buyer/home");
+  };
+
   return (
     <BuyerLayout>
       <div className="p-8">
         {loading && <p className="text-sm text-gray-500">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {!loading && !error && farmer && (
+        {!loading && !error && farmer?.blockedByMe && (
+          <div className="mx-auto max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500">
+              <Ban className="h-6 w-6" />
+            </span>
+            <h1 className="mt-4 text-lg font-semibold text-gray-900">You blocked {shopName}</h1>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">
+              Their shop, products and listings are hidden from you, and they can&apos;t sell to you.
+              Unblock them to see the shop again - you can also do that under Profile &gt; Blocked
+              Users.
+            </p>
+            {blockError && <p className="mt-3 text-sm text-red-600">{blockError}</p>}
+            <div className="mt-6 flex gap-3">
+              <Link
+                to="/buyer/home"
+                className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+              >
+                Back to Home
+              </Link>
+              <button
+                type="button"
+                onClick={handleUnblock}
+                disabled={blocking}
+                className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+              >
+                {blocking ? "Unblocking..." : "Unblock"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && farmer && !farmer.blockedByMe && (
           <>
             <div className="relative">
               <div
@@ -224,6 +322,13 @@ export default function FarmerProfile() {
                         className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                       >
                         <Flag className="h-4 w-4 text-[#2f8f66]" /> Report this user
+                      </button>
+                      <button
+                        type="button"
+                        onClick={startBlock}
+                        className="flex w-full items-center gap-2.5 border-t border-gray-100 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Ban className="h-4 w-4 text-[#2f8f66]" /> Block this user
                       </button>
                     </div>
                   )}
@@ -329,6 +434,20 @@ export default function FarmerProfile() {
           </p>
         )}
       </div>
+
+      {confirmingBlock && (
+        <BlockUserModal
+          name={shopName}
+          error={blockError}
+          submitting={blocking}
+          onClose={() => setConfirmingBlock(false)}
+          onConfirm={handleBlock}
+        />
+      )}
+
+      {blockResult && (
+        <BlockResultDialog message={blockResult.message} onClose={closeBlockResult} />
+      )}
 
       {reported && (
         <Modal title="Successfully Reported" onClose={closeThanks}>

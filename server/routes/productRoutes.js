@@ -26,7 +26,8 @@ router.put("/:id", protect, authorize("farmer"), upload.array("images", 5), upda
 router.patch("/:id/restock", protect, authorize("farmer"), restockProduct);
 router.delete("/:id", protect, authorize("farmer"), deleteProduct);
 
-// Public - single product detail
-router.get("/:id", getProductById);
+// Public - single product detail. The viewer is read where there is one, so a
+// listing from a shop they blocked can't be reached by its link either.
+router.get("/:id", optionalProtect, getProductById);
 
 module.exports = router;

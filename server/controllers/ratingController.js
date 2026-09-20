@@ -2,7 +2,9 @@ const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
+const Product = require("../models/Product");
 const ReviewReport = require("../models/ReviewReport");
+const { blockedIdsFor, hasBlocked } = require("../utils/blocks");
 
 // @desc    Rate a completed order's product
 // @route   POST /api/ratings
@@ -32,6 +34,14 @@ const createRating = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("You can only rate an order once it has been completed");
   }
+  // Blocking a shop stops the comments as well as the buying - that is what
+  // the buyer was told it would do.
+  if (hasBlocked(req.user, order.farmer)) {
+    res.status(403);
+    throw new Error(
+      "You blocked this shop, so you can't review their products. Unblock them under Profile > Blocked Users first."
+    );
+  }
 
   const existing = await Rating.findOne({ order: order._id });
   if (existing) {
@@ -59,6 +69,16 @@ const getProductRatings = asyncHandler(async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.productId)) {
     res.status(404);
     throw new Error("Product not found");
+  }
+
+  // The reviews of a blocked shop's product are part of that shop, so they go
+  // with it. Only worth a lookup when this viewer has blocked anybody at all.
+  if (blockedIdsFor(req.user).length > 0) {
+    const product = await Product.findById(req.params.productId).select("farmer");
+    if (hasBlocked(req.user, product?.farmer)) {
+      res.status(404);
+      throw new Error("Product not found");
+    }
   }
 
   // A review an admin has taken down after a report is no longer shown.
@@ -111,7 +131,9 @@ const toggleRatingLike = asyncHandler(async (req, res) => {
   }
 
   const rating = await Rating.findById(req.params.id);
-  if (!rating) {
+  // A blocked shop's reviews aren't shown to this buyer, so there is nothing
+  // here for them to mark helpful either.
+  if (!rating || hasBlocked(req.user, rating.farmer)) {
     res.status(404);
     throw new Error("Rating not found");
   }
