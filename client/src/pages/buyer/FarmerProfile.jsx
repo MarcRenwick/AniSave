@@ -13,7 +13,7 @@ import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { formatDistance } from "../../utils/address";
 import { forgetReportSent, reportJustSent } from "../../utils/reports";
-import { useSmoothNavigate } from "../../utils/pageTransition";
+import { usePageSettled, useSmoothNavigate } from "../../utils/pageTransition";
 
 const tabs = [
   { key: "home", label: "Home" },
@@ -92,9 +92,13 @@ export default function FarmerProfile() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   // A report just sent from the form left the time behind (utils/reports.js),
-  // since stepping back here could not carry it. Shown until it is closed.
+  // since stepping back here could not carry it. Shown until it is closed - but
+  // not before the page transition that carried us back here has genuinely
+  // finished, or its OK button would look clickable while the browser quietly
+  // ignores the click (see usePageSettled).
   const [thanksClosed, setThanksClosed] = useState(false);
-  const reported = !thanksClosed && reportJustSent();
+  const pageSettled = usePageSettled();
+  const reported = pageSettled && !thanksClosed && reportJustSent();
 
   const [farmer, setFarmer] = useState(null);
   const [products, setProducts] = useState([]);

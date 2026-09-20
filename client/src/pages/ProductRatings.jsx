@@ -7,7 +7,7 @@ import ReportSentDialog from "../components/reports/ReportSentDialog";
 import { getProduct, getProductRatings, toggleRatingLike } from "../services/api";
 import useScrollReveal from "../hooks/useScrollReveal";
 import usePreserveScroll from "../hooks/usePreserveScroll";
-import { useSmoothNavigate } from "../utils/pageTransition";
+import { usePageSettled, useSmoothNavigate } from "../utils/pageTransition";
 import { forgetReviewReportSent, reviewReportJustSent } from "../utils/reviewReports";
 
 function Stars({ value, className = "h-4 w-4" }) {
@@ -35,9 +35,13 @@ export default function ProductRatings() {
   const { user } = useAuth();
   const canLike = user?.role === "buyer";
   // A report just sent from the form left the time behind (utils/reviewReports.js),
-  // since stepping back here could not carry it. Shown until it is closed.
+  // since stepping back here could not carry it. Shown until it is closed - but
+  // not before the page transition that carried us back here has genuinely
+  // finished, or its OK button would look clickable while the browser quietly
+  // ignores the click (see usePageSettled).
   const [thanksClosed, setThanksClosed] = useState(false);
-  const reportSent = !thanksClosed && reviewReportJustSent();
+  const pageSettled = usePageSettled();
+  const reportSent = pageSettled && !thanksClosed && reviewReportJustSent();
 
   const [productTitle, setProductTitle] = useState("");
   const [ratings, setRatings] = useState([]);
