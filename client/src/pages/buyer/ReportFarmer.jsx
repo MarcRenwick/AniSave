@@ -4,15 +4,14 @@ import { ArrowLeft, ChevronRight, Plus, X } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import { createReport, getFarmerProfile } from "../../services/api";
 import { MAX_UPLOAD_BYTES, shrinkImage } from "../../utils/imageUpload";
-import { MAX_REPORT_DESCRIPTION, MAX_REPORT_EVIDENCE, REPORT_REASONS, reasonLabel } from "../../utils/reports";
-import { useSmoothNavigate } from "../../utils/pageTransition";
+import { MAX_REPORT_DESCRIPTION, MAX_REPORT_EVIDENCE, REPORT_REASONS, markReportSent, reasonLabel } from "../../utils/reports";
+import { useSmoothBack } from "../../utils/pageTransition";
 
 // A buyer reporting a farmer, in two steps: pick a reason, then say what
 // happened (and, if they like, attach photos). The report goes to the admins;
 // the buyer lands back on the farmer's shop with a confirmation.
 export default function ReportFarmer() {
   const { id } = useParams();
-  const navigate = useSmoothNavigate();
 
   const [farmer, setFarmer] = useState(null);
   const [reason, setReason] = useState("");
@@ -31,7 +30,9 @@ export default function ReportFarmer() {
   }, [id]);
 
   const shopName = farmer ? farmer.farmName || farmer.name : "";
-  const goToShop = () => navigate(`/buyer/farmers/${id}`);
+  // Stepping back, not forward onto another copy of the shop - otherwise Back
+  // from the shop would lead into the form again.
+  const goToShop = useSmoothBack(`/buyer/farmers/${id}`);
 
   const addEvidence = async (e) => {
     const picked = Array.from(e.target.files || []);
@@ -75,7 +76,8 @@ export default function ReportFarmer() {
       await createReport(data);
       evidence.forEach(({ url }) => URL.revokeObjectURL(url));
       // Back on the shop, which shows the "Successfully Reported" confirmation.
-      navigate(`/buyer/farmers/${id}`, { replace: true, state: { reported: true } });
+      markReportSent();
+      goToShop();
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
       setSubmitting(false);

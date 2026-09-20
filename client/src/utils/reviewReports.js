@@ -34,3 +34,16 @@ export const REVIEW_REPORT_STATUSES = [
 
 export const reviewStatusMeta = (key) =>
   REVIEW_REPORT_STATUSES.find((s) => s.key === key) || REVIEW_REPORT_STATUSES[0];
+
+// Stepping back to the ratings page cannot carry anything with it, so a report
+// just sent leaves the time behind here and the page reads it while rendering.
+// It is forgotten when the thank-you is closed, and when the app is reloaded.
+let sentAt = 0;
+const JUST_NOW_MS = 10000;
+export const markReviewReportSent = () => {
+  sentAt = Date.now();
+};
+export const reviewReportJustSent = () => Date.now() - sentAt < JUST_NOW_MS;
+export const forgetReviewReportSent = () => {
+  sentAt = 0;
+};

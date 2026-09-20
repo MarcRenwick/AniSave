@@ -22,3 +22,15 @@ export const REPORT_STATUSES = [
 ];
 
 export const statusMeta = (key) => REPORT_STATUSES.find((s) => s.key === key) || REPORT_STATUSES[0];
+
+// Same as reporting a review: the time is left here for the shop page to read
+// while rendering, once the browser has stepped back to it.
+let sentAt = 0;
+const JUST_NOW_MS = 10000;
+export const markReportSent = () => {
+  sentAt = Date.now();
+};
+export const reportJustSent = () => Date.now() - sentAt < JUST_NOW_MS;
+export const forgetReportSent = () => {
+  sentAt = 0;
+};

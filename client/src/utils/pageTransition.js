@@ -52,3 +52,17 @@ export function useSmoothNavigate() {
   const navigate = useNavigate();
   return useCallback((to, options) => withPageTransition(() => navigate(to, options)), [navigate]);
 }
+
+// The back arrow on a page you step into (a report form, say). It goes back the
+// way the browser's own Back button would, instead of adding another entry to
+// the history - otherwise Back from the page you just returned to would lead
+// forwards, into the page you had left. When there is nothing of ours to go
+// back to (the page was opened from a pasted link or a new tab), it goes to
+// where the page belongs, without leaving an entry behind.
+export function useSmoothBack(fallback) {
+  const navigate = useNavigate();
+  return useCallback(() => {
+    const canGoBack = (window.history.state?.idx ?? 0) > 0;
+    withPageTransition(() => (canGoBack ? navigate(-1) : navigate(fallback, { replace: true })));
+  }, [navigate, fallback]);
+}

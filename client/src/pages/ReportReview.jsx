@@ -2,27 +2,25 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import ReportOtpModal from "../components/reports/ReportOtpModal";
-import { requestReviewReportCode } from "../services/api";
-import { MAX_REVIEW_REPORT_DETAIL, REVIEW_REPORT_REASONS } from "../utils/reviewReports";
-import { useSmoothNavigate } from "../utils/pageTransition";
+import { createReviewReport } from "../services/api";
+import { MAX_REVIEW_REPORT_DETAIL, REVIEW_REPORT_REASONS, markReviewReportSent } from "../utils/reviewReports";
+import { useSmoothBack } from "../utils/pageTransition";
 
 // Reporting a review, for buyers and for farmers (the review of one of their
 // products): pick a reason - "Other Violations" has to be explained - then
-// Submit. AniSave emails a one-time code to the reporter, and the report goes to
-// the admins once it's entered. They land back on the ratings with a thank-you.
+// Submit. The report goes to the admins, and they land back on the ratings with
+// a thank-you.
 export default function ReportReview() {
   const { id, ratingId } = useParams();
   const { user } = useAuth();
-  const navigate = useSmoothNavigate();
 
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   const ratingsPath = `/${user.role}/products/${id}/ratings`;
+  const goBack = useSmoothBack(ratingsPath);
   const isOther = reason === "other";
   const ready = Boolean(reason) && (!isOther || detail.trim().length > 0);
 
@@ -34,11 +32,13 @@ export default function ReportReview() {
     setError("");
     setSending(true);
     try {
-      await requestReviewReportCode(report);
-      setConfirming(true);
+      await createReviewReport(report);
+      // Step back to the ratings, which show the thank-you, instead of stacking
+      // another entry on top of the form.
+      markReviewReportSent();
+      goBack();
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
-    } finally {
       setSending(false);
     }
   };
@@ -46,7 +46,7 @@ export default function ReportReview() {
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
       <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
-        <button type="button" onClick={() => navigate(ratingsPath)} aria-label="Back to the ratings">
+        <button type="button" onClick={goBack} aria-label="Back to the ratings">
           <ArrowLeft className="h-6 w-6" />
         </button>
         <h1 className="flex-1 pr-6 text-center text-xl font-semibold">Report this review</h1>
@@ -112,19 +112,11 @@ export default function ReportReview() {
               disabled={!ready || sending}
               className="mx-auto block w-full max-w-56 rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
             >
-              {sending ? "Sending OTP..." : "Submit"}
+              {sending ? "Submitting..." : "Submit"}
             </button>
           </div>
         </form>
       </div>
-
-      {confirming && (
-        <ReportOtpModal
-          report={report}
-          onClose={() => setConfirming(false)}
-          onSubmitted={() => navigate(ratingsPath, { replace: true, state: { reportSent: true } })}
-        />
-      )}
     </div>
   );
 }

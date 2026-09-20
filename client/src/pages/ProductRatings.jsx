@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Star, ThumbsUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import Avatar from "../components/Avatar";
@@ -8,6 +8,7 @@ import { getProduct, getProductRatings, toggleRatingLike } from "../services/api
 import useScrollReveal from "../hooks/useScrollReveal";
 import usePreserveScroll from "../hooks/usePreserveScroll";
 import { useSmoothNavigate } from "../utils/pageTransition";
+import { forgetReviewReportSent, reviewReportJustSent } from "../utils/reviewReports";
 
 function Stars({ value, className = "h-4 w-4" }) {
   return (
@@ -31,11 +32,12 @@ export default function ProductRatings() {
   const { id } = useParams();
   const navigate = useNavigate();
   const smoothNavigate = useSmoothNavigate();
-  const location = useLocation();
   const { user } = useAuth();
   const canLike = user?.role === "buyer";
-  // Coming back from the report form with { reportSent: true } shows the thank-you once.
-  const [reportSent, setReportSent] = useState(Boolean(location.state?.reportSent));
+  // A report just sent from the form left the time behind (utils/reviewReports.js),
+  // since stepping back here could not carry it. Shown until it is closed.
+  const [thanksClosed, setThanksClosed] = useState(false);
+  const reportSent = !thanksClosed && reviewReportJustSent();
 
   const [productTitle, setProductTitle] = useState("");
   const [ratings, setRatings] = useState([]);
@@ -57,12 +59,6 @@ export default function ProductRatings() {
       .catch(() => setError("Could not load these ratings."))
       .finally(() => setLoading(false));
   }, [id]);
-
-  // The thank-you is shown once: clear it from the history entry so a refresh doesn't repeat it.
-  useEffect(() => {
-    if (location.state?.reportSent) navigate(location.pathname, { replace: true, state: null });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // A visitor who isn't signed in is asked to log in first.
   const startReport = (rating) =>
@@ -230,7 +226,14 @@ export default function ProductRatings() {
         )}
       </div>
 
-      {reportSent && <ReportSentDialog onClose={() => setReportSent(false)} />}
+      {reportSent && (
+        <ReportSentDialog
+          onClose={() => {
+            forgetReviewReportSent();
+            setThanksClosed(true);
+          }}
+        />
+      )}
     </div>
   );
 }

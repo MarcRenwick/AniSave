@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useLocation, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { BadgeCheck, Flag, ImageOff, MapPin, MoreVertical, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import Avatar from "../../components/Avatar";
@@ -12,6 +12,7 @@ import { activeAgo, timeAgo } from "../../utils/activity";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { formatDistance } from "../../utils/address";
+import { forgetReportSent, reportJustSent } from "../../utils/reports";
 import { useSmoothNavigate } from "../../utils/pageTransition";
 
 const tabs = [
@@ -83,8 +84,6 @@ function ProductGrid({ products, empty }) {
 export default function FarmerProfile() {
   const { id } = useParams();
   const { user } = useAuth();
-  const location = useLocation();
-  const navigate = useNavigate();
   const smoothNavigate = useSmoothNavigate();
 
   // Buyers (and visitors, who are asked to log in first) can report a shop;
@@ -92,8 +91,10 @@ export default function FarmerProfile() {
   const canReport = !user || user.role === "buyer";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
-  // Coming back from the report form with { reported: true } shows the confirmation once.
-  const [reported, setReported] = useState(Boolean(location.state?.reported));
+  // A report just sent from the form left the time behind (utils/reports.js),
+  // since stepping back here could not carry it. Shown until it is closed.
+  const [thanksClosed, setThanksClosed] = useState(false);
+  const reported = !thanksClosed && reportJustSent();
 
   const [farmer, setFarmer] = useState(null);
   const [products, setProducts] = useState([]);
@@ -129,11 +130,10 @@ export default function FarmerProfile() {
     return () => document.removeEventListener("mousedown", closeOnOutsideClick);
   }, [menuOpen]);
 
-  // The confirmation is shown once: clear it from the history entry so a refresh doesn't repeat it.
-  useEffect(() => {
-    if (location.state?.reported) navigate(location.pathname, { replace: true, state: null });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const closeThanks = () => {
+    forgetReportSent();
+    setThanksClosed(true);
+  };
 
   const shopName = farmer?.farmName || farmer?.name || "Shop";
 
@@ -327,13 +327,13 @@ export default function FarmerProfile() {
       </div>
 
       {reported && (
-        <Modal title="Successfully Reported" onClose={() => setReported(false)}>
+        <Modal title="Successfully Reported" onClose={closeThanks}>
           <p className="text-sm text-gray-600">
             Your report has been submitted successfully. We&apos;ll review the information provided.
           </p>
           <button
             type="button"
-            onClick={() => setReported(false)}
+            onClick={closeThanks}
             className="mt-5 w-full rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56]"
           >
             OK

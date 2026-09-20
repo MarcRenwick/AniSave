@@ -41,6 +41,34 @@ const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 const sendInBackground = (message) =>
   sendEmail(message).catch((err) => console.error(`Could not send an email (${message.subject}): ${err.message}`));
 
+// Why someone is leaving, as the farmer's deletion form offers it. The labels
+// people see live in the client (client/src/utils/accountDeletion.js).
+const DELETION_REASONS = ["no_longer_use", "change_username", "no_longer_need", "found_another", "other"];
+
+// A farmer fills in a form before the code is sent (a reason, "Others" in their
+// own words, and agreeing to the deletion terms), so the server asks for the
+// same things the form does. Nothing here is stored: the account and everything
+// about it is about to be deleted. A buyer's dialog has no form and sends none
+// of this.
+function checkDeletionForm(req, res) {
+  if (req.user.role !== "farmer") return;
+  const body = validate.plainBody(req.body);
+
+  if (typeof body.reason !== "string" || !DELETION_REASONS.includes(body.reason)) {
+    res.status(400);
+    throw new Error("Choose a reason for deleting your account");
+  }
+  if (body.reason === "other" && (typeof body.description !== "string" || !body.description.trim())) {
+    res.status(400);
+    throw new Error("Please tell us why you're deleting your account");
+  }
+  validate.optionalText(body.description, "The reason", { max: 320 });
+  if (!validate.isTrue(body.agreedToTerms)) {
+    res.status(400);
+    throw new Error("Please agree to the account deletion terms first");
+  }
+}
+
 // "marc***@gmail.com" - enough to recognise which inbox, not enough to leak the address.
 const maskEmail = (email) => {
   const [local, domain] = String(email).split("@");
@@ -576,9 +604,11 @@ const setMfa = asyncHandler(async (req, res) => {
 });
 
 // @desc    Email a 6-digit OTP to confirm account deletion
-// @route   POST /api/auth/delete-account/request-otp
+// @route   POST /api/auth/delete-account/request-otp   (farmers: { reason, description?, agreedToTerms })
 // @access  Private
 const requestAccountDeletion = asyncHandler(async (req, res) => {
+  checkDeletionForm(req, res);
+
   const user = await User.findById(req.user._id).select(selectCode(DELETE_CODE));
 
   if (!otp.sentRecently(user, DELETE_CODE, DELETE_CODE_MS)) {

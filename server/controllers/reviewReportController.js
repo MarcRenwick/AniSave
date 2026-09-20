@@ -3,23 +3,9 @@ const asyncHandler = require("express-async-handler");
 const Rating = require("../models/Rating");
 const ReviewReport = require("../models/ReviewReport");
 const User = require("../models/User");
-const sendEmail = require("../utils/sendEmail");
 const validate = require("../utils/validate");
-const otp = require("../utils/otp");
 
-const { escapeHtml } = sendEmail;
 const { REASONS } = ReviewReport;
-
-// The emailed code that confirms a report. It is one more kind of code for the
-// existing one-time-code helpers (utils/otp.js) - same generation, hashing,
-// expiry, wrong-guess limit and resend cooldown - kept in its own fields on the
-// user so it can't be mixed up with, say, the code that deletes an account.
-const REPORT_CODE = {
-  code: "reviewReportCode",
-  expires: "reviewReportCodeExpires",
-  attempts: "reviewReportCodeAttempts",
-};
-const REPORT_CODE_MS = 15 * 60 * 1000;
 
 // Enough for a real problem, not enough to bury the admin in reports.
 const MAX_REVIEW_REPORTS_PER_DAY = 10;
@@ -28,9 +14,9 @@ const OPEN_STATUSES = ["pending", "reviewed"];
 // What an admin can do about a report, and the status it ends up with.
 const DECISIONS = { dismiss: "dismissed", remove: "removed", suspend: "suspended" };
 
-// Everything the reporter has chosen, checked - shared by "email me a code" and
-// "send the report", so a report that can't be sent is refused before any email
-// goes out. Returns the review, the reason and (for "other") the description.
+// Everything the reporter has chosen, checked: the review exists and is theirs
+// to report, the reason is a real one, "other" has been explained, and they
+// haven't already reported this review or sent too many today.
 async function checkReport(req, res) {
   const body = validate.plainBody(req.body);
 
@@ -84,67 +70,14 @@ async function checkReport(req, res) {
     throw new Error("You've sent several reports today. Please try again tomorrow.");
   }
 
-  return { rating, reason: body.reason, description, body };
+  return { rating, reason: body.reason, description };
 }
 
-// @desc    Email a 6-digit OTP to confirm a report about a review
-// @route   POST /api/review-reports/request-otp   { ratingId, reason, description? }
-// @access  Private (buyer, or the farmer whose product was reviewed)
-const requestReportCode = asyncHandler(async (req, res) => {
-  await checkReport(req, res);
-
-  const user = await User.findById(req.user._id).select(otp.selectCode(REPORT_CODE));
-
-  if (!otp.sentRecently(user, REPORT_CODE, REPORT_CODE_MS)) {
-    const code = otp.issueCode(user, REPORT_CODE, REPORT_CODE_MS);
-    await user.save();
-
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: "Confirm your AniSave report",
-        html: `
-          <p>Hi ${escapeHtml(user.name)},</p>
-          <p>Enter this OTP in the app to submit your report about a review. It expires in 15 minutes and can only be used once.</p>
-          <h2 style="letter-spacing: 6px;">${code}</h2>
-          <p>If you didn't request this, you can safely ignore this email - no report will be sent.</p>
-        `,
-      });
-    } catch (err) {
-      // Without this, asking again straight away would be told a code was "just
-      // sent" and never get one.
-      otp.clearCode(user, REPORT_CODE);
-      await user.save();
-      throw err;
-    }
-  }
-
-  res.json({ message: "An OTP has been sent to your email." });
-});
-
-// @desc    Send the report, once the emailed OTP is right
-// @route   POST /api/review-reports   { ratingId, reason, description?, code }
+// @desc    Report a review
+// @route   POST /api/review-reports   { ratingId, reason, description? }
 // @access  Private (buyer, or the farmer whose product was reviewed)
 const createReviewReport = asyncHandler(async (req, res) => {
-  const { rating, reason, description, body } = await checkReport(req, res);
-  const code = validate.codeInput(body.code);
-
-  const user = await User.findById(req.user._id).select(otp.selectCode(REPORT_CODE));
-  if (!(await otp.checkCode(user, REPORT_CODE, code))) {
-    res.status(400);
-    throw new Error("That OTP is invalid or has expired");
-  }
-
-  // The code works once: whoever removes it first wins, so two requests sent
-  // together with the same code can't both go through.
-  const spent = await User.findOneAndUpdate(
-    { _id: user._id, [REPORT_CODE.code]: { $exists: true } },
-    { $unset: { [REPORT_CODE.code]: "", [REPORT_CODE.expires]: "" }, $set: { [REPORT_CODE.attempts]: 0 } }
-  );
-  if (!spent) {
-    res.status(400);
-    throw new Error("That OTP is invalid or has expired");
-  }
+  const { rating, reason, description } = await checkReport(req, res);
 
   let report;
   try {
@@ -278,4 +211,4 @@ const decideReviewReport = asyncHandler(async (req, res) => {
   res.json(await withPeople(ReviewReport.findById(report._id)));
 });
 
-module.exports = { requestReportCode, createReviewReport, getReviewReports, markReviewed, decideReviewReport };
+module.exports = { createReviewReport, getReviewReports, markReviewed, decideReviewReport };

@@ -23,19 +23,19 @@ import Avatar from "../../components/Avatar";
 import PriceTag from "../../components/products/PriceTag";
 import VerificationModal from "../../components/farmer/VerificationModal";
 import LogoutConfirmModal from "../../components/LogoutConfirmModal";
-import DeleteAccountModal from "../../components/farmer/settings/DeleteAccountModal";
 import EditProfileModal from "../../components/settings/EditProfileModal";
 import ChangePasswordModal from "../../components/settings/ChangePasswordModal";
 import PrivacySecurityModal from "../../components/settings/PrivacySecurityModal";
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../../services/api";
-import { withPageTransition } from "../../utils/pageTransition";
+import { useSmoothNavigate, withPageTransition } from "../../utils/pageTransition";
 
 const categoryLabels = { vegetable: "Vegetables", fruit: "Fruits" };
 
 export default function FarmerSettings() {
   const { user, updateUser, logout } = useAuth();
   const navigate = useNavigate();
+  const smoothNavigate = useSmoothNavigate();
 
   const [products, setProducts] = useState([]);
   const [ratingStats, setRatingStats] = useState({ rating: 0, ratingCount: 0 });
@@ -44,7 +44,6 @@ export default function FarmerSettings() {
   const [showEdit, setShowEdit] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -91,14 +90,12 @@ export default function FarmerSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Logging out (or deleting the account) eases from this page to the login page.
-  const leaveToLogin = () =>
+  // Logging out eases from this page to the login page.
+  const handleLogout = () =>
     withPageTransition(() => {
       logout();
       navigate("/login");
     });
-  const handleAccountDeleted = leaveToLogin;
-  const handleLogout = leaveToLogin;
 
   const categories = [...new Set(products.map((p) => p.category))];
   const productsLabel =
@@ -200,7 +197,7 @@ export default function FarmerSettings() {
                     type="button"
                     onClick={() => {
                       setMenuOpen(false);
-                      setShowDelete(true);
+                      smoothNavigate("/farmer/delete-account");
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50"
                   >
@@ -344,9 +341,6 @@ export default function FarmerSettings() {
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
       {showPrivacy && <PrivacySecurityModal onClose={() => setShowPrivacy(false)} />}
       {showVerification && <VerificationModal onClose={() => setShowVerification(false)} />}
-      {showDelete && (
-        <DeleteAccountModal onClose={() => setShowDelete(false)} onDeleted={handleAccountDeleted} />
-      )}
       {showLogout && (
         <LogoutConfirmModal onClose={() => setShowLogout(false)} onConfirm={handleLogout} />
       )}

@@ -14,6 +14,7 @@ export default function Terms() {
             "Give accurate information, and keep it up to date.",
             "You are responsible for your password and for what happens under your account. Tell an administrator if you think someone else has it - and change it straight away.",
             "One person, one account. Don't use someone else's identity or documents.",
+            "You can delete your account at any time. Farmers are asked to pick a reason and to agree to the account deletion terms first - settle any pending orders and pre-orders before you do, because they go with the account.",
           ]}
         />
       </Section>

@@ -16,6 +16,7 @@ import FarmerOrders from "./pages/farmer/FarmerOrders";
 import FarmerOrderDetail from "./pages/farmer/FarmerOrderDetail";
 import FarmerNotifications from "./pages/farmer/FarmerNotifications";
 import FarmerSettings from "./pages/farmer/FarmerSettings";
+import FarmerDeleteAccount from "./pages/farmer/DeleteAccount";
 import BuyerHome from "./pages/buyer/BuyerHome";
 import FarmerProfile from "./pages/buyer/FarmerProfile";
 import ProductDetail from "./pages/buyer/ProductDetail";
@@ -141,6 +142,14 @@ export default function App() {
               element={
                 <ProtectedRoute role="farmer">
                   <FarmerSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/farmer/delete-account"
+              element={
+                <ProtectedRoute role="farmer">
+                  <FarmerDeleteAccount />
                 </ProtectedRoute>
               }
             />

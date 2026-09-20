@@ -111,10 +111,20 @@ Buyers can report a farmer from the farmer's shop page (the menu at the top righ
 
 On a product's **Ratings** page every review has a **Report review** button - buyers can report other people's reviews, and a farmer the reviews of their own products. Pick a reason (Adult or Sexual Content, Spam, Rude or Abusive, Exposing Personal Information, Suspected Fake, Misleading or Inaccurate, or **Other Violations**, which has to be explained) and press **Submit**.
 
-- **Confirmed with an emailed OTP.** Submitting first asks the server to email a 6-digit code to the reporter's registered address (`POST /api/review-reports/request-otp`), then sends the report with the code (`POST /api/review-reports`). It uses the same one-time-code helpers as deleting an account (`server/utils/otp.js`) - only the set of fields it's kept in (`reviewReportCode...` on the user) is new, so a code for one purpose can't be spent on another. The server checks the report *before* emailing anything.
+- Submitting sends the report straight to the administrators (`POST /api/review-reports`) and shows a thank-you.
 - Reports go to the admin's **Review Reports** page (`/admin/review-reports`, `GET /api/admin/review-reports`). Status: **Pending** → **Reviewed** (an admin has opened it) → **Dismissed**, **Removed** (the review is taken down) or **Suspended** (the review is taken down and its author is suspended, like a ban; a note is required) - `PATCH /api/admin/review-reports/:id/decision`.
 - A removed review is hidden and no longer counts towards the product's or the farmer's rating (`removedAt` on the rating). Nobody can report the same review twice, and one account can send 10 a day.
 - Deleting an account also deletes the review reports it sent or was the subject of.
+
+## Deleting a farmer account
+
+Farmer settings → the menu on the profile card → **Delete Account** opens `/farmer/delete-account`:
+
+1. **Choose Deletion Reason** — I no longer want to use AniSave / I want to change my username / I no longer need the account / I found another marketplace / **Others**, which has to be explained.
+2. **Request Account Deletion** — the reason (tap it to change), the email address the code will go to, and a tick for the **Terms & Conditions for account deletion** (the clauses open over the form, so nothing typed is lost). Submit is off until all three are in place.
+3. **The OTP** — Submit asks the server to email a 6-digit code (`POST /api/auth/delete-account/request-otp`, which checks the reason and the agreement for farmers too). Entering it deletes the account (`POST /api/auth/delete-account/confirm`), and the browser returns to the login page.
+
+Deleting cascades: products and their photos, orders, ratings, reports sent and received, the profile photo, and the ID and farm documents. The reason is never stored - the account it would belong to is being deleted. Buyers keep the shorter dialog in their own settings.
 
 ## Viewing the Database
 

@@ -55,7 +55,9 @@ export const uploadAvatar = (formData) =>
   api.put("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
 export const changePassword = (currentPassword, newPassword) =>
   api.put("/auth/change-password", { currentPassword, newPassword });
-export const requestAccountDeletion = () => api.post("/auth/delete-account/request-otp");
+// A farmer fills in a form first, so they send { reason, description?, agreedToTerms };
+// a buyer's dialog sends nothing.
+export const requestAccountDeletion = (form) => api.post("/auth/delete-account/request-otp", form);
 export const confirmAccountDeletion = (code) => api.post("/auth/delete-account/confirm", { code });
 
 export const getMyProducts = () => api.get("/products/mine");
@@ -107,11 +109,9 @@ export const createRating = (orderId, stars, comment) =>
 export const getProductRatings = (productId) => api.get(`/ratings/product/${productId}`);
 export const toggleRatingLike = (ratingId) => api.post(`/ratings/${ratingId}/like`);
 
-// Reporting a review takes an emailed OTP: ask for one (the server checks the
-// report first), then send the report with the code. `report` is
-// { ratingId, reason, description? }. Admins review each one and decide.
-export const requestReviewReportCode = (report) => api.post("/review-reports/request-otp", report);
-export const createReviewReport = (report, code) => api.post("/review-reports", { ...report, code });
+// Reporting a review: `report` is { ratingId, reason, description? }.
+// Admins review each one and decide.
+export const createReviewReport = (report) => api.post("/review-reports", report);
 export const getAdminReviewReports = () => api.get("/admin/review-reports");
 export const markReviewReportReviewed = (id) => api.patch(`/admin/review-reports/${id}/review`);
 export const decideReviewReport = (id, action, note) =>

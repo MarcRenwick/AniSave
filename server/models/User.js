@@ -204,22 +204,6 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    // The emailed code that confirms a report about a review - its own set, so
-    // a code sent for one purpose can never be spent on another.
-    reviewReportCode: {
-      type: String,
-      select: false,
-    },
-    reviewReportCodeExpires: {
-      type: Date,
-      select: false,
-    },
-    reviewReportCodeAttempts: {
-      type: Number,
-      default: 0,
-      select: false,
-    },
-
     // Two-step sign-in: after the password, an emailed code. Always on for
     // admins; anyone else can switch it on in their settings.
     mfaEnabled: {
@@ -289,9 +273,6 @@ const PRIVATE_FIELDS = [
   "deleteAccountCode",
   "deleteAccountExpires",
   "deleteAccountAttempts",
-  "reviewReportCode",
-  "reviewReportCodeExpires",
-  "reviewReportCodeAttempts",
   "mfaCode",
   "mfaCodeExpires",
   "mfaCodeAttempts",

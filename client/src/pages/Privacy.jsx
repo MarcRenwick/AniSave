@@ -39,7 +39,7 @@ export default function Privacy() {
             "To run your account and the marketplace: showing farms and products, placing and tracking orders.",
             "To sort farms and products from nearest to farthest, using the city you chose.",
             "To verify farmers: an administrator reviews the ID and farm documents before a farmer can sell. They are used for nothing else.",
-            "To keep the marketplace safe: an administrator reads the reports buyers send about sellers and decides whether to dismiss them or suspend the seller. Reports about reviews are read the same way: the administrator can dismiss them, remove the review or suspend whoever wrote it. Sending one is confirmed with a code emailed to you.",
+            "To keep the marketplace safe: an administrator reads the reports buyers send about sellers and decides whether to dismiss them or suspend the seller. Reports about reviews are read the same way: the administrator can dismiss them, remove the review or suspend whoever wrote it.",
             "To keep accounts secure: emailed sign-in and password-reset codes, two-step sign-in, and limits on repeated failed attempts.",
             "We only email you the codes and security messages you ask for - no marketing emails.",
           ]}
@@ -62,7 +62,8 @@ export default function Privacy() {
       <Section title="How long we keep it, and deleting it">
         <p>
           We keep your information for as long as your account exists. When you use{" "}
-          <strong>Delete Account</strong> in your profile (confirmed with a code emailed to you), your
+          <strong>Delete Account</strong> in your profile - farmers pick a reason and agree to the deletion
+          terms first, and either way it is confirmed with a code emailed to you - your
           account, products, orders, ratings, profile photo, verification documents and the reports you
           sent (with their photos) are permanently removed. A seller who deletes their account also has
           the reports about them removed, and reports about a review are removed along with the review.
