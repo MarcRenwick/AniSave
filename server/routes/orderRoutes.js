@@ -5,6 +5,7 @@ const {
   getBuyerOrders,
   getOrderById,
   updateOrderStatus,
+  undoOrderStatus,
   cancelOrder,
   archiveOrder,
 } = require("../controllers/orderController");
@@ -19,6 +20,7 @@ router.get("/farmer", authorize("farmer"), getFarmerOrders);
 router.get("/buyer", authorize("buyer"), getBuyerOrders);
 router.get("/:id", getOrderById);
 router.patch("/:id/status", authorize("farmer"), updateOrderStatus);
+router.patch("/:id/undo", authorize("farmer"), undoOrderStatus);
 router.patch("/:id/cancel", authorize("buyer"), cancelOrder);
 router.patch("/:id/archive", authorize("buyer"), archiveOrder);
 

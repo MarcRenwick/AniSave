@@ -98,6 +98,13 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 - **Errors and headers** — errors never include stack traces or internal text (details go to the server log), `helmet` sets security headers, and CORS only allows `CLIENT_URL`.
 - **Tests** — with `NODE_ENV=test` no email is ever sent (messages are written to a file in the temp folder); add `RATE_LIMIT=off` to run bulk tests. Set `NODE_ENV=production` when deployed.
 
+## Orders
+
+An order moves in a straight line: **New** (or **Pre-Order**, for a pre-order listing) → **Processing** → **Ready for Pickup** → **Completed**, or it is declined. The farmer moves it with `PATCH /api/orders/:id/status`; a buyer can cancel their own order while it is still unanswered, and archive it once it is done.
+
+- Every reply about a single order carries the whole order — the buyer, the farmer and the product, not just their ids — so a status change never leaves the page holding an order whose buyer and product are bare ids (that is what once turned an accepted order's pickup card into "Unknown buyer").
+- **Undo** (`PATCH /api/orders/:id/undo`, the farmer's own orders only) takes the last change back one step, for a mis-tapped Accept, Ready or Completed. The stage's timestamp is cleared with it, and a pre-order goes back to **Pre-Order** with its stock returned — `openedAs` on the order remembers which status it opened in. A declined order is not undone (the buyer has been told and the stock is back), and neither is a completed order the buyer has already rated. Orders placed before `openedAs` existed are treated as ordinary orders; to fill it in for them, run `node scripts/backfillOrderOpenedAs.js --dry-run` (then without `--dry-run`) once.
+
 ## Reports
 
 Buyers can report a farmer from the farmer's shop page (the menu at the top right → **Report this user**): pick a reason, describe what happened (up to 320 characters) and optionally attach up to 5 photos.

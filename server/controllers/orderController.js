@@ -5,6 +5,17 @@ const Rating = require("../models/Rating");
 const { effectivePrice } = require("../utils/pricing");
 const { hasBlocked } = require("../utils/blocks");
 
+// Every reply about a single order sends the whole order: the buyer, the
+// farmer and the product it is for, not just their ids. A status change that
+// answered with the bare row left the page holding an order whose buyer and
+// product were ids, which is how a freshly accepted order came to show
+// "Unknown buyer" and no photo.
+const withDetails = (id) =>
+  Order.findById(id)
+    .populate("farmer", "name farmName location phone")
+    .populate("buyer", "name location phone")
+    .populate("product", "image category location");
+
 // @desc    Place an order for a product
 // @route   POST /api/orders
 // @access  Private (buyer)
@@ -64,6 +75,7 @@ const createOrder = asyncHandler(async (req, res) => {
     quantity,
     total,
     status: isPreOrder ? "preorder" : "new",
+    openedAs: isPreOrder ? "preorder" : "new",
   });
 
   // A pre-order reserves nothing - there is no stock to hold yet, so it is
@@ -174,7 +186,72 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     }
   }
 
-  res.json(order);
+  res.json(await withDetails(order._id));
+});
+
+// The step an order goes back to when the farmer takes a status change back.
+// The flow is a straight line - new (or preorder) -> processing -> ready ->
+// done - so one step back is all it takes. A declined order isn't in here on
+// purpose: the buyer has been told it is off and the stock has gone back, so
+// it isn't something to quietly reinstate.
+const previousStatusOf = (order) => {
+  if (order.status === "processing") return order.openedAs || "new";
+  if (order.status === "ready") return "processing";
+  if (order.status === "done") return "ready";
+  return null;
+};
+
+// @desc    Take back the last status change on a farmer's own order, so an
+//          accidental Accept, Prepare or Ready goes back one step
+// @route   PATCH /api/orders/:id/undo
+// @access  Private (farmer, owner only)
+const undoOrderStatus = asyncHandler(async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) {
+    res.status(404);
+    throw new Error("Order not found");
+  }
+  if (order.farmer.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("You do not own this order");
+  }
+
+  const previous = previousStatusOf(order);
+  if (!previous) {
+    res.status(400);
+    throw new Error(
+      order.status === "cancelled"
+        ? "A declined order can't be undone - the buyer has been told, and their stock was put back."
+        : "This order hasn't been moved anywhere yet, so there is nothing to undo."
+    );
+  }
+
+  // A completed order the buyer has already rated stays completed: the review
+  // is about a finished order, and reopening it would leave the two of them
+  // saying different things.
+  if (order.status === "done" && (await Rating.exists({ order: order._id }))) {
+    res.status(400);
+    throw new Error("The buyer has already rated this order, so it can't be reopened.");
+  }
+
+  // Accepting a pre-order is the one step that takes stock off the farmer, so
+  // undoing it is the one that gives it back.
+  if (previous === "preorder") {
+    const product = await Product.findById(order.product);
+    if (product) {
+      product.stock += order.quantity;
+      await product.save();
+    }
+  }
+
+  // The stage being undone never happened, so its timestamp goes with it -
+  // otherwise the tracker would still show the moment an order became ready.
+  const undone = order.status;
+  order.status = previous;
+  order[TIMESTAMP_FIELD[undone]] = undefined;
+  await order.save();
+
+  res.json(await withDetails(order._id));
 });
 
 // @desc    Cancel a buyer's own order, while the farmer hasn't accepted it yet
@@ -210,7 +287,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
     }
   }
 
-  res.json(order);
+  res.json(await withDetails(order._id));
 });
 
 // @desc    Archive or unarchive one of the buyer's own completed orders
@@ -240,7 +317,7 @@ const archiveOrder = asyncHandler(async (req, res) => {
   order.archived = archived;
   await order.save();
 
-  res.json(order);
+  res.json(await withDetails(order._id));
 });
 
 // @desc    Get a single order's detail, for tracking
@@ -275,6 +352,7 @@ module.exports = {
   getBuyerOrders,
   getOrderById,
   updateOrderStatus,
+  undoOrderStatus,
   cancelOrder,
   archiveOrder,
 };

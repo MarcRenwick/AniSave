@@ -7,13 +7,15 @@ import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import { getBuyerOrders, cancelOrder, archiveOrder } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 
+// Pre-Order sits right after New: both are orders the farmer hasn't answered
+// yet, so they belong next to each other at the front.
 const filters = [
   { key: "", label: "All" },
   { key: "new", label: "New" },
+  { key: "preorder", label: "Pre-Order" },
   { key: "processing", label: "Processing" },
   { key: "ready", label: "Ready" },
   { key: "done", label: "Completed" },
-  { key: "preorder", label: "Pre-Order" },
   { key: "cancelled", label: "Cancelled" },
   { key: "archived", label: "Archived" },
 ];

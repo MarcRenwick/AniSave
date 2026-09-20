@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, ImageOff, MapPin, Phone, Star, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, MapPin, Phone, Star, Undo2, User as UserIcon } from "lucide-react";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
-import { getOrder, updateOrderStatus, SERVER_URL } from "../../services/api";
+import { getOrder, updateOrderStatus, undoOrderStatus, SERVER_URL } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
-import { FARMER_STEPS, FARMER_STATUS_TITLE } from "../../utils/orderStatus";
+import { FARMER_STEPS, FARMER_STATUS_TITLE, previousStatusOf } from "../../utils/orderStatus";
 
 export default function FarmerOrderDetail() {
   const { id } = useParams();
@@ -15,6 +15,8 @@ export default function FarmerOrderDetail() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [undoing, setUndoing] = useState(false);
+  const busy = submitting || undoing;
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
 
@@ -38,7 +40,25 @@ export default function FarmerOrderDetail() {
     }
   };
 
+  // Puts an accidental Accept, Prepare or Ready back one step - on the server
+  // too, so the buyer sees the order where it really is.
+  const handleUndo = async () => {
+    setActionError("");
+    setUndoing(true);
+    try {
+      const { data } = await undoOrderStatus(order._id);
+      // The stage that was undone loses its timestamp, and a merge would keep
+      // the old one, so the order that comes back is taken whole.
+      setOrder((prev) => ({ ...data, myRating: prev.myRating }));
+    } catch (err) {
+      setActionError(err.response?.data?.message || "Could not undo that. Please try again.");
+    } finally {
+      setUndoing(false);
+    }
+  };
+
   const title = order ? FARMER_STATUS_TITLE[order.status] : "Order";
+  const undoTo = order ? previousStatusOf(order) : null;
 
   return (
     <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
@@ -140,7 +160,7 @@ export default function FarmerOrderDetail() {
                 <button
                   type="button"
                   onClick={() => handleTransition("cancelled")}
-                  disabled={submitting}
+                  disabled={busy}
                   className="flex-1 rounded-md border-2 border-red-600 py-3 text-sm font-semibold text-red-600 transition duration-150 hover:bg-red-50 active:scale-[0.98] disabled:opacity-60"
                 >
                   Decline Order
@@ -148,7 +168,7 @@ export default function FarmerOrderDetail() {
                 <button
                   type="button"
                   onClick={() => handleTransition("processing")}
-                  disabled={submitting}
+                  disabled={busy}
                   className="flex-1 rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
                 >
                   Accept Order
@@ -160,7 +180,7 @@ export default function FarmerOrderDetail() {
               <button
                 type="button"
                 onClick={() => handleTransition("ready")}
-                disabled={submitting}
+                disabled={busy}
                 className="w-full rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
               >
                 {submitting ? "Updating..." : "Mark as ready to pick up"}
@@ -171,7 +191,7 @@ export default function FarmerOrderDetail() {
               <button
                 type="button"
                 onClick={() => handleTransition("done")}
-                disabled={submitting}
+                disabled={busy}
                 className="w-full rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
               >
                 {submitting ? "Updating..." : "Mark as done order"}
@@ -183,6 +203,20 @@ export default function FarmerOrderDetail() {
                 <Check className="h-4 w-4" />
                 Done order
               </div>
+            )}
+
+            {/* The way back from a mis-tap: one step, to where the order was
+                a moment ago. It stays available until the order moves on. */}
+            {undoTo && (
+              <button
+                type="button"
+                onClick={handleUndo}
+                disabled={busy}
+                className="flex w-full items-center justify-center gap-2 rounded-md border-2 border-gray-300 bg-white py-2.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
+              >
+                <Undo2 className="h-4 w-4" />
+                {undoing ? "Undoing..." : `Undo - back to ${FARMER_STATUS_TITLE[undoTo]}`}
+              </button>
             )}
           </>
         )}

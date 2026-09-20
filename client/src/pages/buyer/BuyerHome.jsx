@@ -14,10 +14,10 @@ import { cityAndProvince, formatDistance, hasAddressPoint } from "../../utils/ad
 // here so the URL param and the "Sorted by ..." label still resolve) but
 // isn't one of the row's buttons - it's reached only from the banner tile.
 const sortOptions = [
-  { key: "newest", label: "Newest Products", icon: Sparkles },
+  { key: "all", label: "All Products", icon: LayoutGrid },
   { key: "recommended", label: "Recommended for You", icon: Star },
   { key: "nearest", label: "Nearest to You", icon: MapPin },
-  { key: "all", label: "All Products", icon: LayoutGrid },
+  { key: "newest", label: "Newest Products", icon: Sparkles },
   { key: "flash-sale", label: "Flash Sale", icon: Zap },
 ];
 const chipOptions = sortOptions.filter((o) => o.key !== "flash-sale");
@@ -181,7 +181,7 @@ export default function BuyerHome() {
       setSearchParams(new URLSearchParams());
       return;
     }
-    document.getElementById("home-newest")?.scrollIntoView({ behavior: "smooth" });
+    document.getElementById("home-products")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -238,12 +238,12 @@ export default function BuyerHome() {
 
         {!loading && !error && !browsing && (
           <div className="space-y-8">
-            <section id="home-newest">
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">Newest Products</h2>
-              {newestProducts.length === 0 ? (
+            <section id="home-products">
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">All Products</h2>
+              {allProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
-                <ProductGrid products={newestProducts} navigate={navigate} />
+                <ProductGrid products={allProducts} navigate={navigate} />
               )}
             </section>
 
@@ -300,11 +300,11 @@ export default function BuyerHome() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">All Products</h2>
-              {allProducts.length === 0 ? (
+              <h2 className="mb-3 text-lg font-semibold text-gray-900">Newest Products</h2>
+              {newestProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
-                <ProductGrid products={allProducts} navigate={navigate} />
+                <ProductGrid products={newestProducts} navigate={navigate} />
               )}
             </section>
           </div>

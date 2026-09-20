@@ -42,6 +42,14 @@ const orderSchema = new mongoose.Schema(
       enum: ["new", "preorder", "processing", "ready", "done", "cancelled"],
       default: "new",
     },
+    // The status the order opened in, kept so undoing an accepted order knows
+    // whether to put it back to "new" or to "preorder" - the two look the same
+    // once accepted. Set when the order is placed and never changed again.
+    // Orders placed before this existed have none and are treated as "new".
+    openedAs: {
+      type: String,
+      enum: ["new", "preorder"],
+    },
 
     // Real per-stage timestamps, set as the order progresses - "new" is
     // already covered by createdAt.

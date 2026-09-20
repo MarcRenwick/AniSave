@@ -81,6 +81,8 @@ export const getBuyerOrders = () => api.get("/orders/buyer");
 export const getOrder = (id) => api.get(`/orders/${id}`);
 export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });
 export const updateOrderStatus = (id, status) => api.patch(`/orders/${id}/status`, { status });
+// Takes the last status change back, one step (see undoOrderStatus).
+export const undoOrderStatus = (id) => api.patch(`/orders/${id}/undo`);
 export const cancelOrder = (id) => api.patch(`/orders/${id}/cancel`);
 export const archiveOrder = (id, archived) => api.patch(`/orders/${id}/archive`, { archived });
 
