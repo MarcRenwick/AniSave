@@ -163,7 +163,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
   // the listings a search actually turned up are counted on the way out.
   // Every answer below goes through here, so no route misses it.
   const answer = (list) => {
-    if (search) recordSearchHits(list, req.user);
+    if (search) recordSearchHits(list, req);
     return res.json(list);
   };
 
@@ -339,7 +339,7 @@ const getProductById = asyncHandler(async (req, res) => {
 
   // A buyer opening a listing is interest in that crop, counted for the
   // farmer's dashboard. A farmer checking their own listing is not.
-  recordView(product, req.user);
+  recordView(product, req);
 
   res.json({
     ...product.toObject(),

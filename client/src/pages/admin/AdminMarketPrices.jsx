@@ -290,51 +290,58 @@ export default function AdminMarketPrices() {
       </AdminTopBar>
 
       <div className="p-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setShowingArchived(false)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              showingArchived
-                ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                : "bg-[#2f8f66] text-white"
-            }`}
-          >
-            Current
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowingArchived(true)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-              showingArchived
-                ? "bg-[#2f8f66] text-white"
-                : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            Archived
-          </button>
+        {/* The controls stay on screen while the table scrolls under them -
+            there is no use in a municipality filter you have to scroll back up
+            to reach. The negative margins let the bar span the full width and
+            sit flush at the top once stuck, while leaving everything exactly
+            where it was before anyone scrolls. */}
+        <div className="sticky top-0 z-20 -mx-8 -mb-4 -mt-8 bg-gray-100 px-8 pb-4 pt-8">
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowingArchived(false)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                showingArchived
+                  ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  : "bg-[#2f8f66] text-white"
+              }`}
+            >
+              Current
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowingArchived(true)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                showingArchived
+                  ? "bg-[#2f8f66] text-white"
+                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Archived
+            </button>
 
-          <select
-            aria-label="Filter by municipality"
-            value={cityFilter}
-            onChange={(e) => setCityFilter(e.target.value)}
-            className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700"
-          >
-            <option value="">All municipalities{province ? ` in ${province}` : ""}</option>
-            {cities.map((city) => (
-              <option key={city.code} value={city.code}>
-                {city.name}
-              </option>
-            ))}
-          </select>
+            <select
+              aria-label="Filter by municipality"
+              value={cityFilter}
+              onChange={(e) => setCityFilter(e.target.value)}
+              className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700"
+            >
+              <option value="">All municipalities{province ? ` in ${province}` : ""}</option>
+              {cities.map((city) => (
+                <option key={city.code} value={city.code}>
+                  {city.name}
+                </option>
+              ))}
+            </select>
 
-          <button
-            type="button"
-            onClick={() => setEditing("new")}
-            className="ml-auto flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#287856]"
-          >
-            <Plus className="h-4 w-4" /> Add market price
-          </button>
+            <button
+              type="button"
+              onClick={() => setEditing("new")}
+              className="ml-auto flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#287856]"
+            >
+              <Plus className="h-4 w-4" /> Add market price
+            </button>
+          </div>
         </div>
 
         {notice && (

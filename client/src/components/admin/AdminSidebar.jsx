@@ -25,7 +25,12 @@ export default function AdminSidebar() {
     });
 
   return (
-    <aside className="sticky top-0 flex min-h-screen w-64 shrink-0 flex-col self-stretch bg-[#2f8f66] px-4 py-6 text-white">
+    // h-screen, not min-h-screen + self-stretch: stretched to the whole page
+    // the nav was already as tall as everything it could scroll past, so there
+    // was nothing for sticky to do and it scrolled away with the content. Held
+    // to one screen it stays put, and overflow-y-auto keeps Log out reachable
+    // if the window is ever shorter than the menu. (Same as the farmer's.)
+    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[#2f8f66] px-4 py-6 text-white">
       <div className="flex items-center gap-3 px-2">
         <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
         <div className="leading-tight">
