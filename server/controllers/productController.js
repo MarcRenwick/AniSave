@@ -3,14 +3,26 @@ const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
+const ProductInterest = require("../models/ProductInterest");
 const { imagePath, deleteImageFile } = require("../utils/fileUtils");
 const { effectiveVerificationStatus } = require("../utils/verification");
 const { distanceFields, byNearest } = require("../utils/geo");
 const { blockedIdsFor, hasBlocked } = require("../utils/blocks");
+const validate = require("../utils/validate");
+const { recordView, recordSearchHits, forgetProducts } = require("../utils/interest");
 
-// A blank string means "clear the sale"; anything else becomes a number for
-// the model's own less-than-price validation to check.
-const parseSalePrice = (value) => (value === undefined || value === "" ? null : Number(value));
+// The numbers on a listing, checked before they reach the database. A form
+// sends text, and a browser's own number field still lets things like "100e+"
+// or "12abc" through - which would be stored as NaN, or as an exponent nobody
+// meant to type. Not given at all means "leave this field alone"; blank means
+// "clear the sale price".
+const listingNumbers = ({ stock, price, salePrice }) => ({
+  ...(stock !== undefined ? { stock: validate.wholeNumber(stock, "Available quantity") } : {}),
+  ...(price !== undefined ? { price: validate.number(price, "Price") } : {}),
+  ...(salePrice !== undefined
+    ? { salePrice: validate.number(salePrice, "Flash sale price", { allowBlank: true }) }
+    : {}),
+});
 
 const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
@@ -54,6 +66,14 @@ const createProduct = asyncHandler(async (req, res) => {
     throw new Error("Product type must be 'sale' or 'preorder'");
   }
 
+  let numbers;
+  try {
+    numbers = listingNumbers(req.body);
+  } catch (err) {
+    discardUploads(req);
+    throw err;
+  }
+
   const images = (req.files || []).map(imagePath);
   if (images.length === 0) {
     res.status(400);
@@ -64,15 +84,14 @@ const createProduct = asyncHandler(async (req, res) => {
     const product = await Product.create({
       farmer: req.user._id,
       title,
-      stock,
-      price,
+      ...numbers,
+      salePrice: numbers.salePrice ?? null,
       category,
       // Buyers collect from the farm, so a listing's address always follows
       // the farmer's registered address rather than being typed per product.
       location: req.user.location,
       description,
       productType,
-      salePrice: parseSalePrice(salePrice),
       images,
       image: images[0],
     });
@@ -110,6 +129,14 @@ const getAllProducts = asyncHandler(async (req, res) => {
   const { category, location, minPrice, maxPrice, farmer, search, sort, includeOutOfStock } =
     req.query;
 
+  // What buyers search for is demand, whether or not it ends in a sale, so
+  // the listings a search actually turned up are counted on the way out.
+  // Every answer below goes through here, so no route misses it.
+  const answer = (list) => {
+    if (search) recordSearchHits(list, req.user);
+    return res.json(list);
+  };
+
   // Browsing hides listings nobody can order right now: a sold-out For Sale
   // item. A pre-order listing is orderable at any stock level, and a
   // farmer's own shop page lists the whole catalogue regardless.
@@ -146,6 +173,15 @@ const getAllProducts = asyncHandler(async (req, res) => {
   // instead of just recency, so it needs to aggregate in the Rating/Order
   // data rather than a plain find().sort().
   if (sort === "recommended") {
+    // What this buyer has bought before is recommended back to them, ahead of
+    // everything else: the thing they liked enough to buy is the easiest one
+    // to suggest. A guest, or a farmer looking at a shop, has no history here,
+    // so for them the list stays the well-reviewed listings alone.
+    const boughtBefore =
+      req.user?.role === "buyer"
+        ? await Order.distinct("product", { buyer: req.user._id, status: { $ne: "cancelled" } })
+        : [];
+
     const products = await Product.aggregate([
       { $match: filter },
       {
@@ -171,19 +207,20 @@ const getAllProducts = asyncHandler(async (req, res) => {
         $addFields: {
           avgRating: { $ifNull: [{ $avg: "$ratings.stars" }, 0] },
           totalSold: { $sum: "$orders.quantity" },
+          boughtBefore: { $in: ["$_id", boughtBefore] },
         },
       },
-      // Only genuinely well-reviewed products count as "recommended" - a
-      // product with no ratings (and therefore no completed sales, since a
-      // rating requires one) is excluded rather than just ranked last.
-      { $match: { avgRating: { $gte: 4 } } },
-      { $sort: { avgRating: -1, totalSold: -1, createdAt: -1 } },
+      // Either the buyer has bought it before, or it is genuinely well
+      // reviewed. A product with neither - no ratings, and never ordered by
+      // this buyer - is left out rather than just ranked last.
+      { $match: { $or: [{ boughtBefore: true }, { avgRating: { $gte: 4 } }] } },
+      { $sort: { boughtBefore: -1, avgRating: -1, totalSold: -1, createdAt: -1 } },
       { $project: { ratings: 0, orders: 0 } },
     ]);
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
 
-    return res.json(products.filter(sellable));
+    return answer(products.filter(sellable));
   }
 
   // "Nearest" ranks by how far each farmer's registered address is from the
@@ -211,7 +248,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
     });
 
     products.sort(byNearest((p) => p.farmer.distanceKm));
-    return res.json(products);
+    return answer(products);
   }
 
   // Flash Sale listings: whatever the farmer has discounted, biggest
@@ -232,14 +269,14 @@ const getAllProducts = asyncHandler(async (req, res) => {
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
 
-    return res.json(products.filter(sellable));
+    return answer(products.filter(sellable));
   }
 
   const products = await Product.find(filter)
     .populate("farmer", FARMER_FIELDS)
     .sort({ createdAt: -1 });
 
-  res.json(products.filter(sellable));
+  answer(products.filter(sellable));
 });
 
 // @desc    Get a single product's public detail
@@ -265,6 +302,10 @@ const getProductById = asyncHandler(async (req, res) => {
     { $match: { product: product._id, removedAt: null } },
     { $group: { _id: null, avg: { $avg: "$stars" }, count: { $sum: 1 } } },
   ]);
+
+  // A buyer opening a listing is interest in that crop, counted for the
+  // farmer's dashboard. A farmer checking their own listing is not.
+  recordView(product, req.user);
 
   res.json({
     ...product.toObject(),
@@ -294,8 +335,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 
-  const { title, stock, price, category, description, productType, imageOrder, salePrice } =
-    req.body;
+  const { title, category, description, productType, imageOrder } = req.body;
 
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -303,15 +343,23 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error("Product type must be 'sale' or 'preorder'");
   }
 
+  let numbers;
+  try {
+    numbers = listingNumbers(req.body);
+  } catch (err) {
+    discardUploads(req);
+    throw err;
+  }
+
   if (title !== undefined) product.title = title;
-  if (stock !== undefined) product.stock = stock;
-  if (price !== undefined) product.price = price;
+  if (numbers.stock !== undefined) product.stock = numbers.stock;
+  if (numbers.price !== undefined) product.price = numbers.price;
   if (category !== undefined) product.category = category;
   if (description !== undefined) product.description = description;
   if (productType !== undefined) product.productType = productType;
   // A blank field from the form means "clear the sale", not "leave it alone" -
   // unlike the fields above, omitting this one entirely is what leaves it be.
-  if (salePrice !== undefined) product.salePrice = parseSalePrice(salePrice);
+  if (numbers.salePrice !== undefined) product.salePrice = numbers.salePrice;
   // Re-follows the farmer's registered address, so editing a listing also
   // brings it up to date if they've since moved.
   product.location = req.user.location;
@@ -379,7 +427,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 // @route   PATCH /api/products/:id/restock
 // @access  Private (farmer, owner only)
 const restockProduct = asyncHandler(async (req, res) => {
-  const { amount } = req.body;
+  const amount = validate.wholeNumber(req.body.amount, "Restock amount");
   if (!amount || amount <= 0) {
     res.status(400);
     throw new Error("A positive restock amount is required");
@@ -408,8 +456,40 @@ const deleteProduct = asyncHandler(async (req, res) => {
 
   const photos = new Set([...product.images, product.image].filter(Boolean));
   await product.deleteOne();
+  // A listing that is gone shouldn't keep its place in the demand ranking.
+  await forgetProducts([product._id]);
   photos.forEach(deleteImageFile);
   res.json({ message: "Product deleted" });
+});
+
+// @desc    What buyers are looking for most: the crops searched for and opened
+//          the most across the marketplace, by name. Nothing here comes from
+//          sales - a crop everyone searches for and nobody has bought yet is
+//          exactly what a farmer wants to know about.
+// @route   GET /api/products/top-searched
+// @access  Private (farmer)
+const getTopSearched = asyncHandler(async (req, res) => {
+  const rows = await ProductInterest.aggregate([
+    // The same crop listed by several farmers is one crop to a buyer, so the
+    // counts are added up by name rather than by listing.
+    {
+      $group: {
+        _id: { $toLower: "$title" },
+        title: { $first: "$title" },
+        searches: { $sum: "$searches" },
+        views: { $sum: "$views" },
+        lastAt: { $max: "$lastAt" },
+      },
+    },
+    { $addFields: { count: { $add: ["$searches", "$views"] } } },
+    { $match: { count: { $gt: 0 } } },
+    { $sort: { count: -1, lastAt: -1 } },
+    { $limit: 5 },
+  ]);
+
+  res.json(
+    rows.map(({ title, searches, views, count }) => ({ title, searches, views, count }))
+  );
 });
 
 module.exports = {
@@ -417,6 +497,7 @@ module.exports = {
   getMyProducts,
   getAllProducts,
   getProductById,
+  getTopSearched,
   updateProduct,
   restockProduct,
   deleteProduct,

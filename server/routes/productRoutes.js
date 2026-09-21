@@ -4,6 +4,7 @@ const {
   getMyProducts,
   getAllProducts,
   getProductById,
+  getTopSearched,
   updateProduct,
   restockProduct,
   deleteProduct,
@@ -21,6 +22,9 @@ router.get("/", optionalProtect, getAllProducts);
 // below, since Express would otherwise match GET /products/mine against
 // "/:id" first and try to look up a product literally named "mine".
 router.get("/mine", protect, authorize("farmer"), getMyProducts);
+// What buyers are searching for and opening, for the farmer's dashboard -
+// registered before "/:id" for the same reason as "/mine" above.
+router.get("/top-searched", protect, authorize("farmer"), getTopSearched);
 router.post("/", protect, authorize("farmer"), upload.array("images", 5), createProduct);
 router.put("/:id", protect, authorize("farmer"), upload.array("images", 5), updateProduct);
 router.patch("/:id/restock", protect, authorize("farmer"), restockProduct);

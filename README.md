@@ -80,6 +80,7 @@ The client stores the JWT + user info in `localStorage` via `AuthContext` and at
 Everyone registers with a **Province → Municipality/City** address picked from dropdowns (the same pickers appear in Edit Profile). Nobody types a latitude or longitude and the app never asks for a live GPS location: the server looks up the picked city's centre point from its code and saves it on the user (`address.latitude` / `address.longitude`).
 
 - `GET /api/locations/provinces` and `/provinces/:code/cities` feed the dropdowns.
+- "Recommended for You" (`GET /api/products?sort=recommended`) is what this buyer has bought before, first, then genuinely well-reviewed listings (4 stars and up). A guest sees only the well-reviewed ones.
 - "Nearest" compares the signed-in buyer's registered city coordinates with each farmer's using the haversine formula, and sorts nearest → farthest: `GET /api/farmers?sort=nearest` and `GET /api/products?sort=nearest`. Each result carries `distanceKm`; farmers' coordinates are never sent to the client.
 - Accounts made before this existed only have free-typed `location` text (or a barangay from an earlier version). `node scripts/backfillAddresses.js --dry-run` (then without `--dry-run`) gives them a city-level address where their text names exactly one city/municipality; everyone else can pick one in Edit Profile.
 - The address list lives in `server/data/locations.json` and is committed - every one of the country's 1,634 cities and municipalities has coordinates in it. It is generated, not typed: to rebuild it (PSGC + Wikidata, see `server/data/README.md`) run `node scripts/buildLocations.js`.
@@ -88,7 +89,7 @@ Everyone registers with a **Province → Municipality/City** address picked from
 
 How sign-up, login and sessions are protected. Everything here is enforced on the server, not just in the forms.
 
-- **Input validation** — `server/utils/validate.js` checks every auth request (types, lengths, email/username/phone formats; objects where text is expected get a 400), and the `User` schema repeats the rules. Uploads are limited to JPG/PNG/WebP/GIF, saved under a name the server picks, and their first bytes are checked - an `.html`/`.svg` file dressed up as an image is refused.
+- **Input validation** — `server/utils/validate.js` checks every auth request (types, lengths, email/username/phone formats; objects where text is expected get a 400), and the `User` schema repeats the rules. A listing's numbers go through the same file: a quantity or price is digits only, so a browser number box's "100e+" or "24e+" is refused rather than stored as NaN, and the form itself won't accept those characters in the first place. Uploads are limited to JPG/PNG/WebP/GIF, saved under a name the server picks, and their first bytes are checked - an `.html`/`.svg` file dressed up as an image is refused.
 - **Passwords and codes** — passwords are bcrypt hashes. One-time codes are made with `crypto.randomInt`, stored as an HMAC, expire in 10-15 minutes, work once, and die after 5 wrong guesses (`server/utils/otp.js`).
 - **Brute force** — 5 wrong passwords lock an account for 15 minutes; per-IP rate limits cover failed logins/codes, anything that sends email, and sign-ups (`server/middleware/rateLimiters.js`).
 - **Two-step sign-in** — after the password, an emailed code (`POST /api/auth/login/mfa`). Always on for admins; optional for everyone else under Profile → Privacy & Security. The passwordless "email code" login is switched off for accounts that use two steps, so it can't be used to skip the password.
@@ -98,12 +99,28 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 - **Errors and headers** — errors never include stack traces or internal text (details go to the server log), `helmet` sets security headers, and CORS only allows `CLIENT_URL`.
 - **Tests** — with `NODE_ENV=test` no email is ever sent (messages are written to a file in the temp folder); add `RATE_LIMIT=off` to run bulk tests. Set `NODE_ENV=production` when deployed.
 
+## The farmer's dashboard
+
+- **Analytical Demands** plots completed orders over Today / This Week / This Month / This Year / a custom range, and switches between **Revenue (₱)** and **Quantity Sold (KG)** — the same orders read as what they were worth, or as how much produce left the farm.
+- **Top Searched Products** is demand as buyers show it, not sales: how often a crop's listings came back in a search and were opened (`ProductInterest`, counted in `utils/interest.js`, read by `GET /api/products/top-searched`). Only buyers and visitors count - a farmer opening their own listing, or an admin moderating one, does not - and nothing in it comes from orders, so a crop everyone looks for and nobody has bought yet still shows up. The same crop listed by several farmers is added together by name.
+- The sales leaderboards (**Top Purchase this Month**) and **Recommended Flash Sales** are unchanged: those are about what has actually sold.
+
+## Recommended prices, by municipality
+
+A farmer filling in **Add New Product** is shown what that crop last went for at their own municipality's market, as a suggestion:
+
+- The municipality is the one on their account (the province/municipality they registered, or their address text). Nothing reads a device's location.
+- `GET /api/market-prices/recommendation?product=Mango` answers with the latest `MarketPrice` record for **that crop in that municipality** — the form shows it, the date it was recorded, and a **Use this price** button. The farmer can ignore it and type anything.
+- With no record for that crop in that municipality, the form says **Recommended Price Unavailable** and names the municipality. A price is never invented, averaged, or borrowed from the next town along — so the same crop genuinely reads ₱140/kg in Dagupan City and ₱100/kg in Mangatarem.
+- A record holds the crop, the municipality, the price per kilo and the date it was taken (plus local names, so "Ampalaya" finds Bitter melon). `node scripts/seedMarketPrices.js --dry-run` (then without `--dry-run`) fills the table with **sample figures** for a few Pangasinan municipalities — marked `source: "Sample data"` so real data can replace them.
+
 ## Orders
 
 An order moves in a straight line: **New** (or **Pre-Order**, for a pre-order listing) → **Processing** → **Ready for Pickup** → **Completed**, or it is declined. The farmer moves it with `PATCH /api/orders/:id/status`; a buyer can cancel their own order while it is still unanswered, and archive it once it is done.
 
 - Every reply about a single order carries the whole order — the buyer, the farmer and the product, not just their ids — so a status change never leaves the page holding an order whose buyer and product are bare ids (that is what once turned an accepted order's pickup card into "Unknown buyer").
-- **Undo** (`PATCH /api/orders/:id/undo`, the farmer's own orders only) takes the last change back one step, for a mis-tapped Accept, Ready or Completed. The stage's timestamp is cleared with it, and a pre-order goes back to **Pre-Order** with its stock returned — `openedAs` on the order remembers which status it opened in. A declined order is not undone (the buyer has been told and the stock is back), and neither is a completed order the buyer has already rated. Orders placed before `openedAs` existed are treated as ordinary orders; to fill it in for them, run `node scripts/backfillOrderOpenedAs.js --dry-run` (then without `--dry-run`) once.
+- **Undo** (`PATCH /api/orders/:id/undo`, the farmer's own orders only) takes the last change back one step, for a mis-tapped Accept or Ready. The stage's timestamp is cleared with it, and a pre-order goes back to **Pre-Order** with its stock returned — `openedAs` on the order remembers which status it opened in. Two statuses are the end of the line and are never undone: a **Completed** order (it has been picked up, and may already be rated) and a **declined** one (the buyer has been told, and the stock is back). Orders placed before `openedAs` existed are treated as ordinary orders; to fill it in for them, run `node scripts/backfillOrderOpenedAs.js --dry-run` (then without `--dry-run`) once.
+- Both Orders pages list **Pre-Order** right after **New** — the two statuses that are still waiting on the farmer's answer.
 
 ## Reports
 

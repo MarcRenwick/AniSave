@@ -1,12 +1,33 @@
 import { useMemo, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 
-// Revenue from completed orders only - a buyer placing one doesn't count
-// until the farmer's actually fulfilled it - over a period the farmer picks.
-// One series, so no legend - the card title says what is plotted. Individual
-// products are deliberately not broken out here: the farmer already has
-// per-product leaderboards beside this chart, and naming products made the
-// chart's shape change every time the mix changed.
+// Completed orders only - a buyer placing one doesn't count until the farmer
+// has actually fulfilled it - over a period the farmer picks. One series, so
+// no legend: the heading says what is plotted. Individual products are
+// deliberately not broken out here, since the farmer already has per-product
+// leaderboards beside this chart, and naming products made the chart's shape
+// change every time the mix changed.
+//
+// The same orders can be read two ways: what they were worth, and how much
+// produce actually left the farm. A farmer selling a cheap crop in bulk and
+// one selling an expensive crop by the kilo are looking for different lines.
+const METRICS = [
+  {
+    key: "revenue",
+    label: "Revenue (₱)",
+    title: "Revenue",
+    valueOf: (order) => order.total,
+    format: (n) => `₱${Math.round(n).toLocaleString()}`,
+  },
+  {
+    key: "quantity",
+    label: "Quantity Sold (KG)",
+    title: "Quantity Sold",
+    valueOf: (order) => order.quantity,
+    format: (n) => `${Math.round(n).toLocaleString()} kg`,
+  },
+];
+
 const PERIODS = [
   { key: "today", label: "Today" },
   { key: "week", label: "This Week" },
@@ -106,9 +127,6 @@ function smoothPath(points) {
   return d;
 }
 
-// Money everywhere else in the app is shown in whole pesos, no centavos.
-const formatMoney = (n) => `₱${Math.round(n).toLocaleString()}`;
-
 function buildRange(period, custom, now) {
   if (period === "today") {
     const from = startOfDay(now);
@@ -207,6 +225,8 @@ function bucketIndex(date, from, granularity) {
 }
 
 export default function DemandChart({ orders, loading }) {
+  const [metricKey, setMetricKey] = useState("revenue");
+  const metric = METRICS.find((m) => m.key === metricKey) || METRICS[0];
   const [period, setPeriod] = useState("month");
   const [custom, setCustom] = useState(() => {
     const today = new Date();
@@ -230,11 +250,11 @@ export default function DemandChart({ orders, loading }) {
       if (completed >= from && completed < to) {
         const i = bucketIndex(completed, from, granularity);
         if (buckets[i]) {
-          buckets[i].value += order.total;
-          total += order.total;
+          buckets[i].value += metric.valueOf(order);
+          total += metric.valueOf(order);
         }
       } else if (completed >= prevFrom && completed < from) {
-        previousTotal += order.total;
+        previousTotal += metric.valueOf(order);
       }
     });
 
@@ -259,7 +279,7 @@ export default function DemandChart({ orders, loading }) {
       comparedTo,
       max: axisTop(Math.max(...buckets.map((b) => b.value), 0)),
     };
-  }, [orders, period, custom]);
+  }, [orders, period, custom, metric]);
 
   const { buckets, max } = chart;
   const count = buckets.length;
@@ -298,9 +318,9 @@ export default function DemandChart({ orders, loading }) {
 
       <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-2 pt-5">
         <div>
-          <p className="text-xs text-gray-500">Revenue · {chart.rangeLabel}</p>
+          <p className="text-xs text-gray-500">{metric.title} · {chart.rangeLabel}</p>
           <p className="mt-0.5 text-3xl font-semibold text-gray-900">
-            {loading ? "—" : formatMoney(chart.total)}
+            {loading ? "—" : metric.format(chart.total)}
           </p>
           {chart.change !== null && !loading && (
             <p
@@ -322,22 +342,44 @@ export default function DemandChart({ orders, loading }) {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-1 rounded-full bg-gray-100 p-1">
-          {PERIODS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setPeriod(key)}
-              aria-pressed={period === key}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                period === key
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-900"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* What is plotted, then over what - same pills, so the two rows read
+            as one control rather than two different things. */}
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <div className="flex flex-wrap gap-1 rounded-full bg-gray-100 p-1">
+            {METRICS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setMetricKey(key)}
+                aria-pressed={metricKey === key}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  metricKey === key
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-1 rounded-full bg-gray-100 p-1">
+            {PERIODS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setPeriod(key)}
+                aria-pressed={period === key}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  period === key
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -379,7 +421,7 @@ export default function DemandChart({ orders, loading }) {
                 className="absolute right-2 -translate-y-1/2"
                 style={{ top: `${(i / Y_TICKS) * 100}%` }}
               >
-                {formatMoney((max * (Y_TICKS - i)) / Y_TICKS)}
+                {metric.format((max * (Y_TICKS - i)) / Y_TICKS)}
               </span>
             ))}
           </div>
@@ -387,7 +429,7 @@ export default function DemandChart({ orders, loading }) {
           <div
             role="img"
             tabIndex={0}
-            aria-label={`Revenue, ${chart.rangeLabel}. Total ${formatMoney(chart.total)}.`}
+            aria-label={`${metric.title}, ${chart.rangeLabel}. Total ${metric.format(chart.total)}.`}
             onMouseMove={moveHover}
             onMouseLeave={() => setHovered(null)}
             onFocus={() => setHovered(count - 1)}
@@ -445,7 +487,7 @@ export default function DemandChart({ orders, loading }) {
                 className="pointer-events-none absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white/90 px-1.5 text-[10px] font-semibold tabular-nums text-gray-700"
                 style={{ left: `${xAt(chart.peak)}%`, top: `calc(${yAt(buckets[chart.peak].value)}% - 8px)` }}
               >
-                {formatMoney(buckets[chart.peak].value)}
+                {metric.format(buckets[chart.peak].value)}
               </span>
             )}
 
@@ -472,7 +514,7 @@ export default function DemandChart({ orders, loading }) {
                   }}
                 >
                   <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900">
-                    {formatMoney(active.value)}
+                    {metric.format(active.value)}
                   </p>
                   <p className="whitespace-nowrap text-[10px] text-gray-500">{active.label}</p>
                 </div>
@@ -503,18 +545,18 @@ export default function DemandChart({ orders, loading }) {
             full size and inflates the page's scrollable height. */}
         <div className="sr-only">
           <table>
-            <caption>Revenue, {chart.rangeLabel}</caption>
+            <caption>{metric.title}, {chart.rangeLabel}</caption>
             <thead>
               <tr>
                 <th scope="col">Period</th>
-                <th scope="col">Revenue</th>
+                <th scope="col">{metric.title}</th>
               </tr>
             </thead>
             <tbody>
               {buckets.map((b, i) => (
                 <tr key={i}>
                   <th scope="row">{b.label}</th>
-                  <td>{formatMoney(b.value)}</td>
+                  <td>{metric.format(b.value)}</td>
                 </tr>
               ))}
             </tbody>

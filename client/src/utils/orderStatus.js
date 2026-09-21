@@ -38,12 +38,12 @@ export function stepDate(order, index) {
 
 // Where "Undo" would put this order back to, or null when there is nothing to
 // take back. The same straight line the server walks backwards (see
-// undoOrderStatus in controllers/orderController.js): a declined order isn't
-// undone, and neither is a completed one the buyer has already rated.
+// undoOrderStatus in controllers/orderController.js): a completed order is
+// finished and a declined one has been announced to the buyer, so neither is
+// reopened.
 export function previousStatusOf(order) {
   if (order.status === "processing") return order.openedAs || "new";
   if (order.status === "ready") return "processing";
-  if (order.status === "done") return order.myRating ? null : "ready";
   return null;
 }
 

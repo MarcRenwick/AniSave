@@ -76,6 +76,15 @@ export const updateProduct = (id, formData) =>
 export const restockProduct = (id, amount) => api.patch(`/products/${id}/restock`, { amount });
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
+// What buyers are searching for and opening across the marketplace, for the
+// farmer's dashboard. Nothing here is counted from sales.
+export const getTopSearchedProducts = () => api.get("/products/top-searched");
+
+// The latest market price for a crop in the farmer's own municipality, as a
+// suggested selling price. The municipality comes from their account.
+export const getPriceRecommendation = (product) =>
+  api.get("/market-prices/recommendation", { params: { product } });
+
 export const getFarmerOrders = () => api.get("/orders/farmer");
 export const getBuyerOrders = () => api.get("/orders/buyer");
 export const getOrder = (id) => api.get(`/orders/${id}`);

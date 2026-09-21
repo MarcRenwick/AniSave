@@ -1,11 +1,111 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, MapPin, X } from "lucide-react";
-import { createProduct, getProduct, updateProduct, SERVER_URL } from "../../services/api";
+import { ArrowLeft, Camera, Info, MapPin, Tag, X } from "lucide-react";
+import {
+  createProduct,
+  getPriceRecommendation,
+  getProduct,
+  updateProduct,
+  SERVER_URL,
+} from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { productImages } from "../../utils/productImages";
 
 const MAX_PHOTOS = 5;
+
+// A browser's own number box still accepts "100e+", "1e5" or a stray "-", and
+// then hands back an empty string - so the field looks filled while the form
+// holds nothing, and Publish complains about a box that plainly has something
+// in it. These are ordinary text boxes that refuse anything but a number as it
+// is typed, so what is on screen is always what gets sent.
+const digitsOnly = (value) => value.replace(/[^0-9]/g, "");
+
+// Prices may have centavos; kilos are whole.
+const priceOnly = (value) => {
+  const [whole, ...rest] = value.replace(/[^0-9.]/g, "").split(".");
+  return rest.length > 0 ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
+};
+
+const CLEAN = { stock: digitsOnly, price: priceOnly, salePrice: priceOnly };
+
+// Only whole pesos are ever shown elsewhere in the app, so a recommendation
+// reads the same way.
+const peso = (amount) => `₱${Math.round(amount).toLocaleString()}`;
+const recordedOn = (date) =>
+  new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+
+// The suggested price for this crop at the farmer's own municipal market, or a
+// plain statement that there isn't one. Nothing is ever estimated: with no
+// record for this crop in this municipality, the farmer is told so and prices
+// the listing themselves.
+function MarketPriceHint({ recommendation, checking, onUse }) {
+  if (checking && !recommendation) {
+    return <p className="mt-1.5 text-xs text-gray-500">Checking the market price for your municipality...</p>;
+  }
+  if (!recommendation || recommendation.reason === "no-product") return null;
+
+  if (recommendation.reason === "no-municipality") {
+    return (
+      <div className="mt-2 flex items-start gap-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <p className="text-gray-600">
+          <span className="font-medium text-gray-900">Recommended Price Unavailable</span>
+          <br />
+          <span className="text-xs">
+            Add your municipality in Edit Profile to see the market price for your area.
+          </span>
+        </p>
+      </div>
+    );
+  }
+
+  if (!recommendation.available) {
+    return (
+      <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <p className="text-amber-900">
+          <span className="font-medium">Recommended Price Unavailable</span>
+          <br />
+          <span className="text-xs">
+            No current market-price data is available for this product in{" "}
+            {recommendation.municipality}. Set your own selling price below.
+          </span>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2 rounded-md bg-green-50 px-3 py-2.5 text-sm">
+      <div className="flex items-start gap-2">
+        <Tag className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8f66]" />
+        <div className="min-w-0 flex-1">
+          <p className="text-gray-700">
+            Latest market price for{" "}
+            <span className="font-medium text-gray-900">{recommendation.product}</span> in{" "}
+            <span className="font-medium text-gray-900">{recommendation.municipality}</span>:{" "}
+            <span className="font-medium text-gray-900">{peso(recommendation.pricePerKilo)}/kg</span>
+          </p>
+          <p className="mt-0.5 font-semibold text-[#2f8f66]">
+            Recommended Selling Price: {peso(recommendation.pricePerKilo)}/kg
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Recommended price is based on the latest available market-price data for your
+            municipality (recorded {recordedOn(recommendation.recordedAt)}). It is only a
+            suggestion - you can set any price you like.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onUse(recommendation.pricePerKilo)}
+          className="shrink-0 rounded-md border border-[#2f8f66] px-2.5 py-1 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-100"
+        >
+          Use this price
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const emptyForm = {
   title: "",
@@ -63,6 +163,10 @@ export default function FarmerProductForm() {
   const [loading, setLoading] = useState(isEdit);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // The suggested price for whatever crop the title names, from the farmer's
+  // own municipal market.
+  const [recommendation, setRecommendation] = useState(null);
+  const [checkingPrice, setCheckingPrice] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -71,9 +175,10 @@ export default function FarmerProductForm() {
       .then(({ data }) => {
         setForm({
           title: data.title,
-          stock: data.stock,
-          price: data.price,
-          salePrice: data.salePrice ?? "",
+          // The form works in text, so the boxes show exactly what will be sent.
+          stock: String(data.stock ?? ""),
+          price: String(data.price ?? ""),
+          salePrice: data.salePrice == null ? "" : String(data.salePrice),
           category: data.category,
           productType: data.productType || "sale",
           description: data.description || "",
@@ -88,7 +193,30 @@ export default function FarmerProductForm() {
       .finally(() => setLoading(false));
   }, [id, isEdit]);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: CLEAN[name] ? CLEAN[name](value) : value }));
+  };
+
+  // Looks the crop up as the farmer names it, once they have stopped typing.
+  // The municipality isn't sent - the server takes it from their account.
+  useEffect(() => {
+    const crop = form.title.trim();
+    if (crop.length < 2) return undefined;
+    const timer = setTimeout(() => {
+      setCheckingPrice(true);
+      getPriceRecommendation(crop)
+        .then(({ data }) => setRecommendation({ crop, data }))
+        .catch(() => setRecommendation({ crop, data: null }))
+        .finally(() => setCheckingPrice(false));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [form.title]);
+
+  // Kept with the crop it was looked up for, so a price for "Mango" can never
+  // sit under a title that now says something else.
+  const cropNow = form.title.trim();
+  const priceHint = recommendation?.crop === cropNow ? recommendation.data : null;
 
   const handleAddPhotos = (e) => {
     const files = Array.from(e.target.files || []);
@@ -250,11 +378,12 @@ export default function FarmerProductForm() {
                 <input
                   id="stock"
                   name="stock"
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   required
                   value={form.stock}
                   onChange={handleChange}
+                  placeholder="Kilos available"
                   className={inputClass}
                 />
               </div>
@@ -267,13 +396,20 @@ export default function FarmerProductForm() {
                 <input
                   id="price"
                   name="price"
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   required
                   value={form.price}
                   onChange={handleChange}
                   placeholder="₱ per kilo"
                   className={inputClass}
+                />
+                <MarketPriceHint
+                  recommendation={priceHint}
+                  checking={checkingPrice && cropNow.length >= 2}
+                  onUse={(amount) =>
+                    setForm((prev) => ({ ...prev, price: String(Math.round(amount)) }))
+                  }
                 />
               </div>
 
@@ -285,8 +421,8 @@ export default function FarmerProductForm() {
                 <input
                   id="salePrice"
                   name="salePrice"
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.salePrice}
                   onChange={handleChange}
                   placeholder="Leave blank for no sale"

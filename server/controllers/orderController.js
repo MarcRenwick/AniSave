@@ -191,14 +191,19 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
 // The step an order goes back to when the farmer takes a status change back.
 // The flow is a straight line - new (or preorder) -> processing -> ready ->
-// done - so one step back is all it takes. A declined order isn't in here on
-// purpose: the buyer has been told it is off and the stock has gone back, so
-// it isn't something to quietly reinstate.
+// done - so one step back is all it takes. Two statuses are deliberately not
+// in here: a completed order is finished, picked up and possibly already
+// rated, and a declined one has been announced to the buyer with their stock
+// put back. Neither is something to quietly reopen.
 const previousStatusOf = (order) => {
   if (order.status === "processing") return order.openedAs || "new";
   if (order.status === "ready") return "processing";
-  if (order.status === "done") return "ready";
   return null;
+};
+
+const NOTHING_TO_UNDO = {
+  done: "This order is complete, so it can no longer be undone.",
+  cancelled: "A declined order can't be undone - the buyer has been told, and their stock was put back.",
 };
 
 // @desc    Take back the last status change on a farmer's own order, so an
@@ -220,18 +225,8 @@ const undoOrderStatus = asyncHandler(async (req, res) => {
   if (!previous) {
     res.status(400);
     throw new Error(
-      order.status === "cancelled"
-        ? "A declined order can't be undone - the buyer has been told, and their stock was put back."
-        : "This order hasn't been moved anywhere yet, so there is nothing to undo."
+      NOTHING_TO_UNDO[order.status] || "This order hasn't been moved anywhere yet, so there is nothing to undo."
     );
-  }
-
-  // A completed order the buyer has already rated stays completed: the review
-  // is about a finished order, and reopening it would leave the two of them
-  // saying different things.
-  if (order.status === "done" && (await Rating.exists({ order: order._id }))) {
-    res.status(400);
-    throw new Error("The buyer has already rated this order, so it can't be reopened.");
   }
 
   // Accepting a pre-order is the one step that takes stock off the farmer, so

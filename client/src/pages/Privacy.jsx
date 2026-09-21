@@ -32,6 +32,12 @@ export default function Privacy() {
           coordinates. We do not use advertising trackers and we do not sell or share your information
           for marketing.
         </p>
+        <p className="mt-3">
+          So that farmers can see which crops are in demand, we count how often a product comes up in
+          a search and how often it is opened. Those are counts kept against the product itself - we
+          do not keep a record of what any one person searched for or looked at, and no farmer can
+          see who was looking.
+        </p>
       </Section>
 
       <Section title="Why we use it">

@@ -5,7 +5,7 @@ import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
 import DemandChart from "../../components/farmer/DemandChart";
 import { useAuth } from "../../context/AuthContext";
-import { getMyProducts, getFarmerOrders } from "../../services/api";
+import { getMyProducts, getFarmerOrders, getTopSearchedProducts } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 
 // "Old stock nobody bought" - long enough that a normal slow week doesn't
@@ -53,13 +53,16 @@ export default function FarmerDashboard() {
 
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  // What buyers are searching for and opening - demand, not sales.
+  const [topSearched, setTopSearched] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getMyProducts(), getFarmerOrders()])
-      .then(([productsRes, ordersRes]) => {
+    Promise.all([getMyProducts(), getFarmerOrders(), getTopSearchedProducts()])
+      .then(([productsRes, ordersRes, searchedRes]) => {
         setProducts(productsRes.data);
         setOrders(ordersRes.data);
+        setTopSearched(searchedRes.data);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -76,9 +79,6 @@ export default function FarmerDashboard() {
   // Everything the dashboard reports as sold/demand only counts an order once
   // it's actually done, not the moment it's placed.
   const completedOrders = useMemo(() => orders.filter((o) => o.status === "done"), [orders]);
-
-  // All-time demand, by total quantity sold.
-  const topProducts = useMemo(() => rankByQuantitySold(completedOrders), [completedOrders]);
 
   // Same ranking, narrowed to this calendar month - by when the order was
   // actually completed, not when it was first placed.
@@ -188,19 +188,28 @@ export default function FarmerDashboard() {
         </div>
 
         <div className="space-y-6">
+          {/* Demand as buyers show it - what they look for and open - rather
+              than what has already been sold. The sales leaderboard below is
+              the other half of the picture. */}
           <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Top Crops Demand</p>
-            <p className="mt-1 font-bold text-amber-600">Best Sellers</p>
+            <p className="text-sm text-gray-500">Top Searched Products</p>
+            <p className="mt-1 font-bold text-amber-600">What Buyers Look For</p>
             <div className="mt-3 flex items-start justify-between gap-2">
               {loading ? (
                 <p className="text-sm text-gray-400">Loading...</p>
-              ) : topProducts.length === 0 ? (
-                <p className="text-sm text-gray-400">No orders yet</p>
+              ) : topSearched.length === 0 ? (
+                <p className="text-sm text-gray-400">No searches yet</p>
               ) : (
                 <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-700">
-                  {topProducts.map((p) => (
-                    <li key={p.title}>
-                      {p.title} <span className="text-gray-400">({p.qty}kg sold)</span>
+                  {topSearched.map((crop) => (
+                    <li key={crop.title}>
+                      {crop.title}{" "}
+                      <span
+                        className="text-gray-400"
+                        title={`${crop.searches} search${crop.searches === 1 ? "" : "es"}, ${crop.views} view${crop.views === 1 ? "" : "s"}`}
+                      >
+                        ({crop.count} searches/views)
+                      </span>
                     </li>
                   ))}
                 </ol>
