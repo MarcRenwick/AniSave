@@ -60,20 +60,35 @@ async function main() {
 
   await mongoose.connect(process.env.MONGO_URI);
 
-  let written = 0;
+  let added = 0;
+  let updated = 0;
   for (const crop of CROPS) {
-    // The pre-validate hook sets the slug and folds the aliases, so the write
-    // goes through the model rather than straight to the collection.
+    // A crop is identified by its slug - its name, folded - so running this
+    // again updates the row it wrote last time instead of adding a second one.
+    // The write goes through the model, so the pre-validate hook sets the slug,
+    // folds the aliases and rebuilds the searchable terms.
     const existing = await Crop.findOne({ slug: fold(crop.name) });
     const doc = existing || new Crop();
-    doc.set({ ...crop, active: true });
+    doc.set({ ...crop, pricesFrom: null, active: true });
     await doc.save();
-    written += 1;
+    if (existing) updated += 1;
+    else added += 1;
+  }
+
+  // Done in a second pass, because a variety's parent may not have existed yet
+  // on the first one.
+  let linked = 0;
+  for (const crop of CROPS.filter((c) => c.pricesFrom)) {
+    const parent = await Crop.findOne({ slug: fold(crop.pricesFrom) });
+    if (!parent) throw new Error(`"${crop.name}" is priced as "${crop.pricesFrom}", which isn't in the catalogue`);
+    await Crop.updateOne({ slug: fold(crop.name) }, { $set: { pricesFrom: parent._id } });
+    linked += 1;
   }
 
   const total = await Crop.countDocuments();
   const totalSupported = await Crop.countDocuments({ priceSupported: true });
-  console.log(`Wrote ${written} crop(s). The catalogue now holds ${total}, ${totalSupported} of them supported by the Recommended Price feature.`);
+  console.log(`Added ${added} crop(s), updated ${updated} already there${linked ? `, and linked ${linked} variety(ies) to the crop they are priced as` : ""}.`);
+  console.log(`The catalogue now holds ${total}, ${totalSupported} of them supported by the Recommended Price feature.`);
   console.log("Supported means an administrator can record a market price for it - not that one exists yet.");
 }
 

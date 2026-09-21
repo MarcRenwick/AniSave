@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const { fold } = require("../utils/fold");
+const { fold, matchKey } = require("../utils/fold");
 
 // The catalogue of agricultural products a farmer can list, and the thing a
 // market price is recorded against. It exists so that "Mango" means one
@@ -47,6 +47,25 @@ const cropSchema = new mongoose.Schema(
       enum: ["vegetable", "fruit"],
       required: true,
     },
+    // Every name this crop can be found by - its own and its other names -
+    // written the one way a search is matched on: folded, and each word
+    // singularised. This is what lets "tomatoes" find Tomato and "green bean"
+    // find Green Beans, without a plural having to be listed as an alias.
+    // Built from `name` and `aliases`; never set by hand.
+    terms: {
+      type: [String],
+      default: [],
+    },
+    // A variety priced as the crop it is a variety of: Lakatan Banana is a
+    // banana, and the market records a price for bananas, not for each
+    // variety. The recommendation follows this and says whose price it is
+    // showing, so nothing is passed off as a price for the variety itself.
+    // Null means this crop is priced in its own right.
+    pricesFrom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Crop",
+      default: null,
+    },
     // Whether the Recommended Price feature covers this crop. The catalogue is
     // deliberately wider than this: a farmer can list something nobody records
     // a market price for, and is simply told no recommendation is available.
@@ -68,6 +87,7 @@ const cropSchema = new mongoose.Schema(
 // typing, by name or by any of its other names. (`slug` is already indexed by
 // being unique.)
 cropSchema.index({ aliases: 1 });
+cropSchema.index({ terms: 1 });
 cropSchema.index({ group: 1, name: 1 });
 
 // The slug is never set by hand - it is always the name, folded - so a crop
@@ -77,6 +97,11 @@ cropSchema.pre("validate", function setSlug(next) {
   if (Array.isArray(this.aliases)) {
     this.aliases = [...new Set(this.aliases.map(fold).filter(Boolean))];
   }
+  // The searchable forms are derived, never given: a crop added through the
+  // admin page is findable the same way a seeded one is.
+  this.terms = [
+    ...new Set([this.name, ...(this.aliases || [])].map(matchKey).filter(Boolean)),
+  ];
   next();
 });
 

@@ -1,6 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Crop = require("../models/Crop");
-const { fold } = require("../utils/fold");
+const { matchKey } = require("../utils/fold");
 
 // What a caller is allowed to see of a crop. The catalogue is not secret, but
 // there is no reason to hand out timestamps or the folded matching fields.
@@ -20,7 +20,11 @@ const literal = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // @access  Private - only someone with an account lists or prices produce
 const searchCrops = asyncHandler(async (req, res) => {
   const typed = typeof req.query.q === "string" ? req.query.q : "";
-  const key = fold(typed);
+  // What the farmer typed, written the same way the catalogue's own terms are:
+  // lower case, punctuation as spaces, each word singularised. That is what
+  // makes "MANGO", "mango" and "mangoes" one and the same search, without the
+  // catalogue having to list every spelling.
+  const key = matchKey(typed);
 
   // With nothing typed, offer the start of the catalogue rather than nothing,
   // so the list is never an empty box.
@@ -28,21 +32,21 @@ const searchCrops = asyncHandler(async (req, res) => {
   if (req.query.supportedOnly === "true") base.priceSupported = true;
 
   const matching = (pattern) =>
-    Crop.find({ ...base, $or: [{ slug: pattern }, { aliases: pattern }] })
-      .select(`${PUBLIC} slug aliases`)
+    Crop.find({ ...base, terms: pattern })
+      .select(`${PUBLIC} terms`)
       .limit(60)
       .lean();
 
   let found;
   if (!key) {
-    found = await Crop.find(base).select(`${PUBLIC} slug aliases`).limit(60).lean();
+    found = await Crop.find(base).select(`${PUBLIC} terms`).limit(60).lean();
   } else {
     found = await matching(new RegExp(literal(key)));
 
-    // "Lakatan Banana" and "Talong (Egg Plant)" name a crop the catalogue
-    // knows, just with more words around it. If the whole phrase matches
-    // nothing, any one word of it will do - short ones excepted, since "of"
-    // would drag in half the catalogue.
+    // "Talong (Egg Plant)" names a crop the catalogue knows, just with more
+    // words around it. If the whole phrase matches nothing, any one word of it
+    // will do - short ones excepted, since "of" would drag in half the
+    // catalogue.
     const words = key.split(" ").filter((w) => w.length >= 3);
     if (found.length === 0 && words.length > 1) {
       found = await matching(new RegExp(`^(${words.map(literal).join("|")})`));
@@ -51,14 +55,16 @@ const searchCrops = asyncHandler(async (req, res) => {
 
   // A crop's own name beats one of its other names at every level, so typing
   // "man" offers Mango before Cassava (whose local name is "manioc") and
-  // Peanut (whose local name is "mani").
+  // Peanut (whose local name is "mani"). The first term is always the crop's
+  // own name; the rest are its other names.
   const rank = (crop) => {
     if (!key) return 9;
-    if (crop.slug === key) return 0;
-    if (crop.aliases.includes(key)) return 1;
-    if (crop.slug.startsWith(key)) return 2;
-    if (crop.aliases.some((a) => a.startsWith(key))) return 3;
-    if (crop.slug.includes(key)) return 4;
+    const [own, ...others] = crop.terms;
+    if (own === key) return 0;
+    if (others.includes(key)) return 1;
+    if (own.startsWith(key)) return 2;
+    if (others.some((a) => a.startsWith(key))) return 3;
+    if (own.includes(key)) return 4;
     return 5;
   };
   found.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
@@ -92,7 +98,9 @@ const getCrop = asyncHandler(async (req, res) => {
 // @route   GET /api/crops/supported
 // @access  Private (admin)
 const getSupportedCrops = asyncHandler(async (req, res) => {
-  const crops = await Crop.find({ active: true, priceSupported: true })
+  // Varieties are left out: each reads its price from the crop it is a variety
+  // of, so a price recorded against one would never be looked at.
+  const crops = await Crop.find({ active: true, priceSupported: true, pricesFrom: null })
     .select(PUBLIC)
     .sort({ name: 1 })
     .lean();

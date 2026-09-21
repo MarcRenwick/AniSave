@@ -47,10 +47,18 @@ const getPriceRecommendation = asyncHandler(async (req, res) => {
     return res.json({ available: false, reason: "no-product" });
   }
 
-  const crop = await Crop.findById(cropId).select("name priceSupported active").lean();
+  const crop = await Crop.findById(cropId).select("name priceSupported active pricesFrom").lean();
   if (!crop || !crop.active) {
     return res.json({ available: false, reason: "no-product" });
   }
+
+  // A variety is priced as the crop it is a variety of: the market records a
+  // price for bananas, not for Lakatan separately. The record found is then
+  // that crop's, and the answer says so rather than presenting it as the
+  // variety's own price.
+  const pricedCrop = crop.pricesFrom
+    ? await Crop.findById(crop.pricesFrom).select("name priceSupported active").lean()
+    : crop;
 
   const municipality = municipalityOf(req.user);
 
@@ -62,7 +70,7 @@ const getPriceRecommendation = asyncHandler(async (req, res) => {
 
   // The catalogue is wider than the Recommended Price feature on purpose: a
   // farmer may list produce nobody records a market price for.
-  if (!crop.priceSupported) {
+  if (!crop.priceSupported || !pricedCrop?.active) {
     return res.json({
       available: false,
       product: crop.name,
@@ -71,7 +79,7 @@ const getPriceRecommendation = asyncHandler(async (req, res) => {
     });
   }
 
-  const record = await latestPriceFor(crop._id, municipality.cityCode);
+  const record = await latestPriceFor(pricedCrop._id, municipality.cityCode);
   if (!record) {
     return res.json({
       available: false,
@@ -84,6 +92,9 @@ const getPriceRecommendation = asyncHandler(async (req, res) => {
   res.json({
     available: true,
     product: crop.name,
+    // Only when the price is recorded against another crop - the one this is a
+    // variety of - so the form can say whose figure it is showing.
+    pricedAs: pricedCrop._id.toString() === crop._id.toString() ? null : pricedCrop.name,
     municipality: municipality.name,
     // The recommendation IS the market price - the app never adjusts it, marks
     // it up, or averages anything together.
@@ -112,6 +123,12 @@ async function checkedCrop(cropId) {
   if (!crop || !crop.active) throw badRequest("That product isn't in the list");
   if (!crop.priceSupported) {
     throw badRequest(`${crop.name} isn't one of the products the Recommended Price feature supports`);
+  }
+  // A variety reads its price from the crop it is a variety of, so recording
+  // one against the variety would never be looked at.
+  if (crop.pricesFrom) {
+    const parent = await Crop.findById(crop.pricesFrom).select("name").lean();
+    throw badRequest(`${crop.name} is priced as ${parent?.name || "the crop it is a variety of"} - record the price against that instead`);
   }
   return crop;
 }

@@ -24,11 +24,22 @@
  * farmer type "ampalaya" and still be shown the price recorded for it.
  */
 
+// Varieties a farmer may well want to list by name. Each is priced as the crop
+// it is a variety of - the market records a price for bananas, not for each
+// variety - and the recommendation says whose price it is showing rather than
+// passing it off as the variety's own.
+const VARIETIES = [
+  ["fruit", "Lakatan Banana", ["lakatan"], "Banana"],
+  ["fruit", "Latundan Banana", ["latundan", "tundan"], "Banana"],
+  ["fruit", "Saba Banana", ["saba", "cardaba"], "Banana"],
+  ["fruit", "Carabao Mango", ["carabao mango", "manggang kalabaw"], "Mango"],
+];
+
 // Requirement: the products the Recommended Price feature supports initially.
 const SUPPORTED = [
   // ---- Fruits ----
   ["fruit", "Mango", ["mangga", "manga"]],
-  ["fruit", "Banana", ["saging", "lakatan", "latundan", "saba"]],
+  ["fruit", "Banana", ["saging"]],
   ["fruit", "Calamansi", ["kalamansi", "calamondin"]],
   ["fruit", "Papaya", ["papaia"]],
   ["fruit", "Watermelon", ["pakwan"]],
@@ -133,15 +144,24 @@ const ALSO_GROWN = [
 const listingCategoryFor = (group) => (group === "fruit" ? "fruit" : "vegetable");
 
 const rowsOf = (list, priceSupported) =>
-  list.map(([group, name, aliases]) => ({
+  list.map(([group, name, aliases, pricesFrom = null]) => ({
     name,
     group,
     listingCategory: listingCategoryFor(group),
     aliases,
     priceSupported,
+    // The name of the crop this one is priced as, if it is a variety. The seed
+    // turns it into that crop's id.
+    pricesFrom,
   }));
 
-// Everything the catalogue holds, in one list.
-const CROPS = [...rowsOf(SUPPORTED, true), ...rowsOf(ALSO_GROWN, false)];
+// Everything the catalogue holds, in one list. A variety counts as supported:
+// there is a price to recommend for it, just one recorded against the crop it
+// is a variety of.
+const CROPS = [
+  ...rowsOf(SUPPORTED, true),
+  ...rowsOf(VARIETIES, true),
+  ...rowsOf(ALSO_GROWN, false),
+];
 
-module.exports = { CROPS, SUPPORTED, ALSO_GROWN, listingCategoryFor };
+module.exports = { CROPS, SUPPORTED, VARIETIES, ALSO_GROWN, listingCategoryFor };

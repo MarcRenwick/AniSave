@@ -126,7 +126,11 @@ function RecommendedPrice({ crop, quantity, recommendation, checking, onUse }) {
           <Line label="Product">{recommendation.product}</Line>
           {quantity !== "" && <Line label="Quantity">{quantity} KG</Line>}
           <Line label="Municipality">{recommendation.municipality}</Line>
-          <Line label="Latest Market Price">{peso(recommendation.pricePerKilo)}/kg</Line>
+          {/* A variety is priced as the crop it is a variety of, and says so
+              rather than passing the figure off as its own. */}
+          <Line label={recommendation.pricedAs ? `Latest Market Price (${recommendation.pricedAs})` : "Latest Market Price"}>
+            {peso(recommendation.pricePerKilo)}/kg
+          </Line>
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-green-200 pt-1">
             <span className="font-semibold text-[#2f8f66]">Recommended Selling Price</span>
             <span className="font-semibold text-[#2f8f66]">
