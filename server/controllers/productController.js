@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Product = require("../models/Product");
+const Crop = require("../models/Crop");
 const Order = require("../models/Order");
 const Rating = require("../models/Rating");
 const ProductInterest = require("../models/ProductInterest");
@@ -38,6 +39,28 @@ const sellable = (product) => Boolean(product.farmer?.isVerified) && !product.fa
 const discardUploads = (req) =>
   (req.files || []).forEach((file) => deleteImageFile(imagePath(file)));
 
+// A listing names its produce by pointing at a catalogue crop, not by free
+// text: the farmer picks from the product selector and what arrives here is
+// that crop's id. Anything else - a made-up name, an id that isn't a crop, a
+// crop that has been retired - is refused, so no listing can name produce the
+// rest of the app doesn't know about.
+//
+// Returns the crop, so the caller can take the title from it.
+async function resolveCrop(cropId) {
+  if (!cropId || !mongoose.isValidObjectId(cropId)) {
+    const error = new Error("Choose a product from the list");
+    error.statusCode = 400;
+    throw error;
+  }
+  const crop = await Crop.findOne({ _id: cropId, active: true }).lean();
+  if (!crop) {
+    const error = new Error("That product isn't in the list");
+    error.statusCode = 400;
+    throw error;
+  }
+  return crop;
+}
+
 // @desc    Create a product for the logged-in farmer
 // @route   POST /api/products
 // @access  Private (farmer)
@@ -53,12 +76,12 @@ const createProduct = asyncHandler(async (req, res) => {
     );
   }
 
-  const { title, stock, price, category, description, productType, salePrice } = req.body;
+  const { crop: cropId, stock, price, description, productType } = req.body;
 
-  if (!title || stock === undefined || price === undefined || !category) {
+  if (stock === undefined || price === undefined) {
     discardUploads(req);
     res.status(400);
-    throw new Error("Title, stock, price and category are required");
+    throw new Error("Product, stock and price are required");
   }
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -67,7 +90,9 @@ const createProduct = asyncHandler(async (req, res) => {
   }
 
   let numbers;
+  let crop;
   try {
+    crop = await resolveCrop(cropId);
     numbers = listingNumbers(req.body);
   } catch (err) {
     discardUploads(req);
@@ -83,10 +108,15 @@ const createProduct = asyncHandler(async (req, res) => {
   try {
     const product = await Product.create({
       farmer: req.user._id,
-      title,
+      crop: crop._id,
+      // Always the catalogue's own name for the crop, never text a farmer
+      // typed - which is what makes a listing's produce identifiable.
+      title: crop.name,
       ...numbers,
       salePrice: numbers.salePrice ?? null,
-      category,
+      // The crop decides which of the two buyer-facing categories the listing
+      // belongs in, so a mango can't end up filed under vegetables.
+      category: crop.listingCategory,
       // Buyers collect from the farm, so a listing's address always follows
       // the farmer's registered address rather than being typed per product.
       location: req.user.location,
@@ -283,7 +313,11 @@ const getAllProducts = asyncHandler(async (req, res) => {
 // @route   GET /api/products/:id
 // @access  Public
 const getProductById = asyncHandler(async (req, res) => {
-  const product = await Product.findById(req.params.id).populate("farmer", FARMER_FIELDS);
+  const product = await Product.findById(req.params.id)
+    .populate("farmer", FARMER_FIELDS)
+    // So the edit form can show which catalogue product the listing is of,
+    // rather than having to look it up again by name.
+    .populate("crop", "name group listingCategory priceSupported");
 
   // A suspended farmer's listings aren't reachable, even by a direct link -
   // and neither are a shop's listings for a buyer who blocked it.
@@ -335,7 +369,7 @@ const updateProduct = asyncHandler(async (req, res) => {
     throw new Error(error.message);
   }
 
-  const { title, category, description, productType, imageOrder } = req.body;
+  const { crop: cropId, description, productType, imageOrder } = req.body;
 
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -344,17 +378,26 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
 
   let numbers;
+  let crop = null;
   try {
+    // Only when the request names a crop: a partial update that doesn't
+    // mention one (restocking, reordering photos) leaves the listing's produce
+    // exactly as it was, including on a listing made before the catalogue
+    // existed.
+    if (cropId !== undefined) crop = await resolveCrop(cropId);
     numbers = listingNumbers(req.body);
   } catch (err) {
     discardUploads(req);
     throw err;
   }
 
-  if (title !== undefined) product.title = title;
+  if (crop) {
+    product.crop = crop._id;
+    product.title = crop.name;
+    product.category = crop.listingCategory;
+  }
   if (numbers.stock !== undefined) product.stock = numbers.stock;
   if (numbers.price !== undefined) product.price = numbers.price;
-  if (category !== undefined) product.category = category;
   if (description !== undefined) product.description = description;
   if (productType !== undefined) product.productType = productType;
   // A blank field from the form means "clear the sale", not "leave it alone" -

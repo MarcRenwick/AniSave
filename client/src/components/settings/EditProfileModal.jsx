@@ -61,7 +61,7 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
 
     const addressChanged = !sameAddress(address, savedAddress);
     if (addressChanged && !isAddressComplete(address)) {
-      setError("Finish choosing your address - province and municipality/city.");
+      setError("Choose your municipality/city.");
       return;
     }
 
@@ -126,7 +126,7 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
           {/* Accounts from before addresses were picked from lists only have text. */}
           {!user?.address?.cityCode && user?.location && (
             <p className="mt-1 text-xs text-gray-500">
-              Currently saved as &ldquo;{user.location}&rdquo;. Pick your province and municipality/city
+              Currently saved as &ldquo;{user.location}&rdquo;. Pick your municipality/city
               below so buyers and sellers near you can be found.
             </p>
           )}

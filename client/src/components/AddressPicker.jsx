@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { getProvinces, getCities } from "../services/api";
+import { getServiceArea, getCities } from "../services/api";
 
 // The lists barely change, so anything fetched is kept for the life of the
-// page - going back to a province you already opened is instant. A failed
+// page - going back to a list you already opened is instant. A failed
 // request is forgotten so "Try again" really does ask again.
 const requests = new Map();
 function load(key, fetcher) {
@@ -24,14 +24,16 @@ function load(key, fetcher) {
 const defaultSelectClass =
   "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66] disabled:bg-gray-50 disabled:text-gray-400";
 
-// Province > Municipality/City, the second list opening once a province is
-// chosen. It only ever reports the codes that were picked - the server works
-// out the coordinates from them, so nobody enters a latitude or longitude, and
-// nothing here reads a live location.
+// Province > Municipality/City. AniSave serves one province, so the province
+// is shown fixed rather than as a choice of one, and only its municipalities
+// and cities can be picked. Which province that is comes from the server, not
+// from anything hard-coded here.
 //
-// `value` is { provinceCode, cityCode }; `onChange` gets the whole next value,
-// with the city cleared whenever the province changes so a city can't be left
-// over from a different province.
+// It only ever reports the codes that were picked - the server works out the
+// coordinates from them, so nobody enters a latitude or longitude, and nothing
+// here reads a live location.
+//
+// `value` is { provinceCode, cityCode }; `onChange` gets the whole next value.
 export default function AddressPicker({
   value,
   onChange,
@@ -43,18 +45,18 @@ export default function AddressPicker({
 }) {
   const { provinceCode, cityCode } = value;
 
-  // The city list remembers which province it belongs to, so switching
-  // province never shows the previous province's towns while the new ones load.
-  const [provinces, setProvinces] = useState(null);
+  // The city list remembers which province it belongs to, so it can never show
+  // one province's towns under another.
+  const [area, setArea] = useState(null);
   const [cities, setCities] = useState({ for: null, list: null });
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    load("provinces", getProvinces)
-      .then((list) => {
-        if (!cancelled) setProvinces(list);
+    load("service-area", getServiceArea)
+      .then((data) => {
+        if (!cancelled) setArea(data);
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -63,6 +65,15 @@ export default function AddressPicker({
       cancelled = true;
     };
   }, [attempt]);
+
+  // The province isn't a choice, so it is filled in as soon as the server says
+  // what it is. An address saved for somewhere else - from before the service
+  // area narrowed - has its town cleared, since that town isn't in this
+  // province's list and would otherwise sit there unselectable.
+  useEffect(() => {
+    if (!area || provinceCode === area.provinceCode) return;
+    onChange({ provinceCode: area.provinceCode, cityCode: "" });
+  }, [area, provinceCode, onChange]);
 
   useEffect(() => {
     if (!provinceCode) return undefined;
@@ -101,20 +112,20 @@ export default function AddressPicker({
         {field(
           "province",
           "Province",
+          // Disabled, not hidden: people can still see which province their
+          // address is in, and that it isn't theirs to change.
           <select
             id={`${idPrefix}-province`}
-            required={required}
-            value={provinceCode}
-            disabled={!provinces}
-            onChange={(e) => onChange({ provinceCode: e.target.value, cityCode: "" })}
+            value={area ? area.provinceCode : ""}
+            disabled
+            title={area ? `AniSave currently serves ${area.province} only` : undefined}
             className={selectClass}
           >
-            <option value="">{provinces ? "Select province" : "Loading..."}</option>
-            {(provinces || []).map((p) => (
-              <option key={p.code} value={p.code}>
-                {p.name}
-              </option>
-            ))}
+            {area ? (
+              <option value={area.provinceCode}>{area.province}</option>
+            ) : (
+              <option value="">Loading...</option>
+            )}
           </select>
         )}
 
@@ -125,13 +136,11 @@ export default function AddressPicker({
             id={`${idPrefix}-city`}
             required={required}
             value={cityCode}
-            disabled={!provinceCode || !cityList}
+            disabled={!cityList}
             onChange={(e) => onChange({ provinceCode, cityCode: e.target.value })}
             className={selectClass}
           >
-            <option value="">
-              {!provinceCode ? "Select province first" : cityList ? "Select municipality / city" : "Loading..."}
-            </option>
+            <option value="">{cityList ? "Select municipality / city" : "Loading..."}</option>
             {(cityList || []).map((c) => (
               <option key={c.code} value={c.code}>
                 {c.name}

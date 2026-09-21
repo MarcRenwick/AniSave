@@ -6,37 +6,30 @@ const mongoose = require("mongoose");
 // never a figure the app worked out for itself. If there is no record, the
 // farmer is told so plainly (see controllers/marketPriceController.js).
 //
-// `product` and `municipality` are the keys used for matching and are stored
-// folded to lower case; the two label fields are what people are shown.
+// Records are kept by an administrator. Nothing in the app creates, adjusts or
+// estimates one, and no price is written down anywhere in the code.
+//
+// Both keys a lookup uses are ids, not text: the catalogue crop and the
+// municipality's own PSGC code. That is what makes "Mango in Dagupan City"
+// mean exactly one thing, whatever a farmer typed to find it.
 const marketPriceSchema = new mongoose.Schema(
   {
-    product: {
+    crop: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Crop",
+      required: [true, "A product is required"],
+    },
+    // The municipality/city this price was taken in, by its PSGC code - the
+    // same code the farmer's own address carries, so the two match exactly.
+    cityCode: {
       type: String,
-      required: [true, "A product name is required"],
-      trim: true,
-      lowercase: true,
-    },
-    label: {
-      type: String,
-      required: [true, "A product label is required"],
+      required: [true, "A municipality/city is required"],
       trim: true,
     },
-    // Other names the same crop goes by locally ("ampalaya" for bitter melon),
-    // so a farmer's own wording still finds the right record. Stored folded to
-    // lower case, like `product`.
-    aliases: {
-      type: [String],
-      default: [],
-    },
+    // Its readable name, stored so a record still reads properly on its own.
     municipality: {
       type: String,
-      required: [true, "A municipality is required"],
-      trim: true,
-      lowercase: true,
-    },
-    municipalityLabel: {
-      type: String,
-      required: [true, "A municipality label is required"],
+      required: [true, "A municipality/city name is required"],
       trim: true,
     },
     province: {
@@ -61,12 +54,25 @@ const marketPriceSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Outdated records are archived rather than deleted, so the history of
+    // what a crop went for is not lost. An archived record is never
+    // recommended.
+    archived: {
+      type: Boolean,
+      default: false,
+    },
+    // Which administrator last wrote this record down.
+    recordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
-// The one query this model exists to answer: the latest price for a crop in a
-// municipality.
-marketPriceSchema.index({ municipality: 1, product: 1, recordedAt: -1 });
+// The one query this model exists to answer: the latest live price for a crop
+// in a municipality.
+marketPriceSchema.index({ cityCode: 1, crop: 1, archived: 1, recordedAt: -1 });
 
 module.exports = mongoose.model("MarketPrice", marketPriceSchema);

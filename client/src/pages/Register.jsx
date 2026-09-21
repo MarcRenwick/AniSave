@@ -126,7 +126,7 @@ export default function Register() {
       return;
     }
     if (!isAddressComplete(address)) {
-      setError("Choose your province and municipality/city.");
+      setError("Choose your municipality/city.");
       return;
     }
 

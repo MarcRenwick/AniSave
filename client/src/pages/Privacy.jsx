@@ -15,7 +15,7 @@ export default function Privacy() {
         <Bullets
           items={[
             "Your account: full name, username, email address and password (kept only as a one-way hash - nobody, including us, can read it).",
-            "Where you are: the province and municipality/city you pick when you sign up. We save that city's centre point so farms can be sorted by distance.",
+            "Where you are: the municipality/city you pick when you sign up. AniSave serves Pangasinan only, so the province is fixed and you don't choose it. We save that city's centre point so farms can be sorted by distance.",
             "Optional: a phone number and a profile photo.",
             "Farmers: farm name and description, a photo of a government-issued ID and one or more farm-related documents.",
             "What you do on AniSave: products you list, orders you place or receive, and ratings you write.",

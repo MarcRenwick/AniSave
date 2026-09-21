@@ -1,8 +1,9 @@
 const express = require("express");
-const { getProvinces, getCities } = require("../controllers/locationController");
+const { getServiceArea, getProvinces, getCities } = require("../controllers/locationController");
 
 const router = express.Router();
 
+router.get("/service-area", getServiceArea);
 router.get("/provinces", getProvinces);
 router.get("/provinces/:provinceCode/cities", getCities);
 

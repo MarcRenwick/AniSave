@@ -10,6 +10,7 @@ import {
 } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { productImages } from "../../utils/productImages";
+import CropSelect from "../../components/products/CropSelect";
 
 const MAX_PHOTOS = 5;
 
@@ -34,27 +35,67 @@ const peso = (amount) => `₱${Math.round(amount).toLocaleString()}`;
 const recordedOn = (date) =>
   new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
-// The suggested price for this crop at the farmer's own municipal market, or a
-// plain statement that there isn't one. Nothing is ever estimated: with no
-// record for this crop in this municipality, the farmer is told so and prices
-// the listing themselves.
-function MarketPriceHint({ recommendation, checking, onUse }) {
-  if (checking && !recommendation) {
-    return <p className="mt-1.5 text-xs text-gray-500">Checking the market price for your municipality...</p>;
-  }
-  if (!recommendation || recommendation.reason === "no-product") return null;
+// One labelled line of the summary above the price box.
+function Line({ label, children }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
+      <span className="text-gray-600">{label}</span>
+      <span className="font-medium text-gray-900">{children}</span>
+    </div>
+  );
+}
 
+// What the chosen product goes for at the farmer's own municipal market, or a
+// plain statement that there is no such figure. Nothing here is ever
+// estimated, adjusted or borrowed from a neighbouring town: with no record for
+// this product in this municipality, the farmer is told so and prices the
+// listing themselves.
+function RecommendedPrice({ crop, quantity, recommendation, checking, onUse }) {
+  if (!crop) return null;
+
+  const heading = (
+    <p className="font-semibold text-gray-900">Recommended Price Unavailable</p>
+  );
+
+  if (checking && !recommendation) {
+    return (
+      <div className="mt-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm text-gray-500">
+        Checking the market price for your municipality...
+      </div>
+    );
+  }
+  if (!recommendation) return null;
+
+  // No address on the account, so there is no municipality to look a price up
+  // in. Nothing is assumed about where they are.
   if (recommendation.reason === "no-municipality") {
     return (
       <div className="mt-2 flex items-start gap-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-        <p className="text-gray-600">
-          <span className="font-medium text-gray-900">Recommended Price Unavailable</span>
-          <br />
-          <span className="text-xs">
-            Add your municipality in Edit Profile to see the market price for your area.
-          </span>
-        </p>
+        <div>
+          {heading}
+          <p className="mt-0.5 text-xs text-gray-600">
+            Add your municipality in Edit Profile to see the market price for your area. You can
+            still set your own selling price below.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // The catalogue is wider than the Recommended Price feature: plenty of real
+  // produce simply has no market price recorded for it.
+  if (recommendation.reason === "not-supported") {
+    return (
+      <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div>
+          {heading}
+          <p className="mt-0.5 text-xs text-amber-900">
+            Market prices aren&apos;t recorded for {recommendation.product} yet. Set your own
+            selling price below.
+          </p>
+        </div>
       </div>
     );
   }
@@ -63,14 +104,16 @@ function MarketPriceHint({ recommendation, checking, onUse }) {
     return (
       <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <p className="text-amber-900">
-          <span className="font-medium">Recommended Price Unavailable</span>
-          <br />
-          <span className="text-xs">
-            No current market-price data is available for this product in{" "}
-            {recommendation.municipality}. Set your own selling price below.
-          </span>
-        </p>
+        <div className="min-w-0">
+          {heading}
+          <p className="mt-0.5 text-xs text-amber-900">
+            No current market-price data is available for this product in your municipality.
+          </p>
+          <p className="mt-1 text-xs text-amber-800">
+            Your municipality: <span className="font-medium">{recommendation.municipality}</span>.
+            Set your own selling price below.
+          </p>
+        </div>
       </div>
     );
   }
@@ -79,17 +122,18 @@ function MarketPriceHint({ recommendation, checking, onUse }) {
     <div className="mt-2 rounded-md bg-green-50 px-3 py-2.5 text-sm">
       <div className="flex items-start gap-2">
         <Tag className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8f66]" />
-        <div className="min-w-0 flex-1">
-          <p className="text-gray-700">
-            Latest market price for{" "}
-            <span className="font-medium text-gray-900">{recommendation.product}</span> in{" "}
-            <span className="font-medium text-gray-900">{recommendation.municipality}</span>:{" "}
-            <span className="font-medium text-gray-900">{peso(recommendation.pricePerKilo)}/kg</span>
-          </p>
-          <p className="mt-0.5 font-semibold text-[#2f8f66]">
-            Recommended Selling Price: {peso(recommendation.pricePerKilo)}/kg
-          </p>
-          <p className="mt-1 text-xs text-gray-500">
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <Line label="Product">{recommendation.product}</Line>
+          {quantity !== "" && <Line label="Quantity">{quantity} KG</Line>}
+          <Line label="Municipality">{recommendation.municipality}</Line>
+          <Line label="Latest Market Price">{peso(recommendation.pricePerKilo)}/kg</Line>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-green-200 pt-1">
+            <span className="font-semibold text-[#2f8f66]">Recommended Selling Price</span>
+            <span className="font-semibold text-[#2f8f66]">
+              {peso(recommendation.pricePerKilo)}/kg
+            </span>
+          </div>
+          <p className="pt-1 text-xs text-gray-500">
             Recommended price is based on the latest available market-price data for your
             municipality (recorded {recordedOn(recommendation.recordedAt)}). It is only a
             suggestion - you can set any price you like.
@@ -107,12 +151,12 @@ function MarketPriceHint({ recommendation, checking, onUse }) {
   );
 }
 
+// The plain text fields. The product itself isn't one of them - it is a
+// catalogue row, held separately, and only its id is ever sent.
 const emptyForm = {
-  title: "",
   stock: "",
   price: "",
   salePrice: "",
-  category: "vegetable",
   productType: "sale",
   description: "",
 };
@@ -157,29 +201,32 @@ export default function FarmerProductForm() {
   const { user } = useAuth();
 
   const [form, setForm] = useState(emptyForm);
+  // The catalogue product this listing is of. Not part of `form`, because it
+  // is a whole row rather than a typed string - the form sends its id.
+  const [crop, setCrop] = useState(null);
   // Photos in display order - either ones the product already has, or files
   // just picked. The first is the cover.
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(isEdit);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // The suggested price for whatever crop the title names, from the farmer's
-  // own municipal market.
+  // The suggested price for the chosen product, from the farmer's own
+  // municipal market.
   const [recommendation, setRecommendation] = useState(null);
-  const [checkingPrice, setCheckingPrice] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => {
     if (!isEdit) return;
     getProduct(id)
       .then(({ data }) => {
+        // Listings made before the product catalogue existed have no crop on
+        // them; the selector simply starts empty and one has to be picked.
+        setCrop(data.crop || null);
         setForm({
-          title: data.title,
           // The form works in text, so the boxes show exactly what will be sent.
           stock: String(data.stock ?? ""),
           price: String(data.price ?? ""),
           salePrice: data.salePrice == null ? "" : String(data.salePrice),
-          category: data.category,
           productType: data.productType || "sale",
           description: data.description || "",
         });
@@ -198,25 +245,31 @@ export default function FarmerProductForm() {
     setForm((prev) => ({ ...prev, [name]: CLEAN[name] ? CLEAN[name](value) : value }));
   };
 
-  // Looks the crop up as the farmer names it, once they have stopped typing.
-  // The municipality isn't sent - the server takes it from their account.
+  // Looks the price up as soon as a product is chosen. Only the product's id
+  // is sent - the municipality comes from the farmer's own account, never from
+  // this page and never from a device's location.
+  const cropId = crop?._id || null;
   useEffect(() => {
-    const crop = form.title.trim();
-    if (crop.length < 2) return undefined;
-    const timer = setTimeout(() => {
-      setCheckingPrice(true);
-      getPriceRecommendation(crop)
-        .then(({ data }) => setRecommendation({ crop, data }))
-        .catch(() => setRecommendation({ crop, data: null }))
-        .finally(() => setCheckingPrice(false));
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [form.title]);
+    if (!cropId) return undefined;
+    let cancelled = false;
+    getPriceRecommendation(cropId)
+      .then(({ data }) => {
+        if (!cancelled) setRecommendation({ cropId, data });
+      })
+      .catch(() => {
+        if (!cancelled) setRecommendation({ cropId, data: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cropId]);
 
-  // Kept with the crop it was looked up for, so a price for "Mango" can never
-  // sit under a title that now says something else.
-  const cropNow = form.title.trim();
-  const priceHint = recommendation?.crop === cropNow ? recommendation.data : null;
+  // Kept with the product it was looked up for, so a price for Mango can never
+  // sit under a listing that now says something else - and "still checking" is
+  // simply not yet having an answer for the product now chosen.
+  const answered = recommendation?.cropId === cropId;
+  const priceHint = answered ? recommendation.data : null;
+  const checkingPrice = Boolean(cropId) && !answered;
 
   const handleAddPhotos = (e) => {
     const files = Array.from(e.target.files || []);
@@ -245,6 +298,10 @@ export default function FarmerProductForm() {
     e.preventDefault();
     setError("");
 
+    if (!crop) {
+      setError("Choose the product you are selling from the list.");
+      return;
+    }
     if (photos.length === 0) {
       setError("Add at least one photo of the product.");
       return;
@@ -256,6 +313,9 @@ export default function FarmerProductForm() {
 
     const data = new FormData();
     Object.keys(emptyForm).forEach((key) => data.append(key, form[key]));
+    // The product is sent as the catalogue's own id. The server takes the
+    // title and the category from that row, so neither can be made up here.
+    data.append("crop", crop._id);
     photos.forEach((photo) => {
       if (photo.kind === "new") data.append("images", photo.file);
     });
@@ -363,11 +423,33 @@ export default function FarmerProductForm() {
               {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
 
               <div>
-                <label htmlFor="title" className="font-medium text-gray-900">
-                  Title
+                <label htmlFor="crop" className="font-medium text-gray-900">
+                  Product
                   <Required />
                 </label>
-                <input id="title" name="title" required value={form.title} onChange={handleChange} className={inputClass} />
+                <div className="mt-1">
+                  <CropSelect
+                    id="crop"
+                    required
+                    value={crop}
+                    onChange={setCrop}
+                    inputClass="w-full rounded-md border border-gray-400 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  {crop ? (
+                    <>
+                      Listed under{" "}
+                      <span className="font-medium capitalize text-gray-700">
+                        {crop.listingCategory === "fruit" ? "Fruits" : "Vegetables"}
+                      </span>
+                      , so buyers filtering for {crop.listingCategory === "fruit" ? "fruit" : "vegetables"} find it.
+                      Add the variety and anything else in the description.
+                    </>
+                  ) : (
+                    "Start typing and pick your product from the list - local names like ampalaya or camote work too."
+                  )}
+                </p>
               </div>
 
               <div>
@@ -390,7 +472,7 @@ export default function FarmerProductForm() {
 
               <div>
                 <label htmlFor="price" className="font-medium text-gray-900">
-                  Price
+                  Your Selling Price
                   <Required />
                 </label>
                 <input
@@ -404,9 +486,11 @@ export default function FarmerProductForm() {
                   placeholder="₱ per kilo"
                   className={inputClass}
                 />
-                <MarketPriceHint
+                <RecommendedPrice
+                  crop={crop}
+                  quantity={form.stock}
                   recommendation={priceHint}
-                  checking={checkingPrice && cropNow.length >= 2}
+                  checking={checkingPrice}
                   onUse={(amount) =>
                     setForm((prev) => ({ ...prev, price: String(Math.round(amount)) }))
                   }
@@ -446,16 +530,9 @@ export default function FarmerProductForm() {
                 </p>
               </div>
 
-              <RadioGroup
-                legend="Category"
-                name="category"
-                value={form.category}
-                options={[
-                  ["vegetable", "Vegetable"],
-                  ["fruit", "Fruit"],
-                ]}
-                onChange={handleChange}
-              />
+              {/* The category isn't asked for any more: it follows from the
+                  product chosen above, so a mango can't be filed under
+                  vegetables. It is shown beneath the product selector. */}
 
               <div>
                 <RadioGroup

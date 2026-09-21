@@ -7,6 +7,20 @@ const productSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    // Which catalogue crop this listing is of. The farmer picks it from the
+    // product selector, and the title below is then that crop's own name -
+    // so "Mango" always means the one catalogue row, and a market price
+    // recorded against it can be matched without comparing free text.
+    //
+    // Not required by the schema, because listings made before the catalogue
+    // existed have none and must go on working (restocking one, for instance,
+    // saves the whole document). New listings are required to have one by the
+    // controller, and scripts/backfillProductCrops.js fills in the old ones.
+    crop: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Crop",
+      default: null,
+    },
     title: {
       type: String,
       required: [true, "Title is required"],

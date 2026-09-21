@@ -6,7 +6,16 @@ const locations = require("../utils/locations");
 // rebuilt list shows up the same day.
 const cacheAWhile = (res) => res.set("Cache-Control", "public, max-age=3600");
 
-// @desc    All provinces (Metro Manila included), A-Z
+// @desc    The one province AniSave serves, so the address form can show it
+//          fixed instead of offering a choice of one
+// @route   GET /api/locations/service-area
+// @access  Public - the sign-up page needs it before anyone has an account
+const getServiceArea = asyncHandler(async (req, res) => {
+  cacheAWhile(res);
+  res.json(locations.serviceArea());
+});
+
+// @desc    The provinces AniSave serves, A-Z
 // @route   GET /api/locations/provinces
 // @access  Public - needed on the sign-up page, before anyone has an account
 const getProvinces = asyncHandler(async (req, res) => {
@@ -27,4 +36,4 @@ const getCities = asyncHandler(async (req, res) => {
   res.json(cities);
 });
 
-module.exports = { getProvinces, getCities };
+module.exports = { getServiceArea, getProvinces, getCities };

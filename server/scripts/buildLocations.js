@@ -27,6 +27,13 @@ const USER_AGENT = "AniSave-school-project/1.0 (one-off location data build)";
 
 const PSGC = "https://psgc.gitlab.io/api";
 
+// AniSave serves one province. Everywhere else is dropped when the file is
+// written rather than filtered later, so the list the server reads holds
+// nothing it could not legitimately offer - there is no second place where a
+// province outside the service area could leak back in. Widening the service
+// area later means adding a name here and rebuilding.
+const SERVICE_PROVINCES = ["Pangasinan"];
+
 // PSGC files Metro Manila under districts rather than a province, so it is
 // listed here as one - people pick "Metro Manila" first, then Manila, Makati...
 const NCR_REGION_CODE = "130000000";
@@ -207,12 +214,19 @@ async function main() {
 
   // ---------- write ----------
   const collator = new Intl.Collator("en", { sensitivity: "base", numeric: true });
-  const usedProvinces = new Set(cities.map((c) => c.provinceCode));
+  const served = new Set(
+    provinces.filter((p) => SERVICE_PROVINCES.includes(p.name)).map((p) => p.code)
+  );
+  if (served.size !== SERVICE_PROVINCES.length) {
+    throw new Error(`Couldn't find every service province in PSGC: ${SERVICE_PROVINCES.join(", ")}`);
+  }
+  const servedCities = cities.filter((c) => served.has(c.provinceCode));
+  const usedProvinces = new Set(servedCities.map((c) => c.provinceCode));
   const provinceRows = provinces
     .filter((p) => usedProvinces.has(p.code))
     .sort((a, b) => collator.compare(a.name, b.name))
     .map((p) => [p.code, p.name]);
-  const cityRows = [...cities]
+  const cityRows = [...servedCities]
     .sort((a, b) => collator.compare(a.name, b.name))
     .map((c) => [c.code, c.name, c.type, c.provinceCode, c.lat, c.lon]);
 
@@ -228,7 +242,8 @@ async function main() {
   const lines = (rows) => `[\n${rows.map((row) => JSON.stringify(row)).join(",\n")}\n]`;
   const text = [
     "{",
-    `"version": 2,`,
+    `"version": 3,`,
+    `"serviceArea": ${JSON.stringify({ provinceCode: provinceRows[0][0], province: provinceRows[0][1], country: "Philippines" })},`,
     `"generatedAt": ${JSON.stringify(new Date().toISOString())},`,
     `"sources": ${JSON.stringify(sources)},`,
     `"provinces": ${lines(provinceRows)},`,
@@ -244,6 +259,7 @@ async function main() {
   fs.renameSync(temp, OUT_FILE);
 
   console.log("\nDone.");
+  console.log(`  service area: ${SERVICE_PROVINCES.join(", ")} (everywhere else dropped)`);
   console.log(`  provinces: ${provinceRows.length}`);
   console.log(`  cities/municipalities: ${cityRows.length} (${looked} looked up by name, ${estimated} estimated, ${skipped} skipped)`);
   console.log(`  wrote ${OUT_FILE} (${(fs.statSync(OUT_FILE).size / 1024).toFixed(0)} KB)`);

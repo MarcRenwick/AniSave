@@ -20,7 +20,7 @@ AniSave/
     ├── config/                # DB connection
     ├── controllers/           # Route handler logic
     ├── middleware/            # Auth + error handling
-    ├── data/                  # locations.json - Province > Municipality/City list + coordinates
+    ├── data/                  # locations.json (Pangasinan municipalities + coordinates), crops.js (the product catalogue)
     ├── private/               # (git-ignored) farmers' ID and farm documents - never served publicly
     ├── models/                # Mongoose schemas
     ├── routes/                # Express routers
@@ -77,13 +77,15 @@ The client stores the JWT + user info in `localStorage` via `AuthContext` and at
 
 ## Addresses and "nearest"
 
-Everyone registers with a **Province → Municipality/City** address picked from dropdowns (the same pickers appear in Edit Profile). Nobody types a latitude or longitude and the app never asks for a live GPS location: the server looks up the picked city's centre point from its code and saves it on the user (`address.latitude` / `address.longitude`).
+**AniSave serves Pangasinan only.** The province is fixed and shown but not editable; the address people actually choose is the **Municipality/City**, from that province's own 48 (the same picker appears in Edit Profile). Nobody types a latitude or longitude and the app never asks for a live GPS location: the server looks up the picked city's centre point from its code and saves it on the user (`address.latitude` / `address.longitude`). There is no barangay anywhere - an address is a province and a municipality/city.
 
-- `GET /api/locations/provinces` and `/provinces/:code/cities` feed the dropdowns.
+The restriction is the data, not a filter: `server/data/locations.json` holds that one province and nothing else, so an address outside the service area has no code to be picked by and `resolveAddress` refuses it whatever a request claims ("AniSave currently serves Pangasinan only"). To serve somewhere else, add its name to `SERVICE_PROVINCES` in `scripts/buildLocations.js` and rebuild - nothing in the client hard-codes "Pangasinan".
+
+- `GET /api/locations/service-area` names the fixed province; `/provinces` and `/provinces/:code/cities` feed the picker.
 - "Recommended for You" (`GET /api/products?sort=recommended`) is what this buyer has bought before, first, then genuinely well-reviewed listings (4 stars and up). A guest sees only the well-reviewed ones.
 - "Nearest" compares the signed-in buyer's registered city coordinates with each farmer's using the haversine formula, and sorts nearest → farthest: `GET /api/farmers?sort=nearest` and `GET /api/products?sort=nearest`. Each result carries `distanceKm`; farmers' coordinates are never sent to the client.
 - Accounts made before this existed only have free-typed `location` text (or a barangay from an earlier version). `node scripts/backfillAddresses.js --dry-run` (then without `--dry-run`) gives them a city-level address where their text names exactly one city/municipality; everyone else can pick one in Edit Profile.
-- The address list lives in `server/data/locations.json` and is committed - every one of the country's 1,634 cities and municipalities has coordinates in it. It is generated, not typed: to rebuild it (PSGC + Wikidata, see `server/data/README.md`) run `node scripts/buildLocations.js`.
+- The address list lives in `server/data/locations.json` and is committed - all 48 of Pangasinan's municipalities and cities, each with coordinates. It is generated, not typed: to rebuild it (PSGC + Wikidata, see `server/data/README.md`) run `node scripts/buildLocations.js`.
 
 ## Security
 
@@ -105,14 +107,24 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 - **Top Searched Products** is demand as buyers show it, not sales: how often a crop's listings came back in a search and were opened (`ProductInterest`, counted in `utils/interest.js`, read by `GET /api/products/top-searched`). Only buyers and visitors count - a farmer opening their own listing, or an admin moderating one, does not - and nothing in it comes from orders, so a crop everyone looks for and nobody has bought yet still shows up. The same crop listed by several farmers is added together by name.
 - The sales leaderboards (**Top Purchase this Month**) and **Recommended Flash Sales** are unchanged: those are about what has actually sold.
 
+## The product catalogue
+
+A listing doesn't name its produce in free text. The farmer picks from a searchable catalogue (`crops`) and the listing stores that row's id, so "Mango" means one particular record everywhere in the app.
+
+- `GET /api/crops?q=man` is the typeahead behind the selector. It matches a crop's own name and its local ones - "ampalaya" and "bitter melon" both reach Ampalaya, "camote" reaches Sweet Potato - and a fuller name still finds it ("Lakatan Banana" → Banana, "Talong (Egg Plant)" → Eggplant). A name that matches nothing can't be picked, and the form submits the id, not the text.
+- The catalogue's own name becomes the listing's title and its `listingCategory` becomes the listing's category, so a mango can't be filed under vegetables. The variety goes in the description.
+- `node scripts/seedCrops.js --dry-run` (then without `--dry-run`) fills it from `server/data/crops.js`: 80 crops across fruit, vegetable, root crop and grain, 60 of them supported by the Recommended Price feature. The catalogue is deliberately wider than that list - a farmer can list produce nobody records a market price for, and is simply told no recommendation is available.
+- Listings made before the catalogue existed keep working. `node scripts/backfillProductCrops.js --dry-run` (then without `--dry-run`) links each one to the crop its title names, leaving titles as they are; anything it can't match unambiguously is listed and left for the farmer to fix by editing the listing.
+
 ## Recommended prices, by municipality
 
-A farmer filling in **Add New Product** is shown what that crop last went for at their own municipality's market, as a suggestion:
+A farmer filling in **Add New Product** is shown what the product they picked last went for at their own municipality's market, as a suggestion. Nothing is hard-coded: every figure comes from a `MarketPrice` record an administrator entered.
 
-- The municipality is the one on their account (the province/municipality they registered, or their address text). Nothing reads a device's location.
-- `GET /api/market-prices/recommendation?product=Mango` answers with the latest `MarketPrice` record for **that crop in that municipality** — the form shows it, the date it was recorded, and a **Use this price** button. The farmer can ignore it and type anything.
-- With no record for that crop in that municipality, the form says **Recommended Price Unavailable** and names the municipality. A price is never invented, averaged, or borrowed from the next town along — so the same crop genuinely reads ₱140/kg in Dagupan City and ₱100/kg in Mangatarem.
-- A record holds the crop, the municipality, the price per kilo and the date it was taken (plus local names, so "Ampalaya" finds Bitter melon). `node scripts/seedMarketPrices.js --dry-run` (then without `--dry-run`) fills the table with **sample figures** for a few Pangasinan municipalities — marked `source: "Sample data"` so real data can replace them.
+- The municipality is the one on their account - the municipality/city they registered. Nothing reads a device's location.
+- `GET /api/market-prices/recommendation?crop=<id>` answers with the latest live record for **that crop in that municipality**, matched on the catalogue id and the municipality's own PSGC code rather than on names. The form shows the product, the quantity, the municipality, the latest market price and the recommended selling price, with the date it was recorded and a **Use this price** button. The farmer can ignore it and type anything.
+- With no record, the form says **Recommended Price Unavailable** — "No current market-price data is available for this product in your municipality." A price is never invented, averaged, or borrowed from the next town along, so the same crop genuinely reads ₱140/kg in Dagupan City and ₱100/kg in Mangatarem. A crop outside the supported list says so in its own words.
+- **Admins keep the price book** at **/admin/market-prices**: add, edit, archive and delete records, filtered by municipality, with a separate Archived list. A record holds the product, the municipality/city, the price per KG and the date recorded (plus an optional source). Only supported products and Pangasinan municipalities can be chosen, and a price can't be dated in the future. Archiving retires a record from recommendations without losing the history; deleting is confirmed separately.
+- `node scripts/seedMarketPrices.js --dry-run` (then without `--dry-run`) fills the table with **sample figures** for seven Pangasinan municipalities — marked `source: "Sample data"` so real data can replace them. Run `seedCrops.js` first.
 
 ## Orders
 

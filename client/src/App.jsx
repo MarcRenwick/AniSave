@@ -31,6 +31,7 @@ import AdminReports from "./pages/admin/AdminReports";
 import ReportFarmer from "./pages/buyer/ReportFarmer";
 import ReportReview from "./pages/ReportReview";
 import AdminReviewReports from "./pages/admin/AdminReviewReports";
+import AdminMarketPrices from "./pages/admin/AdminMarketPrices";
 import AdminRegister from "./pages/AdminRegister";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -232,6 +233,15 @@ export default function App() {
               element={
                 <ProtectedRoute role="admin">
                   <AdminReviewReports />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/admin/market-prices"
+              element={
+                <ProtectedRoute role="admin">
+                  <AdminMarketPrices />
                 </ProtectedRoute>
               }
             />

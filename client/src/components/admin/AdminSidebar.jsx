@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Users, Flag, MessageSquareWarning, LogOut } from "lucide-react";
+import { Users, Flag, MessageSquareWarning, Tag, LogOut } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/reports", label: "Reports", icon: Flag },
   { to: "/admin/review-reports", label: "Review Reports", icon: MessageSquareWarning },
+  { to: "/admin/market-prices", label: "Market Prices", icon: Tag },
 ];
 
 export default function AdminSidebar() {

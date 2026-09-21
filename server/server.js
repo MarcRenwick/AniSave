@@ -22,6 +22,7 @@ const reportEvidenceRoutes = require("./routes/reportEvidenceRoutes");
 const reviewReportRoutes = require("./routes/reviewReportRoutes");
 const blockRoutes = require("./routes/blockRoutes");
 const marketPriceRoutes = require("./routes/marketPriceRoutes");
+const cropRoutes = require("./routes/cropRoutes");
 
 // Every session token is signed with this. Without it nobody could log in; a
 // short one could be guessed - so the server won't start in production with one.
@@ -80,6 +81,7 @@ app.use("/api/report-evidence", reportEvidenceRoutes);
 app.use("/api/review-reports", reviewReportRoutes);
 app.use("/api/blocks", blockRoutes);
 app.use("/api/market-prices", marketPriceRoutes);
+app.use("/api/crops", cropRoutes);
 
 app.use(notFound);
 app.use(errorHandler);

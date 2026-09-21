@@ -65,7 +65,10 @@ export const getAllProducts = (params) => api.get("/products", { params });
 export const getFarmers = (params) => api.get("/farmers", { params });
 export const getFarmerProfile = (id) => api.get(`/farmers/${id}`);
 
-// The Province > Municipality/City lists for address pickers
+// The Province > Municipality/City lists for address pickers. AniSave serves
+// one province, which the server names here rather than the client assuming
+// it, so widening the service area needs no change on this side.
+export const getServiceArea = () => api.get("/locations/service-area");
 export const getProvinces = () => api.get("/locations/provinces");
 export const getCities = (provinceCode) => api.get(`/locations/provinces/${provinceCode}/cities`);
 export const getProduct = (id) => api.get(`/products/${id}`);
@@ -80,10 +83,25 @@ export const deleteProduct = (id) => api.delete(`/products/${id}`);
 // farmer's dashboard. Nothing here is counted from sales.
 export const getTopSearchedProducts = () => api.get("/products/top-searched");
 
+// The catalogue of agricultural products behind the searchable product
+// selector. A listing names its produce by one of these rows' ids.
+export const searchCrops = (q, params = {}) => api.get("/crops", { params: { q, ...params } });
+export const getCrop = (id) => api.get(`/crops/${id}`);
+export const getSupportedCrops = () => api.get("/crops/supported");
+
 // The latest market price for a crop in the farmer's own municipality, as a
-// suggested selling price. The municipality comes from their account.
-export const getPriceRecommendation = (product) =>
-  api.get("/market-prices/recommendation", { params: { product } });
+// suggested selling price. The municipality comes from their account, and the
+// crop is the catalogue row they picked - no names are sent either way.
+export const getPriceRecommendation = (cropId) =>
+  api.get("/market-prices/recommendation", { params: { crop: cropId } });
+
+// The administrator's market-price book.
+export const getMarketPrices = (params) => api.get("/market-prices", { params });
+export const getPriceMunicipalities = () => api.get("/market-prices/municipalities");
+export const createMarketPrice = (body) => api.post("/market-prices", body);
+export const updateMarketPrice = (id, body) => api.put(`/market-prices/${id}`, body);
+export const archiveMarketPrice = (id) => api.delete(`/market-prices/${id}`);
+export const deleteMarketPrice = (id) => api.delete(`/market-prices/${id}`, { params: { permanent: true } });
 
 export const getFarmerOrders = () => api.get("/orders/farmer");
 export const getBuyerOrders = () => api.get("/orders/buyer");

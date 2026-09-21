@@ -1,8 +1,13 @@
-// The Philippine address list behind the Province > Municipality/City pickers,
-// and the lookup that turns a selection into a saved address with coordinates.
+// The address list behind the Province > Municipality/City pickers, and the
+// lookup that turns a selection into a saved address with coordinates.
 //
-// Data comes from data/locations.json, built by scripts/buildLocations.js -
-// nothing here calls an outside service, so registering never depends on one.
+// AniSave serves Pangasinan only. That is enforced by the data itself:
+// data/locations.json holds the one province and its municipalities and
+// cities, and nothing else, so an address outside the service area has no code
+// to be picked by and is rejected here whatever a request claims. See
+// scripts/buildLocations.js, which drops every other province when the file is
+// built - nothing here calls an outside service, so registering never depends
+// on one.
 const fs = require("fs");
 const path = require("path");
 const { normalizeName } = require("./placeNames");
@@ -16,6 +21,7 @@ function load() {
 
   const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
 
+  const serviceArea = raw.serviceArea || null;
   const provinces = raw.provinces.map(([code, name]) => ({ code, name }));
   const provinceByCode = new Map(provinces.map((p) => [p.code, p]));
 
@@ -34,11 +40,20 @@ function load() {
     citiesByProvince.get(city.provinceCode).push(city);
   }
 
-  index = { provinces, provinceByCode, cities, cityByCode, citiesByProvince };
+  index = { serviceArea, provinces, provinceByCode, cities, cityByCode, citiesByProvince };
   return index;
 }
 
 const listProvinces = () => load().provinces.map(({ code, name }) => ({ code, name }));
+
+// The one province AniSave serves, so the province field can be shown fixed
+// rather than as a choice of one. Falls back to whatever single province the
+// data holds, so this keeps working if the file is rebuilt for somewhere else.
+function serviceArea() {
+  const { serviceArea: declared, provinces } = load();
+  if (declared) return { provinceCode: declared.provinceCode, province: declared.province };
+  return provinces.length === 1 ? { provinceCode: provinces[0].code, province: provinces[0].name } : null;
+}
 
 // null when the code isn't one we know, so the route can answer 404.
 function listCities(provinceCode) {
@@ -77,13 +92,18 @@ function addressOf(province, city) {
 // actually pick, and nobody has to type a latitude or longitude.
 function resolveAddress({ provinceCode, cityCode }) {
   if (!provinceCode || !cityCode) {
-    throw invalid("Choose your province and municipality/city");
+    throw invalid("Choose your municipality/city");
   }
 
   const { provinceByCode, cityByCode } = load();
 
+  // Outside the service area there is no province code to find, so this is
+  // also what stops anyone registering somewhere AniSave doesn't serve.
   const province = provinceByCode.get(provinceCode);
-  if (!province) throw invalid("That province isn't in the list");
+  if (!province) {
+    const area = serviceArea();
+    throw invalid(area ? `AniSave currently serves ${area.province} only` : "That province isn't in the list");
+  }
 
   const city = cityByCode.get(cityCode);
   if (!city || city.provinceCode !== province.code) {
@@ -117,4 +137,4 @@ function matchLegacyLocation(text) {
   return addressOf(provinceByCode.get(matches[0].provinceCode), matches[0]);
 }
 
-module.exports = { listProvinces, listCities, resolveAddress, matchLegacyLocation };
+module.exports = { listProvinces, listCities, resolveAddress, matchLegacyLocation, serviceArea };
