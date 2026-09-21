@@ -47,10 +47,15 @@ export default function FarmerSidebar() {
     });
 
   return (
+    // h-screen, not min-h-screen + self-stretch: stretched to the whole page
+    // the nav was already as tall as everything it could scroll past, so there
+    // was nothing for sticky to do and it scrolled away with the content. Held
+    // to one screen it stays put, and overflow-y-auto keeps Log out reachable
+    // if the window is ever shorter than the menu.
     <aside
       className={`flex ${
         collapsed ? "w-20" : "w-64"
-      } sticky top-0 min-h-screen self-stretch shrink-0 flex-col bg-[#2f8f66] px-4 py-6 text-white transition-all duration-200`}
+      } sticky top-0 h-screen shrink-0 flex-col overflow-y-auto bg-[#2f8f66] px-4 py-6 text-white transition-all duration-200`}
     >
       <div className={`flex items-center ${collapsed ? "flex-col gap-3" : "justify-between"}`}>
         <div className={`flex items-center gap-3 ${collapsed ? "" : "px-2"}`}>
