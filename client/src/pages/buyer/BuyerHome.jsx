@@ -143,7 +143,9 @@ export default function BuyerHome() {
         <div className="mb-8" data-reveal>
           <HomeBanner onShop={handleShopNow} />
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
+          {/* Held to the banner's width so the two read as one block above the
+              listings rather than a narrow picture on a wider bar. */}
+          <div className="mx-auto mt-4 flex w-full max-w-5xl flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
             {sortOptions.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}

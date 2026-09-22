@@ -103,7 +103,7 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 
 ## The buyer's marketplace
 
-The top of the marketplace is one still banner (`components/buyer/HomeBanner.jsx`) over `assets/Marketplace_background.jpg` - no carousel, and no tiles beside it. The filter row underneath is the way to everything: All Products, Recommended for You, Nearest to You, Newest Products and Flash Sale, which used to be reachable only from a tile.
+The top of the marketplace is one still banner (`components/buyer/HomeBanner.jsx`) over `assets/Marketplace_background.jpg` - no carousel, and no tiles beside it. The filter row underneath is the way to everything: All Products, Recommended for You, Nearest to You, Newest Products and Flash Sale, which used to be reachable only from a tile. Banner and filter row are both held to `max-w-5xl` rather than stretched across the listings: at full width the banner came out six times wider than it was tall, a letterbox strip with the farmer a thumbnail at one end. Narrower and taller gives the photo close to half the banner at its full height, and `object-right` crops the empty field down its left rather than the farmer.
 
 Sections drift up into place as they are scrolled to. A page marks what should do this with `data-reveal`; `useScrollReveal` watches those, and anything it sees come into view gets `.scroll-reveal-visible`. A page that marks nothing has its top-level blocks revealed instead, which is how every page behaved before. Sections already on screen when a page opens are revealed immediately, so nothing below a fold is ever the reason a page looks empty, and `prefers-reduced-motion` turns the whole thing off.
 
