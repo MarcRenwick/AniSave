@@ -339,7 +339,13 @@ const getProductById = asyncHandler(async (req, res) => {
 
   // A buyer opening a listing is interest in that crop, counted for the
   // farmer's dashboard. A farmer checking their own listing is not.
-  recordView(product, req);
+  //
+  // Only the page that IS the buyer opening it asks for the count. Plenty of
+  // other things load a product - the ratings page, a report form, the
+  // checkout, the farmer's own editor - and none of them is a fresh look at
+  // the listing. Nor is stepping back to it from any of those: the browser is
+  // returning to a page the buyer already opened, not opening it again.
+  if (req.query.opened === "true") recordView(product, req);
 
   res.json({
     ...product.toObject(),

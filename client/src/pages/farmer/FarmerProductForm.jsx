@@ -480,7 +480,9 @@ export default function FarmerProductForm() {
 
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+      {/* Held at the top so Back is always a click away, however far down the
+          form the farmer has got. */}
+      <div className="sticky top-0 z-30 flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-6 w-6" />
         </button>
@@ -780,7 +782,9 @@ export default function FarmerProductForm() {
               </div>
             </form>
 
-            <aside className="lg:sticky lg:top-8">
+            {/* Parked just below the bar above, rather than at the very top,
+                so the listing stays visible without sliding under it. */}
+            <aside className="lg:sticky lg:top-[76px]">
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
                 <p className="font-semibold text-gray-900">Preview</p>
                 <p className="text-xs text-gray-500">How buyers will see this listing.</p>

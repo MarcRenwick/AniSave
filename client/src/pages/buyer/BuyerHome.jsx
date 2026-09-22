@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ImageOff, Sprout, Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
+import { Sprout, Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import HomeBanner from "../../components/buyer/HomeBanner";
-import PriceTag from "../../components/products/PriceTag";
+import ProductCard from "../../components/products/ProductCard";
 import { useAuth } from "../../context/AuthContext";
-import { getAllProducts, getFarmers, SERVER_URL } from "../../services/api";
-import { onFlashSale, discountPercent } from "../../utils/pricing";
+import { getAllProducts, getFarmers } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { cityAndProvince, formatDistance, hasAddressPoint } from "../../utils/address";
 
@@ -24,48 +23,11 @@ const chipOptions = sortOptions.filter((o) => o.key !== "flash-sale");
 
 const FEATURED_SLIDES = 3;
 
-function ProductGrid({ products, navigate }) {
+function ProductGrid({ products, onOpen }) {
   return (
-    <div className="grid grid-cols-4 gap-4">
+    <div className="grid grid-cols-4 gap-5">
       {products.map((product) => (
-        <button
-          key={product._id}
-          type="button"
-          onClick={() => navigate(`/buyer/products/${product._id}`)}
-          className="overflow-hidden rounded-xl bg-white text-left shadow-sm transition duration-150 hover:shadow-md active:scale-[0.97]"
-        >
-          <div className="relative flex h-28 items-center justify-center bg-gray-50 text-gray-300">
-            {product.image ? (
-              <img
-                src={`${SERVER_URL}${product.image}`}
-                alt={product.title}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <ImageOff className="h-8 w-8" />
-            )}
-            {product.productType === "preorder" && (
-              <span className="absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">
-                Pre-order
-              </span>
-            )}
-            {onFlashSale(product) && (
-              <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                -{discountPercent(product)}%
-              </span>
-            )}
-          </div>
-          <div className="bg-[#2f8f66] px-3 py-2 text-white">
-            <p className="truncate text-sm font-semibold">{product.title}</p>
-            <PriceTag product={product} tone="light" size="sm" suffix=" per kilo" />
-            <p className="truncate text-[11px] text-white/70">
-              {formatDistance(product.farmer) && (
-                <span className="font-semibold text-white">{formatDistance(product.farmer)} · </span>
-              )}
-              {product.location || product.farmer?.location || "Location not set"}
-            </p>
-          </div>
-        </button>
+        <ProductCard key={product._id} product={product} onOpen={() => onOpen(product._id)} />
       ))}
     </div>
   );
@@ -93,6 +55,13 @@ export default function BuyerHome() {
 
   const browsing = Boolean(search.trim()) || sort !== null;
   usePreserveScroll(searchParams.toString());
+
+  // Opening a listing from the marketplace is a buyer showing interest in that
+  // crop, and the listing page counts it as one. Saying so here is what tells
+  // it apart from the same page being reached any other way - from the cart,
+  // from an order, or by stepping back to it from the ratings.
+  const openProduct = (id) =>
+    navigate(`/buyer/products/${id}`, { state: { fromBrowse: true } });
 
   const setSort = (value) =>
     setSearchParams((prev) => {
@@ -193,7 +162,7 @@ export default function BuyerHome() {
             buyerLocation={user?.address?.city || user?.location}
             onShop={handleShopNow}
             onBrowse={setSort}
-            onOpenProduct={(id) => navigate(`/buyer/products/${id}`)}
+            onOpenProduct={openProduct}
           />
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
@@ -231,7 +200,7 @@ export default function BuyerHome() {
             {products.length === 0 ? (
               <p className="text-sm text-gray-500">No products found.</p>
             ) : (
-              <ProductGrid products={products} navigate={navigate} />
+              <ProductGrid products={products} onOpen={openProduct} />
             )}
           </section>
         )}
@@ -243,7 +212,7 @@ export default function BuyerHome() {
               {allProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
-                <ProductGrid products={allProducts} navigate={navigate} />
+                <ProductGrid products={allProducts} onOpen={openProduct} />
               )}
             </section>
 
@@ -254,7 +223,7 @@ export default function BuyerHome() {
                   No highly-rated products yet - check back once buyers start rating orders.
                 </p>
               ) : (
-                <ProductGrid products={recommendedProducts} navigate={navigate} />
+                <ProductGrid products={recommendedProducts} onOpen={openProduct} />
               )}
             </section>
 
@@ -304,7 +273,7 @@ export default function BuyerHome() {
               {newestProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
-                <ProductGrid products={newestProducts} navigate={navigate} />
+                <ProductGrid products={newestProducts} onOpen={openProduct} />
               )}
             </section>
           </div>

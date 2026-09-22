@@ -51,6 +51,9 @@ function ProductGrid({ products, empty }) {
         <Link
           key={product._id}
           to={`/buyer/products/${product._id}`}
+          // A shop page is a place buyers browse, so opening a listing from
+          // here counts as interest in the same way the marketplace does.
+          state={{ fromBrowse: true }}
           className="overflow-hidden rounded-xl bg-white shadow-sm transition duration-150 hover:shadow-md active:scale-[0.98]"
         >
           <div className="relative flex h-32 w-full items-center justify-center bg-gray-50 text-gray-300">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, useNavigationType, useLocation, Link } from "react-router-dom";
 import { ArrowLeft, Package, Star, ShoppingBasket } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
@@ -26,8 +26,20 @@ function Stat({ label, value }) {
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
+  const { state } = useLocation();
   const { user } = useAuth();
   const { addToCart } = useCart();
+
+  // Whether this is the buyer opening the listing, which counts towards what
+  // buyers are looking for, or the same page being returned to.
+  //
+  // Two things have to be true. It has to have been reached from somewhere
+  // buyers browse - the marketplace sections or a farmer's shop - which is
+  // what `fromBrowse` says. And it has to be a new step forward: going back
+  // here from the ratings page or the checkout replays the very same history
+  // entry, `fromBrowse` and all, and the browser calls that a POP.
+  const isFreshOpen = navigationType === "PUSH" && state?.fromBrowse === true;
 
   const [product, setProduct] = useState(null);
   const [farmerStats, setFarmerStats] = useState(null);
@@ -39,7 +51,7 @@ export default function ProductDetail() {
 
   useEffect(() => {
     setLoading(true);
-    getProduct(id)
+    getProduct(id, { opened: isFreshOpen })
       .then(({ data }) => {
         setProduct(data);
         return data.farmer?._id ? getFarmerProfile(data.farmer._id) : null;
@@ -49,7 +61,9 @@ export default function ProductDetail() {
       })
       .catch(() => setError("Could not load this product."))
       .finally(() => setLoading(false));
-  }, [id]);
+    // Both hold still for as long as this history entry is on screen, so this
+    // fetches once per listing opened and not once per render.
+  }, [id, isFreshOpen]);
 
   const handleConfirmAddToCart = (qty) => {
     addToCart(product, qty);

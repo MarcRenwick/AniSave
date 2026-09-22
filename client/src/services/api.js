@@ -71,7 +71,12 @@ export const getFarmerProfile = (id) => api.get(`/farmers/${id}`);
 export const getServiceArea = () => api.get("/locations/service-area");
 export const getProvinces = () => api.get("/locations/provinces");
 export const getCities = (provinceCode) => api.get(`/locations/provinces/${provinceCode}/cities`);
-export const getProduct = (id) => api.get(`/products/${id}`);
+// `opened` marks the one fetch that is a buyer opening the listing from the
+// marketplace, which is what the demand figures count. Everything else that
+// loads a product - the ratings page, the checkout, the farmer's own editor -
+// leaves it off and counts for nothing.
+export const getProduct = (id, { opened = false } = {}) =>
+  api.get(`/products/${id}${opened ? "?opened=true" : ""}`);
 export const createProduct = (formData) =>
   api.post("/products", formData, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateProduct = (id, formData) =>
