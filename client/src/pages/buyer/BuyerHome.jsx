@@ -9,9 +9,8 @@ import { getAllProducts, getFarmers } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { cityAndProvince, formatDistance, hasAddressPoint } from "../../utils/address";
 
-// The filter row. Flash Sale used to be reached from a tile beside the banner
-// rather than from here; with the tile gone this row is the only way to it, so
-// it has a button of its own like the rest.
+// The filter row. Flash Sale is reachable from the tile beside the banner as
+// well, and keeps a button here too, so neither is the only way to it.
 const sortOptions = [
   { key: "all", label: "All Products", icon: LayoutGrid },
   { key: "recommended", label: "Recommended for You", icon: Star },
@@ -20,11 +19,26 @@ const sortOptions = [
   { key: "flash-sale", label: "Flash Sale", icon: Zap },
 ];
 
+const FEATURED_SLIDES = 3;
+
+// data-reveal-children, not data-reveal: the cards rise one by one as they
+// are scrolled to, rather than the whole grid arriving in one go. A grid of
+// fifteen listings is several screens tall, and revealing it as a single
+// block means everything past the first row is already there by the time it
+// is reached.
+//
+// Each card is wrapped rather than revealed itself. A card is a <button>, and
+// a button already carries a 150ms transition for its hover and press - which
+// would win over the reveal's slow drift and leave the card snapping into
+// place. A plain wrapper has no such transition to lose the argument with; a
+// one-cell grid so the card still fills it in both directions.
 function ProductGrid({ products, onOpen }) {
   return (
-    <div className="grid grid-cols-4 gap-5">
+    <div className="grid grid-cols-4 gap-5" data-reveal-children>
       {products.map((product) => (
-        <ProductCard key={product._id} product={product} onOpen={() => onOpen(product._id)} />
+        <div key={product._id} className="grid">
+          <ProductCard product={product} onOpen={() => onOpen(product._id)} />
+        </div>
       ))}
     </div>
   );
@@ -44,6 +58,7 @@ export default function BuyerHome() {
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
+  const [flashSaleProducts, setFlashSaleProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -86,19 +101,20 @@ export default function BuyerHome() {
       return;
     }
 
-    // Recommended has its own section further down the page. Flash Sale no
-    // longer needs fetching here: it fed the banner, and the banner is a
-    // still picture now - the filter row asks for it when it is wanted.
+    // Flash Sale feeds the banner at the top; Recommended is its own section
+    // further down the page.
     Promise.all([
       getAllProducts(),
+      getAllProducts({ sort: "flash-sale" }),
       getAllProducts({ sort: "recommended" }),
       getFarmers({ sort: "nearest" }),
     ])
-      .then(([newestRes, recommendedRes, farmersRes]) => {
+      .then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
         setNewestProducts(newestRes.data.slice(0, 4));
         // The same fetch, kept whole for the "All Products" section at the
         // bottom of the page - already newest-first, no extra request.
         setAllProducts(newestRes.data);
+        setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
         setRecommendedProducts(recommendedRes.data.slice(0, 4));
         setFarmers(farmersRes.data);
       })
@@ -129,6 +145,17 @@ export default function BuyerHome() {
     </>
   );
 
+  // Real listings for the banner: Flash Sale items first, topped up with the
+  // newest, and only ones with a photo to show.
+  const flashSaleIds = new Set(flashSaleProducts.map((p) => p._id));
+  const featured = [...flashSaleProducts, ...newestProducts]
+    .filter((p, i, all) => p.image && all.findIndex((q) => q._id === p._id) === i)
+    .slice(0, FEATURED_SLIDES)
+    .map((product) => ({
+      product,
+      tag: flashSaleIds.has(product._id) ? "Flash Sale" : "Just Listed",
+    }));
+
   const handleShopNow = () => {
     if (browsing) {
       setSearchParams(new URLSearchParams());
@@ -141,11 +168,15 @@ export default function BuyerHome() {
     <BuyerLayout>
       <div className="p-8">
         <div className="mb-8" data-reveal>
-          <HomeBanner onShop={handleShopNow} />
+          <HomeBanner
+            featured={featured}
+            buyerLocation={user?.address?.city || user?.location}
+            onShop={handleShopNow}
+            onBrowse={setSort}
+            onOpenProduct={openProduct}
+          />
 
-          {/* Held to the banner's width so the two read as one block above the
-              listings rather than a narrow picture on a wider bar. */}
-          <div className="mx-auto mt-4 flex w-full max-w-5xl flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
             {sortOptions.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
@@ -167,8 +198,8 @@ export default function BuyerHome() {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && browsing && (
-          <section data-reveal>
-            <h2 className="mb-3 text-lg font-semibold text-gray-900">
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>
               {search.trim() ? "Search Results" : "All Products"}{" "}
               <span className="text-sm font-normal text-gray-400">
                 · Sorted by {sortOptions.find((o) => o.key === (sort || "newest"))?.label}
@@ -187,8 +218,8 @@ export default function BuyerHome() {
 
         {!loading && !error && !browsing && (
           <div className="space-y-8">
-            <section id="home-products" data-reveal>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">All Products</h2>
+            <section id="home-products">
+              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>All Products</h2>
               {allProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
@@ -196,8 +227,8 @@ export default function BuyerHome() {
               )}
             </section>
 
-            <section data-reveal>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for You</h2>
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>Recommended for You</h2>
               {recommendedProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">
                   No highly-rated products yet - check back once buyers start rating orders.
@@ -207,18 +238,21 @@ export default function BuyerHome() {
               )}
             </section>
 
-            <section data-reveal>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">Nearest Farmers</h2>
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>Nearest Farmers</h2>
               {noAddressHint && (
                 <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{noAddressHint}</p>
               )}
               {nearestFarmers.length === 0 ? (
                 <p className="text-sm text-gray-500">No farmers yet.</p>
               ) : (
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-4 gap-4" data-reveal-children>
                   {nearestFarmers.map((farmer) => (
+                    // Wrapped for the same reason as a listing card: the tile
+                    // is a button, and its own transition would outrun the
+                    // reveal.
+                    <div key={farmer._id} className="grid">
                     <button
-                      key={farmer._id}
                       type="button"
                       onClick={() => navigate(`/buyer/farmers/${farmer._id}`)}
                       className="flex flex-col items-center gap-2 rounded-xl bg-white p-4 text-center shadow-sm transition duration-150 hover:shadow-md active:scale-[0.97]"
@@ -243,13 +277,14 @@ export default function BuyerHome() {
                         </p>
                       )}
                     </button>
+                    </div>
                   ))}
                 </div>
               )}
             </section>
 
-            <section data-reveal>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900">Newest Products</h2>
+            <section>
+              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>Newest Products</h2>
               {newestProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
               ) : (
