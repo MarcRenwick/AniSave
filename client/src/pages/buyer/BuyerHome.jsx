@@ -9,9 +9,9 @@ import { getAllProducts, getFarmers } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { cityAndProvince, formatDistance, hasAddressPoint } from "../../utils/address";
 
-// The filter row shows these four. Flash Sale is a real, valid sort (kept
-// here so the URL param and the "Sorted by ..." label still resolve) but
-// isn't one of the row's buttons - it's reached only from the banner tile.
+// The filter row. Flash Sale used to be reached from a tile beside the banner
+// rather than from here; with the tile gone this row is the only way to it, so
+// it has a button of its own like the rest.
 const sortOptions = [
   { key: "all", label: "All Products", icon: LayoutGrid },
   { key: "recommended", label: "Recommended for You", icon: Star },
@@ -19,9 +19,6 @@ const sortOptions = [
   { key: "newest", label: "Newest Products", icon: Sparkles },
   { key: "flash-sale", label: "Flash Sale", icon: Zap },
 ];
-const chipOptions = sortOptions.filter((o) => o.key !== "flash-sale");
-
-const FEATURED_SLIDES = 3;
 
 function ProductGrid({ products, onOpen }) {
   return (
@@ -47,7 +44,6 @@ export default function BuyerHome() {
   const [products, setProducts] = useState([]);
   const [newestProducts, setNewestProducts] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
-  const [flashSaleProducts, setFlashSaleProducts] = useState([]);
   const [recommendedProducts, setRecommendedProducts] = useState([]);
   const [farmers, setFarmers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,20 +86,19 @@ export default function BuyerHome() {
       return;
     }
 
-    // Flash Sale feeds the banner at the top; Recommended is its own section
-    // further down the page.
+    // Recommended has its own section further down the page. Flash Sale no
+    // longer needs fetching here: it fed the banner, and the banner is a
+    // still picture now - the filter row asks for it when it is wanted.
     Promise.all([
       getAllProducts(),
-      getAllProducts({ sort: "flash-sale" }),
       getAllProducts({ sort: "recommended" }),
       getFarmers({ sort: "nearest" }),
     ])
-      .then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
+      .then(([newestRes, recommendedRes, farmersRes]) => {
         setNewestProducts(newestRes.data.slice(0, 4));
         // The same fetch, kept whole for the "All Products" section at the
         // bottom of the page - already newest-first, no extra request.
         setAllProducts(newestRes.data);
-        setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
         setRecommendedProducts(recommendedRes.data.slice(0, 4));
         setFarmers(farmersRes.data);
       })
@@ -134,17 +129,6 @@ export default function BuyerHome() {
     </>
   );
 
-  // Real listings for the banner: Flash Sale items first, topped up with the
-  // newest, and only ones with a photo to show.
-  const flashSaleIds = new Set(flashSaleProducts.map((p) => p._id));
-  const featured = [...flashSaleProducts, ...newestProducts]
-    .filter((p, i, all) => p.image && all.findIndex((q) => q._id === p._id) === i)
-    .slice(0, FEATURED_SLIDES)
-    .map((product) => ({
-      product,
-      tag: flashSaleIds.has(product._id) ? "Flash Sale" : "Just Listed",
-    }));
-
   const handleShopNow = () => {
     if (browsing) {
       setSearchParams(new URLSearchParams());
@@ -156,17 +140,11 @@ export default function BuyerHome() {
   return (
     <BuyerLayout>
       <div className="p-8">
-        <div className="mb-8">
-          <HomeBanner
-            featured={featured}
-            buyerLocation={user?.address?.city || user?.location}
-            onShop={handleShopNow}
-            onBrowse={setSort}
-            onOpenProduct={openProduct}
-          />
+        <div className="mb-8" data-reveal>
+          <HomeBanner onShop={handleShopNow} />
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
-            {chipOptions.map(({ key, label, icon: Icon }) => (
+            {sortOptions.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 type="button"
@@ -187,7 +165,7 @@ export default function BuyerHome() {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && browsing && (
-          <section>
+          <section data-reveal>
             <h2 className="mb-3 text-lg font-semibold text-gray-900">
               {search.trim() ? "Search Results" : "All Products"}{" "}
               <span className="text-sm font-normal text-gray-400">
@@ -207,7 +185,7 @@ export default function BuyerHome() {
 
         {!loading && !error && !browsing && (
           <div className="space-y-8">
-            <section id="home-products">
+            <section id="home-products" data-reveal>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">All Products</h2>
               {allProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>
@@ -216,7 +194,7 @@ export default function BuyerHome() {
               )}
             </section>
 
-            <section>
+            <section data-reveal>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Recommended for You</h2>
               {recommendedProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">
@@ -227,7 +205,7 @@ export default function BuyerHome() {
               )}
             </section>
 
-            <section>
+            <section data-reveal>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Nearest Farmers</h2>
               {noAddressHint && (
                 <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{noAddressHint}</p>
@@ -268,7 +246,7 @@ export default function BuyerHome() {
               )}
             </section>
 
-            <section>
+            <section data-reveal>
               <h2 className="mb-3 text-lg font-semibold text-gray-900">Newest Products</h2>
               {newestProducts.length === 0 ? (
                 <p className="text-sm text-gray-500">No products yet.</p>

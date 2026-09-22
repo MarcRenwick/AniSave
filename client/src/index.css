@@ -13,8 +13,13 @@
      either direction re-triggers it. Applied via useScrollReveal(). */
   .scroll-reveal {
     opacity: 0;
-    transform: translateY(24px);
-    transition: opacity 500ms ease, transform 500ms ease;
+    transform: translateY(32px);
+    /* Unhurried on the way in, so a section drifts up into place as it is
+       scrolled to rather than snapping. The curve is slow to start and slow
+       to settle, which is what makes it read as gentle rather than merely
+       late. */
+    transition: opacity 900ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      transform 900ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   .scroll-reveal-visible {
     opacity: 1;
@@ -23,6 +28,16 @@
        trapped absolutely-positioned dropdowns/overlays inside it behind
        later sibling sections instead of letting them float on top. */
     transform: none;
+  }
+
+  /* Anyone who has asked their system for less movement gets the content
+     without it, rather than a page whose sections start invisible. */
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
   }
 
   /* A button "growing" toward the cursor on hover, matching the existing

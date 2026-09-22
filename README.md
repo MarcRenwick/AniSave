@@ -101,6 +101,14 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 - **Errors and headers** — errors never include stack traces or internal text (details go to the server log), `helmet` sets security headers, and CORS only allows `CLIENT_URL`.
 - **Tests** — with `NODE_ENV=test` no email is ever sent (messages are written to a file in the temp folder); add `RATE_LIMIT=off` to run bulk tests. Set `NODE_ENV=production` when deployed.
 
+## The buyer's marketplace
+
+The top of the marketplace is one still banner (`components/buyer/HomeBanner.jsx`) over `assets/Marketplace_background.jpg` - no carousel, and no tiles beside it. The filter row underneath is the way to everything: All Products, Recommended for You, Nearest to You, Newest Products and Flash Sale, which used to be reachable only from a tile.
+
+Sections drift up into place as they are scrolled to. A page marks what should do this with `data-reveal`; `useScrollReveal` watches those, and anything it sees come into view gets `.scroll-reveal-visible`. A page that marks nothing has its top-level blocks revealed instead, which is how every page behaved before. Sections already on screen when a page opens are revealed immediately, so nothing below a fold is ever the reason a page looks empty, and `prefers-reduced-motion` turns the whole thing off.
+
+The cart (`pages/buyer/CartPage.jsx`) is a table: a tick, the photo and name, the price per kilo, the quantity, that row's total and a remove button, with the **total expense** of the ticked rows underneath. Quantities can be typed as well as stepped, and are held between 1 and the stock the farmer has. Unticking a row leaves it in the cart but takes it out of the total and out of what Check Out sends on to the checkout page.
+
 ## Marketplace product cards
 
 A card on the buyer marketplace (`components/products/ProductCard.jsx`) shows six things and no more: the photo, the name, the price per kilo, the category, the location and how many kilos are available. White card, near-white page, green used only as an accent.
