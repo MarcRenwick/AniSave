@@ -727,6 +727,9 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   // Their conversations go too, with every message in them: a conversation
   // can't carry on with only one person left in it.
   const conversationIds = await Conversation.distinct("_id", { $or: [{ buyer: user._id }, { farmer: user._id }] });
+  (await Message.distinct("image", { conversation: { $in: conversationIds }, image: { $type: "string" } })).forEach(
+    deleteImageFile
+  );
   await Message.deleteMany({ conversation: { $in: conversationIds } });
   await Conversation.deleteMany({ _id: { $in: conversationIds } });
   disconnectUser(user._id);
@@ -853,7 +856,12 @@ const exportMyData = asyncHandler(async (req, res) => {
         with: other?.farmName || other?.name || "Deleted account",
         messages: chatMessages
           .filter((m) => m.conversation.equals(conversation._id))
-          .map((m) => ({ from: m.sender.equals(me._id) ? "me" : "them", text: m.text, sentAt: m.createdAt })),
+          .map((m) => ({
+            from: m.sender.equals(me._id) ? "me" : "them",
+            text: m.text,
+            ...(m.image ? { photo: true } : {}),
+            sentAt: m.createdAt,
+          })),
       };
     }),
   };

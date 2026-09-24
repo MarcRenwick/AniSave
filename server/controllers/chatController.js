@@ -1,11 +1,14 @@
+const path = require("path");
 const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
+const Order = require("../models/Order");
 const User = require("../models/User");
 const validate = require("../utils/validate");
 const { hasBlocked } = require("../utils/blocks");
-const { emitToUser } = require("../utils/realtime");
+const { emitToUser, isOnline, onClientEvent } = require("../utils/realtime");
+const { chatImagePath, deleteImageFile, sendStoredFile } = require("../utils/fileUtils");
 
 // 1-on-1 chat between a buyer and a farmer. A buyer starts a conversation from
 // a farmer's shop or one of their products; the farmer replies. Every route is
@@ -15,8 +18,11 @@ const { emitToUser } = require("../utils/realtime");
 const MAX_MESSAGE = 1000;
 // How much of a conversation is loaded when it is opened: the newest messages.
 const MESSAGE_PAGE = 200;
-// What each side sees of the other.
-const PERSON = "name farmName avatar role isBanned";
+// What each side sees of the other. (blockedUsers is only read to tell whether
+// the buyer has blocked the farmer - it is never sent.)
+const PERSON = "name farmName avatar role isBanned lastActiveAt blockedUsers";
+// How many of a buyer's orders from the farmer are shown in their conversation.
+const ORDER_LIMIT = 20;
 
 const otherSideOf = (side) => (side === "buyer" ? "farmer" : "buyer");
 
@@ -24,23 +30,43 @@ const messageView = (message) => ({
   _id: message._id,
   conversation: message.conversation,
   sender: message.sender,
-  text: message.text,
+  text: message.text || "",
+  image: message.image || null,
   createdAt: message.createdAt,
 });
 
-// What one person is shown about a conversation: who it is with, the newest
-// message, and how many messages they haven't read.
+// Has the buyer in this conversation blocked the farmer in it? Then neither
+// sees when the other is active, on top of not being able to message.
+const isBlockedPair = (conversation) =>
+  Boolean(conversation.buyer && conversation.farmer) && hasBlocked(conversation.buyer, conversation.farmer._id);
+
+// What one person is shown about a conversation: who it is with and whether
+// they are active, the newest message, how many messages they haven't read,
+// and whether the other person has seen what they sent.
 const viewFor = (conversation, userId) => {
   const side = conversation.buyer?._id?.toString() === userId.toString() ? "buyer" : "farmer";
-  const other = conversation[otherSideOf(side)];
+  const otherSide = otherSideOf(side);
+  const other = conversation[otherSide];
+  const showsActivity = Boolean(other) && !isBlockedPair(conversation);
   return {
     _id: conversation._id,
     other: other
-      ? { _id: other._id, name: other.name, farmName: other.farmName || null, role: other.role, avatar: other.avatar || null }
-      : { _id: null, name: "Deleted account", farmName: null, role: otherSideOf(side), avatar: null },
-    lastMessage: conversation.lastMessage?.text ? conversation.lastMessage : null,
+      ? {
+          _id: other._id,
+          name: other.name,
+          farmName: other.farmName || null,
+          role: other.role,
+          avatar: other.avatar || null,
+          online: showsActivity && isOnline(other._id),
+          lastActiveAt: showsActivity ? other.lastActiveAt || null : null,
+        }
+      : { _id: null, name: "Deleted account", farmName: null, role: otherSide, avatar: null, online: false, lastActiveAt: null },
+    lastMessage: conversation.lastMessage?.text || conversation.lastMessage?.image ? conversation.lastMessage : null,
     lastMessageAt: conversation.lastMessageAt,
     unread: conversation[`${side}Unread`] || 0,
+    // The other side's unread count only ever holds this person's messages,
+    // so when it is 0 they have seen everything this person sent.
+    seen: !conversation[`${otherSide}Unread`],
   };
 };
 
@@ -157,6 +183,9 @@ const markRead = asyncHandler(async (req, res) => {
   const side = req.user.role;
   if (conversation[`${side}Unread`] > 0) {
     await Conversation.updateOne({ _id: conversation._id }, { $set: { [`${side}Unread`]: 0 } });
+    // What the other person sent has now been seen: their "Sent" turns to "Seen".
+    const other = conversation[otherSideOf(side)];
+    if (other) emitToUser(other._id, "chat:seen", { conversationId: conversation._id });
   }
   const total = await unreadTotal(req.user._id, side);
   // Their other open tabs update their count too.
@@ -164,25 +193,53 @@ const markRead = asyncHandler(async (req, res) => {
   res.json({ unreadTotal: total });
 });
 
-// @desc    Send a message
-// @route   POST /api/chats/:id/messages   { text }
-// @access  Private (the two people in it)
-const sendMessage = asyncHandler(async (req, res) => {
+// Runs before a photo is accepted at all: the conversation has to be theirs,
+// and they have to be able to write in it - so nothing is stored for a
+// message that would be refused anyway.
+const checkCanSend = asyncHandler(async (req, res, next) => {
   const conversation = await findMine(req, res);
-  const text = validate.text(validate.plainBody(req.body).text, "Message", { max: MAX_MESSAGE });
   const problem = await sendProblem(conversation, req.user);
   if (problem) {
     res.status(403);
     throw new Error(problem);
   }
+  req.conversation = conversation;
+  next();
+});
+
+// @desc    Send a message: text, or a photo with an optional caption
+// @route   POST /api/chats/:id/messages   { text }, or multipart { image, text? }
+// @access  Private (the two people in it)
+const sendMessage = asyncHandler(async (req, res) => {
+  const image = chatImagePath(req.file);
+  let message;
+  try {
+    const { text } = validate.plainBody(req.body);
+    message = await Message.create({
+      conversation: req.conversation._id,
+      sender: req.user._id,
+      text: image
+        ? validate.optionalText(text, "Message", { max: MAX_MESSAGE }) || ""
+        : validate.text(text, "Message", { max: MAX_MESSAGE }),
+      ...(image ? { image } : {}),
+    });
+  } catch (err) {
+    // A message that isn't sent keeps no photo behind.
+    if (image) deleteImageFile(image);
+    throw err;
+  }
 
   const mySide = req.user.role;
   const otherSide = otherSideOf(mySide);
-  const message = await Message.create({ conversation: conversation._id, sender: req.user._id, text });
   const updated = await Conversation.findByIdAndUpdate(
-    conversation._id,
+    req.conversation._id,
     {
-      $set: { lastMessage: { text, sender: req.user._id, createdAt: message.createdAt }, lastMessageAt: message.createdAt },
+      $set: {
+        lastMessage: { text: message.text, image: Boolean(image), sender: req.user._id, createdAt: message.createdAt },
+        lastMessageAt: message.createdAt,
+        // Replying means they have read what came before it.
+        [`${mySide}Unread`]: 0,
+      },
       $inc: { [`${otherSide}Unread`]: 1 },
     },
     { new: true }
@@ -203,4 +260,111 @@ const sendMessage = asyncHandler(async (req, res) => {
   res.status(201).json({ message: view, conversation: viewFor(updated, req.user._id) });
 });
 
-module.exports = { getConversations, getUnreadCount, startConversation, getConversation, markRead, sendMessage };
+// @desc    What the buyer has ordered from the farmer in this conversation, newest first
+// @route   GET /api/chats/:id/orders
+// @access  Private (the buyer in it)
+const getConversationOrders = asyncHandler(async (req, res) => {
+  const conversation = await findMine(req, res);
+  if (!conversation.farmer) return res.json({ orders: [], total: 0 });
+  const mine = { buyer: req.user._id, farmer: conversation.farmer._id };
+  const [orders, total] = await Promise.all([
+    Order.find(mine).sort({ createdAt: -1 }).limit(ORDER_LIMIT).populate("product", "image").lean(),
+    Order.countDocuments(mine),
+  ]);
+  res.json({
+    orders: orders.map((o) => ({
+      _id: o._id,
+      productTitle: o.productTitle,
+      image: o.product?.image || null,
+      quantity: o.quantity,
+      total: o.total,
+      status: o.status,
+      createdAt: o.createdAt,
+    })),
+    total,
+  });
+});
+
+// @desc    A photo sent in a conversation
+// @route   GET /api/chat-images/:filename
+// @access  Private (the two people in that conversation)
+const getChatImage = asyncHandler(async (req, res) => {
+  const image = `/chat-images/${path.basename(String(req.params.filename))}`;
+  const message = await Message.findOne({ image }).select("conversation").lean();
+  const theirs = message && (await Conversation.exists({ _id: message.conversation, [req.user.role]: req.user._id }));
+  const sent =
+    Boolean(theirs) &&
+    (await sendStoredFile(res, image, {
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Disposition": "inline",
+    }));
+  if (!sent) {
+    res.status(404);
+    throw new Error("Photo not found");
+  }
+});
+
+// Typing. While someone types, their page sends "chat:typing" { conversation,
+// typing: true } every few seconds, and { typing: false } when they stop or
+// send. It goes straight on to the other person's open tabs and is never
+// saved - and only to someone they could message right now, never across a
+// block.
+const TYPING_RECHECK_MS = 1000;
+const TYPING_CHECK_GAP_MS = 250;
+
+// Who hears that this person is typing in that conversation, if anyone.
+async function typingPartner(userId, conversationId) {
+  if (!mongoose.isValidObjectId(conversationId)) return null;
+  const me = await User.findById(userId);
+  if (!me || !["buyer", "farmer"].includes(me.role)) return null;
+  const conversation = await Conversation.findOne({ _id: conversationId, [me.role]: me._id }).populate("buyer farmer", PERSON);
+  if (!conversation || (await sendProblem(conversation, me))) return null;
+  return String(conversation[otherSideOf(me.role)]._id);
+}
+
+onClientEvent("chat:typing", async (socket, payload) => {
+  const conversation = typeof payload?.conversation === "string" ? payload.conversation : "";
+  const typingTo = (socket.data.typingTo ??= new Map());
+  const told = typingTo.get(conversation);
+
+  if (payload?.typing !== true) {
+    if (told) {
+      typingTo.delete(conversation);
+      emitToUser(told.to, "chat:typing", { conversation, typing: false });
+    }
+    return;
+  }
+
+  // However often a page sends it, the database is asked at most once a
+  // second per conversation, and four times a second in all.
+  const now = Date.now();
+  if (told && now - told.checkedAt < TYPING_RECHECK_MS) return;
+  if (now - (socket.data.typingCheckedAt || 0) < TYPING_CHECK_GAP_MS) return;
+  socket.data.typingCheckedAt = now;
+
+  const to = await typingPartner(socket.data.userId, conversation);
+  if (!to) {
+    typingTo.delete(conversation);
+    return;
+  }
+  typingTo.set(conversation, { to, checkedAt: now });
+  emitToUser(to, "chat:typing", { conversation, typing: true });
+});
+
+// A tab closed mid-sentence stops showing as typing straight away.
+onClientEvent("disconnect", (socket) => {
+  socket.data.typingTo?.forEach(({ to }, conversation) => emitToUser(to, "chat:typing", { conversation, typing: false }));
+});
+
+module.exports = {
+  getConversations,
+  getUnreadCount,
+  startConversation,
+  getConversation,
+  markRead,
+  checkCanSend,
+  sendMessage,
+  getConversationOrders,
+  getChatImage,
+};

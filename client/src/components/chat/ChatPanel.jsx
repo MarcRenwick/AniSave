@@ -1,17 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Send } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, Image as ImageIcon, ImagePlus, MessageCircle, Send, X } from "lucide-react";
 import Avatar from "../Avatar";
+import ChatOrders from "./ChatOrders";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
+import { useDocumentUrl } from "../../utils/documents";
+import { activeStatus } from "../../utils/activity";
+import { MAX_PHOTO_BYTES, PHOTO_TYPES, shrinkPhoto } from "../../utils/photos";
 import {
   getConversations,
   getConversation,
   markConversationRead,
   sendChatMessage,
+  sendChatPhoto,
 } from "../../services/api";
 
 const MAX_MESSAGE = 1000;
+// "Typing": said again every few seconds while they keep typing, taken back a
+// few seconds after the last keystroke - and, on the other side, dropped if it
+// isn't renewed (a laptop lid closed mid-sentence).
+const TYPING_REPEAT = 2500;
+const TYPING_IDLE = 4000;
+const TYPING_SHOWN_FOR = 6000;
+// How often "Active 5 minutes ago" is worked out again.
+const ACTIVITY_REFRESH = 30 * 1000;
 
 // A farmer goes by their farm's name, the way buyers know them.
 const displayName = (person) =>
@@ -28,21 +42,111 @@ const listTime = (date) => (date ? (isToday(date) ? clock(date) : day(date)) : "
 // The newest conversation first, without the same one twice.
 const upsert = (list, conversation) => [conversation, ...list.filter((c) => c._id !== conversation._id)];
 
-// Conversations down the side, the open one beside them. New messages arrive
-// over the live connection (context/ChatContext.jsx) without a refresh.
+const photoForm = (file, caption) => {
+  const form = new FormData();
+  form.append("image", file, file.name);
+  if (caption) form.append("text", caption);
+  return form;
+};
+
+// A green dot on someone's picture while they have AniSave open.
+function OnlineDot({ online }) {
+  if (!online) return null;
+  return (
+    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-white" data-testid="online-dot" />
+  );
+}
+
+// Under the name: their role, then "Active now" or how long ago they were
+// active - worked out again every half minute, so it doesn't go stale.
+function ActivityLine({ person }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((n) => n + 1), ACTIVITY_REFRESH);
+    return () => clearInterval(timer);
+  }, []);
+  const status = activeStatus(person.online, person.lastActiveAt);
+  return (
+    <p className="truncate text-xs text-gray-500" data-testid="chat-status">
+      <span className="capitalize">{person.role}</span>
+      {status && (
+        <>
+          {" · "}
+          <span className={person.online ? "font-medium text-[#2f8f66]" : ""}>{status}</span>
+        </>
+      )}
+    </p>
+  );
+}
+
+// A photo in a message. It is private, so it is fetched with the login token
+// (see utils/documents.js). Always the same height, so the conversation
+// doesn't jump about as photos arrive.
+function ChatPhoto({ path, onOpen }) {
+  const { url, failed } = useDocumentUrl(path);
+  if (!url) {
+    return (
+      <div
+        role="img"
+        aria-label={failed ? "Photo unavailable" : "Loading photo"}
+        className="flex h-52 w-52 items-center justify-center rounded-xl bg-black/5 text-xs text-gray-400"
+      >
+        {failed ? "Photo unavailable" : ""}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(url)}
+      aria-label="View photo"
+      className="block overflow-hidden rounded-xl hover:transform-none"
+    >
+      <img src={url} alt="Photo" className="h-52 w-auto min-w-24 max-w-64 object-cover" />
+    </button>
+  );
+}
+
+function TypingBubble({ name }) {
+  return (
+    <div className="flex flex-col items-start" data-testid="typing-indicator">
+      <div
+        role="status"
+        aria-label={`${name} is typing`}
+        className="flex items-center gap-1 rounded-2xl rounded-bl-sm bg-white px-4 py-3 ring-1 ring-gray-200"
+      >
+        {[0, 150, 300].map((delay) => (
+          <span key={delay} className="h-2 w-2 animate-bounce rounded-full bg-gray-400" style={{ animationDelay: `${delay}ms` }} />
+        ))}
+      </div>
+      <p className="mt-1 text-[11px] text-gray-400">{name} is typing...</p>
+    </div>
+  );
+}
+
+// Conversations down the side, the open one beside them. New messages, "Seen",
+// "typing..." and who is active arrive over the live connection
+// (context/ChatContext.jsx) without a refresh.
 export default function ChatPanel({ basePath, heightClass }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { subscribe, setUnreadTotal, reconnects } = useChat();
+  const { subscribe, sendTyping, setUnreadTotal, reconnects } = useChat();
 
   const [conversations, setConversations] = useState([]);
   const [listLoading, setListLoading] = useState(true);
   const [thread, setThread] = useState({ id: null, conversation: null, messages: [], notice: null, error: "" });
   const [text, setText] = useState("");
+  // A photo waiting to be sent, with the conversation it was chosen in.
+  const [photo, setPhoto] = useState(null);
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  // The conversations where the other person is typing right now.
+  const [typingIn, setTypingIn] = useState({});
+  // A photo being looked at full size.
+  const [viewing, setViewing] = useState(null);
   const scrollRef = useRef(null);
+  const fileRef = useRef(null);
   // Which conversation is open, for a message that arrives while it is.
   const openId = useRef(id);
   useEffect(() => {
@@ -53,6 +157,8 @@ export default function ChatPanel({ basePath, heightClass }) {
   const myId = user?._id;
   const threadLoading = Boolean(id) && thread.id !== id;
   const active = thread.id === id ? thread.conversation : null;
+  const staged = photo?.conversation === id ? photo : null;
+  const theyAreTyping = Boolean(id && typingIn[id]);
 
   // Reading a conversation clears its count, here and on the Messages link.
   const markRead = useCallback(
@@ -62,6 +168,27 @@ export default function ChatPanel({ basePath, heightClass }) {
         .catch(() => {}),
     [setUnreadTotal]
   );
+
+  // "Seen" has to mean seen: while this tab is in the background, what arrives
+  // is only marked read once they come back to it.
+  const readWhenBack = useRef(null);
+  const markReadWhenSeen = useCallback(
+    (conversationId) => {
+      if (document.visibilityState === "visible") markRead(conversationId);
+      else readWhenBack.current = conversationId;
+    },
+    [markRead]
+  );
+  useEffect(() => {
+    const onVisible = () => {
+      const conversationId = readWhenBack.current;
+      if (document.visibilityState !== "visible" || !conversationId) return;
+      readWhenBack.current = null;
+      if (conversationId === openId.current) markRead(conversationId);
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [markRead]);
 
   // Loaded on opening, and again after the live connection comes back.
   useEffect(() => {
@@ -79,7 +206,7 @@ export default function ChatPanel({ basePath, heightClass }) {
         if (cancelled) return;
         setThread({ id, conversation: data.conversation, messages: data.messages, notice: data.notice, error: "" });
         setConversations((list) => list.map((c) => (c._id === id ? { ...c, unread: 0 } : c)));
-        markRead(id);
+        markReadWhenSeen(id);
       })
       .catch(() => {
         if (!cancelled) {
@@ -89,44 +216,168 @@ export default function ChatPanel({ basePath, heightClass }) {
     return () => {
       cancelled = true;
     };
-  }, [id, markRead, reconnects]);
+  }, [id, markReadWhenSeen, reconnects]);
 
-  // A new message, from either side, the moment the server saves it.
-  useEffect(
-    () =>
-      subscribe(({ message, conversation }) => {
+  // The other person typing, shown until they stop, send, or go quiet.
+  const typingTimers = useRef({});
+  const showTyping = useCallback((conversationId, typing) => {
+    clearTimeout(typingTimers.current[conversationId]);
+    if (typing) {
+      typingTimers.current[conversationId] = setTimeout(
+        () => setTypingIn((current) => ({ ...current, [conversationId]: false })),
+        TYPING_SHOWN_FOR
+      );
+    }
+    setTypingIn((current) =>
+      Boolean(current[conversationId]) === typing ? current : { ...current, [conversationId]: typing }
+    );
+  }, []);
+  useEffect(() => {
+    const timers = typingTimers.current;
+    return () => Object.values(timers).forEach(clearTimeout);
+  }, []);
+
+  // When a "Seen" last arrived for each conversation (see send).
+  const seenArrived = useRef({});
+
+  useEffect(() => {
+    const stops = [
+      // A new message, from either side, the moment the server saves it.
+      subscribe("chat:message", ({ message, conversation }) => {
         const isOpen = message.conversation === openId.current;
+        const fromThem = message.sender !== myId;
         setConversations((list) => upsert(list, isOpen ? { ...conversation, unread: 0 } : conversation));
+        if (fromThem) showTyping(message.conversation, false);
         if (!isOpen) return;
         setThread((current) =>
-          current.id !== message.conversation || current.messages.some((m) => m._id === message._id)
+          current.id !== message.conversation
             ? current
-            : { ...current, messages: [...current.messages, message] }
+            : {
+                ...current,
+                messages: current.messages.some((m) => m._id === message._id)
+                  ? current.messages
+                  : [...current.messages, message],
+                conversation: { ...current.conversation, ...conversation, unread: 0 },
+              }
         );
-        if (message.sender !== myId) markRead(message.conversation);
+        if (fromThem) markReadWhenSeen(message.conversation);
       }),
-    [subscribe, myId, markRead]
-  );
+      // The other person has read what this one sent.
+      subscribe("chat:seen", ({ conversationId }) => {
+        seenArrived.current[conversationId] = Date.now();
+        const seen = (c) => (c._id === conversationId ? { ...c, seen: true } : c);
+        setConversations((list) => list.map(seen));
+        setThread((current) => (current.conversation ? { ...current, conversation: seen(current.conversation) } : current));
+      }),
+      subscribe("chat:typing", ({ conversation, typing }) => showTyping(conversation, typing === true)),
+      // Someone came online or went offline.
+      subscribe("chat:presence", ({ userId, online, lastActiveAt }) => {
+        const update = (c) => (c.other?._id === userId ? { ...c, other: { ...c.other, online, lastActiveAt } } : c);
+        setConversations((list) => list.map(update));
+        setThread((current) => (current.conversation ? { ...current, conversation: update(current.conversation) } : current));
+      }),
+    ];
+    return () => stops.forEach((stop) => stop());
+  }, [subscribe, myId, markReadWhenSeen, showTyping]);
+
+  // Telling the other person this one is typing.
+  const typingSent = useRef({ conversation: null, at: 0, idle: null });
+  const stopTyping = useCallback(() => {
+    const state = typingSent.current;
+    clearTimeout(state.idle);
+    if (state.conversation) sendTyping(state.conversation, false);
+    typingSent.current = { conversation: null, at: 0, idle: null };
+  }, [sendTyping]);
+  const noteTyping = (value) => {
+    if (!id || !value.trim()) {
+      stopTyping();
+      return;
+    }
+    if (typingSent.current.conversation !== id) stopTyping();
+    const state = typingSent.current;
+    if (!state.conversation || Date.now() - state.at > TYPING_REPEAT) {
+      sendTyping(id, true);
+      state.conversation = id;
+      state.at = Date.now();
+    }
+    clearTimeout(state.idle);
+    state.idle = setTimeout(stopTyping, TYPING_IDLE);
+  };
+  // Leaving a conversation, or the page, ends "typing..." there.
+  useEffect(() => stopTyping, [id, stopTyping]);
 
   // Always showing the newest message.
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [thread.messages.length, thread.id]);
+  // "typing..." appearing, or a photo waiting to be sent, keeps the bottom in
+  // view for anyone who was already there.
+  useEffect(() => {
+    const box = scrollRef.current;
+    if (box && box.scrollHeight - box.scrollTop - box.clientHeight < 120) box.scrollTop = box.scrollHeight;
+  }, [theyAreTyping, staged]);
+
+  // A preview is let go of once it has been replaced, sent or removed.
+  useEffect(
+    () => () => {
+      if (photo) URL.revokeObjectURL(photo.preview);
+    },
+    [photo]
+  );
+
+  useEffect(() => {
+    if (!viewing) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setViewing(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [viewing]);
+
+  const pickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !id) return;
+    setSendError("");
+    if (!PHOTO_TYPES.includes(file.type)) {
+      setSendError("Choose a JPG, PNG, WebP or GIF photo.");
+      return;
+    }
+    const ready = await shrinkPhoto(file);
+    if (ready.size > MAX_PHOTO_BYTES) {
+      setSendError("That photo is too big - photos must be 5 MB or smaller.");
+      return;
+    }
+    setPhoto({ conversation: id, file: ready, preview: URL.createObjectURL(ready) });
+  };
 
   const send = async (e) => {
     e.preventDefault();
     const clean = text.trim();
-    if (!clean || !id || sending) return;
+    if ((!clean && !staged) || !id || sending) return;
     setSending(true);
     setSendError("");
+    stopTyping();
+    const startedAt = Date.now();
     try {
-      const { data } = await sendChatMessage(id, clean);
+      const { data } = staged
+        ? await sendChatPhoto(id, photoForm(staged.file, clean))
+        : await sendChatMessage(id, clean);
       setText("");
-      setThread((current) =>
-        current.id !== id || current.messages.some((m) => m._id === data.message._id)
-          ? current
-          : { ...current, messages: [...current.messages, data.message] }
-      );
+      if (staged) setPhoto(null);
+      setThread((current) => {
+        if (current.id !== id || !current.conversation) return current;
+        // A "Seen" that arrived while this was on its way is newer news than
+        // the answer to it.
+        const seen = (seenArrived.current[id] || 0) >= startedAt ? current.conversation.seen : data.conversation.seen;
+        return {
+          ...current,
+          messages: current.messages.some((m) => m._id === data.message._id)
+            ? current.messages
+            : [...current.messages, data.message],
+          conversation: { ...current.conversation, ...data.conversation, seen },
+        };
+      });
       setConversations((list) => upsert(list, data.conversation));
     } catch (err) {
       setSendError(err.response?.data?.message || "Could not send that. Please try again.");
@@ -136,6 +387,9 @@ export default function ChatPanel({ basePath, heightClass }) {
   };
 
   const other = active?.other;
+  // "Sent" or "Seen" goes under the last message, when it is this person's.
+  const last = thread.messages[thread.messages.length - 1];
+  const receiptOn = active && last?.sender === myId ? last._id : null;
 
   return (
     <div
@@ -156,6 +410,8 @@ export default function ChatPanel({ basePath, heightClass }) {
           )}
           {conversations.map((c) => {
             const unread = c.unread > 0;
+            const typing = typingIn[c._id];
+            const lastMessage = c.lastMessage;
             return (
               <li key={c._id}>
                 <button
@@ -166,12 +422,15 @@ export default function ChatPanel({ basePath, heightClass }) {
                     c._id === id ? "bg-green-50" : ""
                   }`}
                 >
-                  <Avatar
-                    src={c.other.avatar}
-                    alt={displayName(c.other)}
-                    className="h-11 w-11 rounded-full bg-green-100 text-[#2f8f66]"
-                    iconClass="h-6 w-6"
-                  />
+                  <span className="relative shrink-0">
+                    <Avatar
+                      src={c.other.avatar}
+                      alt={displayName(c.other)}
+                      className="h-11 w-11 rounded-full bg-green-100 text-[#2f8f66]"
+                      iconClass="h-6 w-6"
+                    />
+                    <OnlineDot online={c.other.online} />
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-baseline justify-between gap-2">
                       <span className={`truncate text-sm ${unread ? "font-bold text-gray-900" : "font-semibold text-gray-900"}`}>
@@ -180,9 +439,20 @@ export default function ChatPanel({ basePath, heightClass }) {
                       <span className="shrink-0 text-[11px] text-gray-400">{listTime(c.lastMessageAt)}</span>
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
-                      <span className={`truncate text-xs ${unread ? "font-semibold text-gray-800" : "text-gray-500"}`}>
-                        {c.lastMessage?.sender === user?._id ? "You: " : ""}
-                        {c.lastMessage?.text}
+                      <span
+                        className={`truncate text-xs ${
+                          typing ? "font-medium text-[#2f8f66]" : unread ? "font-semibold text-gray-800" : "text-gray-500"
+                        }`}
+                      >
+                        {typing ? (
+                          "typing..."
+                        ) : (
+                          <>
+                            {lastMessage?.sender === myId ? "You: " : ""}
+                            {lastMessage?.image && <ImageIcon className="mr-1 inline h-3.5 w-3.5 align-[-3px]" />}
+                            {lastMessage?.text || (lastMessage?.image ? "Photo" : "")}
+                          </>
+                        )}
                       </span>
                       {unread && (
                         <span
@@ -218,17 +488,20 @@ export default function ChatPanel({ basePath, heightClass }) {
               <Link to={basePath} className="text-gray-500 hover:text-gray-900 md:hidden" aria-label="Back to conversations">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
-              <Avatar
-                src={other.avatar}
-                alt={displayName(other)}
-                className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
-                iconClass="h-5 w-5"
-              />
+              <span className="relative shrink-0">
+                <Avatar
+                  src={other.avatar}
+                  alt={displayName(other)}
+                  className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                  iconClass="h-5 w-5"
+                />
+                <OnlineDot online={other.online} />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold text-gray-900" data-testid="chat-with">
                   {displayName(other)}
                 </p>
-                <p className="text-xs capitalize text-gray-500">{other.role}</p>
+                <ActivityLine person={other} />
               </div>
               {isBuyer && other._id && (
                 <Link
@@ -240,6 +513,8 @@ export default function ChatPanel({ basePath, heightClass }) {
               )}
             </div>
 
+            {isBuyer && other._id && <ChatOrders key={id} conversationId={id} reloadKey={reconnects} />}
+
             <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50 px-5 py-4" data-testid="chat-messages">
               {thread.messages.length === 0 && (
                 <p className="py-8 text-center text-sm text-gray-400">
@@ -247,22 +522,36 @@ export default function ChatPanel({ basePath, heightClass }) {
                 </p>
               )}
               {thread.messages.map((m) => {
-                const mine = m.sender === user?._id;
+                const mine = m.sender === myId;
                 return (
                   <div key={m._id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`} data-mine={mine}>
                     <div
-                      className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm ${
+                      className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl text-sm ${m.image ? "p-1" : "px-4 py-2"} ${
                         mine ? "rounded-br-sm bg-[#2f8f66] text-white" : "rounded-bl-sm bg-white text-gray-900 ring-1 ring-gray-200"
                       }`}
                     >
-                      {m.text}
+                      {m.image && <ChatPhoto path={m.image} onOpen={setViewing} />}
+                      {m.image ? m.text && <p className="px-3 pb-1.5 pt-1.5">{m.text}</p> : m.text}
                     </div>
-                    <p className="mt-1 text-[11px] text-gray-400">
-                      {mine ? "You" : displayName(other)} · {messageTime(m.createdAt)}
+                    <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
+                      <span>
+                        {mine ? "You" : displayName(other)} · {messageTime(m.createdAt)}
+                      </span>
+                      {m._id === receiptOn && (
+                        <span
+                          data-testid="receipt"
+                          className={`flex items-center gap-0.5 ${active.seen ? "font-medium text-[#2f8f66]" : ""}`}
+                        >
+                          ·{" "}
+                          {active.seen ? <CheckCheck className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+                          {active.seen ? "Seen" : "Sent"}
+                        </span>
+                      )}
                     </p>
                   </div>
                 );
               })}
+              {theyAreTyping && <TypingBubble name={displayName(other)} />}
             </div>
 
             {thread.notice ? (
@@ -270,22 +559,59 @@ export default function ChatPanel({ basePath, heightClass }) {
             ) : (
               <form onSubmit={send} className="border-t border-gray-200 p-3">
                 {sendError && <p className="mb-2 px-1 text-xs text-red-600">{sendError}</p>}
+                {staged && (
+                  <div className="mb-2 flex items-center gap-3 px-1" data-testid="photo-preview">
+                    <span className="relative shrink-0">
+                      <img src={staged.preview} alt="Photo to send" className="h-16 w-16 rounded-lg object-cover ring-1 ring-gray-200" />
+                      <button
+                        type="button"
+                        onClick={() => setPhoto(null)}
+                        aria-label="Remove photo"
+                        className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-gray-800 text-white hover:bg-gray-900"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                    <span className="text-xs text-gray-500">Add a caption if you like, then press Send.</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <input
+                    ref={fileRef}
+                    type="file"
+                    accept={PHOTO_TYPES.join(",")}
+                    onChange={pickPhoto}
+                    className="hidden"
+                    data-testid="photo-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={sending}
+                    aria-label="Send a photo"
+                    title="Send a photo"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                  >
+                    <ImagePlus className="h-5 w-5" />
+                  </button>
+                  <input
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      noteTyping(e.target.value);
+                    }}
                     maxLength={MAX_MESSAGE}
-                    placeholder="Type a message"
+                    placeholder={staged ? "Add a caption (optional)" : "Type a message"}
                     aria-label="Message"
                     className="min-w-0 flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
                   />
                   <button
                     type="submit"
-                    disabled={!text.trim() || sending}
+                    disabled={(!text.trim() && !staged) || sending}
                     className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#267a56] active:scale-95 disabled:opacity-60"
                   >
                     <Send className="h-4 w-4" />
-                    Send
+                    {sending && staged ? "Sending..." : "Send"}
                   </button>
                 </div>
               </form>
@@ -293,6 +619,34 @@ export default function ChatPanel({ basePath, heightClass }) {
           </>
         )}
       </section>
+
+      {viewing &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Photo"
+            data-testid="photo-viewer"
+            onClick={() => setViewing(null)}
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4"
+          >
+            <img
+              src={viewing}
+              alt="Photo"
+              onClick={(e) => e.stopPropagation()}
+              className="max-h-full max-w-full rounded-lg object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setViewing(null)}
+              aria-label="Close photo"
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white hover:bg-white/25"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

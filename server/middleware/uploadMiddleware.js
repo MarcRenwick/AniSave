@@ -6,14 +6,16 @@ const {
   UPLOAD_DIR,
   DOCUMENT_DIR,
   REPORT_DIR,
+  CHAT_DIR,
   imagePath,
   documentPath,
   reportEvidencePath,
+  chatImagePath,
   deleteImageFile,
 } = require("../utils/fileUtils");
 const { saveToStore } = require("../utils/fileStore");
 
-[UPLOAD_DIR, DOCUMENT_DIR, REPORT_DIR].forEach((dir) => {
+[UPLOAD_DIR, DOCUMENT_DIR, REPORT_DIR, CHAT_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 });
 
@@ -117,6 +119,12 @@ upload.documents = wrap(multer({ storage: storageIn(DOCUMENT_DIR), fileFilter, l
 upload.reports = wrap(
   multer({ storage: storageIn(REPORT_DIR), fileFilter, limits: { fileSize: 5 * 1024 * 1024, files: 5, fields: 10, fieldSize: 64 * 1024 } }),
   reportEvidencePath
+);
+
+// A photo sent in a chat (private), one at a time: `upload.chat.single("image")`.
+upload.chat = wrap(
+  multer({ storage: storageIn(CHAT_DIR), fileFilter, limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 5, fieldSize: 8 * 1024 } }),
+  chatImagePath
 );
 
 module.exports = upload;

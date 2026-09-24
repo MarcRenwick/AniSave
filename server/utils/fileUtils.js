@@ -11,17 +11,21 @@ const { streamFromStore, deleteFromStore } = require("./fileStore");
 //  - private/reports/   the photos a buyer attaches to a report. Private too:
 //                       only the buyer who sent them and admins can open one
 //                       (GET /api/report-evidence/:file).
+//  - private/chat/      photos sent in a chat. Only the two people in that
+//                       conversation can open one (GET /api/chat-images/:file).
 // Each file is also kept in the database under the same path, because the
 // disk copy doesn't survive a restart on Render - see fileStore.js.
 const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
 const DOCUMENT_DIR = path.join(__dirname, "..", "private", "documents");
 const REPORT_DIR = path.join(__dirname, "..", "private", "reports");
+const CHAT_DIR = path.join(__dirname, "..", "private", "chat");
 
-// The paths saved in the database. /uploads/x is public; /documents/x and
-// /report-evidence/x are private.
+// The paths saved in the database. /uploads/x is public; /documents/x,
+// /report-evidence/x and /chat-images/x are private.
 const imagePath = (file) => (file ? `/uploads/${file.filename}` : undefined);
 const documentPath = (file) => (file ? `/documents/${file.filename}` : undefined);
 const reportEvidencePath = (file) => (file ? `/report-evidence/${file.filename}` : undefined);
+const chatImagePath = (file) => (file ? `/chat-images/${file.filename}` : undefined);
 
 // Where a saved path points on disk. Only the file name is used, so nothing
 // stored (or sent) can walk out of these folders.
@@ -30,6 +34,7 @@ const resolveStoredFile = (url) => {
   const name = path.basename(url);
   if (url.startsWith("/documents/")) return path.join(DOCUMENT_DIR, name);
   if (url.startsWith("/report-evidence/")) return path.join(REPORT_DIR, name);
+  if (url.startsWith("/chat-images/")) return path.join(CHAT_DIR, name);
   if (url.startsWith("/uploads/")) return path.join(UPLOAD_DIR, name);
   return null;
 };
@@ -58,9 +63,11 @@ module.exports = {
   UPLOAD_DIR,
   DOCUMENT_DIR,
   REPORT_DIR,
+  CHAT_DIR,
   imagePath,
   documentPath,
   reportEvidencePath,
+  chatImagePath,
   resolveStoredFile,
   deleteImageFile,
   sendStoredFile,

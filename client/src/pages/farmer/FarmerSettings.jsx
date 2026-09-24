@@ -109,20 +109,20 @@ export default function FarmerSettings() {
       : "No ratings yet";
 
   return (
-    <FarmerLayout>
+    <FarmerLayout mainClassName="farm-page">
       <FarmerTopBar showActions={false} />
 
-      <div className="space-y-6 p-8">
-        <div className="relative rounded-2xl bg-gradient-to-r from-[#2f8f66] to-[#7fd9a4] p-6 text-white">
+      <div className="space-y-6 p-4 sm:p-8">
+        <div className="farm-banner relative rounded-2xl p-6 text-white shadow-[0_16px_32px_-20px_rgba(22,78,54,0.6)]">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Avatar
                 src={user?.avatar}
                 alt={user?.name || "Profile photo"}
-                className="h-20 w-20 rounded-full border-4 border-white bg-white/20"
+                className="h-20 w-20 rounded-full border-4 border-white bg-white/20 shadow-md"
                 iconClass="h-10 w-10"
               />
-              <div>
+              <div className="[text-shadow:0_1px_2px_rgba(0,0,0,0.2)]">
                 <h2 className="text-2xl font-bold">{user?.name}</h2>
                 <p className="text-sm text-white/90">
                   {user?.farmDescription || user?.farmName || "Farmer"}
@@ -144,7 +144,7 @@ export default function FarmerSettings() {
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
-                className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/10 transition hover:bg-black/20"
+                className="flex h-11 w-11 items-center justify-center rounded-lg bg-black/15 ring-1 ring-white/25 backdrop-blur-sm transition hover:bg-black/25"
                 aria-label="Profile actions"
               >
                 <Menu className="h-5 w-5" />
@@ -218,12 +218,12 @@ export default function FarmerSettings() {
           </div>
         </div>
 
-        <div className="grid grid-cols-5 gap-6">
-          <div className="col-span-2 rounded-xl bg-white p-5 shadow-sm">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="farm-card farm-card-sprout rounded-xl bg-white p-5 lg:col-span-2">
             <p className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
               <UserIcon className="h-4 w-4 text-[#2f8f66]" /> Personal Information
             </p>
-            <dl className="space-y-3 text-sm">
+            <dl className="space-y-3 text-sm [&_dt_svg]:text-[#2f8f66]/70">
               <div className="flex items-center justify-between gap-3">
                 <dt className="flex items-center gap-2 text-gray-500">
                   <UserIcon className="h-4 w-4" /> Full Name
@@ -269,7 +269,7 @@ export default function FarmerSettings() {
             </dl>
           </div>
 
-          <div className="col-span-3 rounded-xl bg-white p-5 shadow-sm">
+          <div className="farm-card farm-card-wheat rounded-xl bg-white p-5 lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
               <p className="flex items-center gap-2 font-semibold text-gray-900">
                 <Package className="h-4 w-4 text-[#2f8f66]" /> My Products
@@ -288,26 +288,26 @@ export default function FarmerSettings() {
             ) : products.length === 0 ? (
               <p className="text-sm text-gray-400">You haven&apos;t listed any products yet.</p>
             ) : (
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {products.slice(0, 8).map((p) => (
                   <button
                     key={p._id}
                     type="button"
                     onClick={() => navigate(`/farmer/products/${p._id}`)}
-                    className="overflow-hidden rounded-lg bg-gray-50 text-left shadow-sm transition hover:shadow-md"
+                    className="group overflow-hidden rounded-lg bg-gray-50 text-left shadow-sm ring-1 ring-[#2f8f66]/10 transition hover:shadow-lg hover:shadow-[#2f8f66]/15 hover:ring-[#2f8f66]/35"
                   >
-                    <div className="flex h-20 items-center justify-center bg-white text-gray-300">
+                    <div className="flex h-20 items-center justify-center overflow-hidden bg-white text-gray-300">
                       {p.image ? (
                         <img
                           src={`${SERVER_URL}${p.image}`}
                           alt={p.title}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
                         <Package className="h-6 w-6" />
                       )}
                     </div>
-                    <div className="bg-[#2f8f66] px-2 py-1.5 text-white">
+                    <div className="bg-gradient-to-r from-[#2f8f66] to-[#3d9e73] px-2 py-1.5 text-white">
                       <p className="truncate text-xs font-semibold">{p.title}</p>
                       <PriceTag product={p} tone="light" size="sm" suffix="/kg" />
                     </div>
@@ -318,7 +318,7 @@ export default function FarmerSettings() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-white p-5 shadow-sm">
+        <div className="farm-card farm-card-leaf rounded-xl bg-white p-5">
           <p className="mb-2 font-semibold text-gray-900">Shop Description</p>
           <p className="text-sm text-gray-600">
             {user?.farmDescription || "No shop description yet. Tell buyers about your farm!"}

@@ -142,6 +142,11 @@ export const startConversation = (farmerId) => api.post("/chats", { farmerId });
 export const getConversation = (id) => api.get(`/chats/${id}`);
 export const markConversationRead = (id) => api.patch(`/chats/${id}/read`);
 export const sendChatMessage = (id, text) => api.post(`/chats/${id}/messages`, { text });
+// A photo, with an optional caption: multipart { image, text? }.
+export const sendChatPhoto = (id, formData) =>
+  api.post(`/chats/${id}/messages`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+// A buyer's orders from the farmer they are chatting with.
+export const getConversationOrders = (id) => api.get(`/chats/${id}/orders`);
 export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
 export const reviewFarmerVerification = (id, approved, note) =>
   api.patch(`/admin/users/${id}/verification`, { approved, note });

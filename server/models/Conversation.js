@@ -19,6 +19,8 @@ const conversationSchema = new mongoose.Schema(
     // preview without reading every conversation's messages.
     lastMessage: {
       text: String,
+      // Whether it was a photo, so the list can say so.
+      image: Boolean,
       sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       createdAt: Date,
     },
@@ -28,7 +30,9 @@ const conversationSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    // How many messages each side hasn't read yet.
+    // How many messages each side hasn't read yet. Since only the other
+    // person's messages count, one side's number being 0 also means it has
+    // seen everything the other sent: that is what "Seen" shows.
     buyerUnread: {
       type: Number,
       default: 0,

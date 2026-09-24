@@ -1,3 +1,16 @@
+import { FileText, Clock, CheckCircle2, XCircle, PackageOpen, CalendarClock } from "lucide-react";
+
+// How each status is labelled for a buyer in a list of their orders - My
+// Orders, and the orders shown in a chat with the farmer.
+export const BUYER_ORDER_STATUS = {
+  new: { label: "New", icon: FileText, color: "text-blue-700 bg-blue-100" },
+  preorder: { label: "Pre-Order", icon: CalendarClock, color: "text-amber-700 bg-amber-100" },
+  processing: { label: "Processing", icon: PackageOpen, color: "text-indigo-700 bg-indigo-100" },
+  ready: { label: "Ready", icon: Clock, color: "text-yellow-700 bg-yellow-100" },
+  done: { label: "Completed", icon: CheckCircle2, color: "text-green-700 bg-green-100" },
+  cancelled: { label: "Cancelled", icon: XCircle, color: "text-red-700 bg-red-100" },
+};
+
 // Six display steps over five real statuses. Accepting an order stamps one
 // real timestamp (acceptedAt) that covers both "Order Accepted" and the
 // preparing step, and marking it done covers both "Picked Up" and

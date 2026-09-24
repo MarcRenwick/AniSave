@@ -78,3 +78,79 @@
 ::view-transition-new(root) {
   animation: 300ms cubic-bezier(0.4, 0, 0.2, 1) both page-in;
 }
+
+/* The farmer's Profile page (pages/farmer/FarmerSettings.jsx) and the farmer
+   sidebar, drawn to feel like the fields they sell from: hills, rice terraces,
+   a morning sun and leaves - all gradients and small shapes written right
+   here (the leaf, sprout and wheat are the app's own icon outlines), no image
+   files. Everything is behind the content and faint enough not to compete
+   with it. */
+@layer components {
+  /* Dark green at the top, easing lighter toward the foot, where terraces rise
+     behind "Log out"; one big leaf drifts across the empty middle. */
+  .farm-sidebar {
+    background-color: #2f8f66;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 240' preserveAspectRatio='none'%3E%3Cpath d='M0 128C64 96 148 110 256 70V240H0Z' fill='%23fff' fill-opacity='.05'/%3E%3Cpath d='M0 170C76 138 164 154 256 120V240H0Z' fill='%23fff' fill-opacity='.05'/%3E%3Cpath d='M0 208C86 182 176 194 256 166V240H0Z' fill='%230b3d2a' fill-opacity='.16'/%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='.10' stroke-width='1.2'%3E%3Cpath vector-effect='non-scaling-stroke' d='M0 146C70 116 152 128 256 92'/%3E%3Cpath vector-effect='non-scaling-stroke' d='M0 188C80 158 170 172 256 142'/%3E%3Cpath vector-effect='non-scaling-stroke' d='M0 226C90 202 180 212 256 188'/%3E%3C/g%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23fff' fill-opacity='0.045' stroke='%23fff' stroke-opacity='0.1' stroke-width='0.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(-18 12 12)'%3E%3Cpath d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/%3E%3Cpath d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/%3E%3C/g%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' fill-opacity='0' stroke='%23fff' stroke-opacity='0.16' stroke-width='1.1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(0 12 12)'%3E%3Cpath d='M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3'/%3E%3Cpath d='M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4'/%3E%3Cpath d='M5 21h14'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(140% 42% at 12% 0%, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 70%),
+      linear-gradient(180deg, #256f51 0%, #2f8f66 55%, #33946a 100%);
+    background-repeat: no-repeat;
+    background-position: left bottom, right -84px top 62%, right 18px bottom 74px, 0 0, 0 0;
+    background-size: 100% 230px, 250px 250px, 44px 44px, 100% 100%, 100% 100%;
+  }
+
+  /* A morning over the fields: deep green on the left behind the name, a
+     golden field and green rows rising on the right under a soft sun. The
+     shade on the left keeps the white text easy to read. */
+  .farm-banner {
+    background-color: #2f8f66;
+    background-image:
+      linear-gradient(90deg, rgba(12, 54, 37, 0.42) 0%, rgba(12, 54, 37, 0.2) 45%, rgba(12, 54, 37, 0) 72%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-2 -3 64 31' fill='none' stroke='%23fff' stroke-opacity='0.3' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='translate(0 5.7) scale(0.78) rotate(-50 12 12)'%3E%3Cpath d='M2 22 16 8'/%3E%3Cpath d='M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z'/%3E%3Cpath d='M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3C/g%3E%3Cg transform='translate(11 0.0) scale(1) rotate(-44 12 12)'%3E%3Cpath d='M2 22 16 8'/%3E%3Cpath d='M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z'/%3E%3Cpath d='M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3C/g%3E%3Cg transform='translate(24 3.1) scale(0.88) rotate(-47 12 12)'%3E%3Cpath d='M2 22 16 8'/%3E%3Cpath d='M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z'/%3E%3Cpath d='M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3C/g%3E%3Cg transform='translate(36 1.0) scale(0.96) rotate(-42 12 12)'%3E%3Cpath d='M2 22 16 8'/%3E%3Cpath d='M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z'/%3E%3Cpath d='M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3C/g%3E%3Cg transform='translate(48 5.2) scale(0.8) rotate(-49 12 12)'%3E%3Cpath d='M2 22 16 8'/%3E%3Cpath d='M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z'/%3E%3Cpath d='M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3C/g%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0 118C300 116 540 111 700 100C820 92 910 50 1020 42C1100 37 1160 44 1200 50V120H0Z' fill='%23e6df94' fill-opacity='.55'/%3E%3Cpath d='M0 120C340 120 600 116 760 106C880 98 1010 72 1200 78V120H0Z' fill='%234aa574' fill-opacity='.8'/%3E%3Cpath d='M0 120C380 120 660 119 830 113C970 108 1080 95 1200 99V120H0Z' fill='%231d6547' fill-opacity='.9'/%3E%3Cg fill='none' stroke='%23fff' stroke-opacity='.22'%3E%3Cpath vector-effect='non-scaling-stroke' d='M790 106C900 100 1030 83 1200 87'/%3E%3Cpath vector-effect='non-scaling-stroke' d='M830 110C940 105 1050 91 1200 94'/%3E%3C/g%3E%3Cg fill='none' stroke='%230c3a28' stroke-opacity='.35'%3E%3Cpath vector-effect='non-scaling-stroke' d='M880 115C1000 111 1090 101 1200 104'/%3E%3Cpath vector-effect='non-scaling-stroke' d='M930 118C1040 115 1110 108 1200 110'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(circle at 84% 20%, rgba(255, 251, 222, 0.95) 0 13px, rgba(255, 240, 170, 0.5) 14px, rgba(255, 240, 170, 0) 110px),
+      linear-gradient(118deg, #1d6a4a 0%, #2f8f66 34%, #5db483 62%, #b4dc8e 100%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%, auto 38px, 100% 110px, 100% 100%, 100% 100%;
+    background-position: 0 0, right 22px bottom 0, 0 100%, 0 0, 0 0;
+  }
+
+  /* The page behind the cards: a faint green wash, a fine dot grid like a
+     planted field seen from above, and two big leaf outlines at the edges. */
+  .farm-page {
+    background-color: #f1f7f2;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' fill-opacity='0' stroke='%232f8f66' stroke-opacity='0.07' stroke-width='0.35' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(-24 12 12)'%3E%3Cpath d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/%3E%3Cpath d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/%3E%3C/g%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' fill-opacity='0' stroke='%232f8f66' stroke-opacity='0.07' stroke-width='0.45' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(0 12 12)'%3E%3Cpath d='M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3'/%3E%3Cpath d='M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4'/%3E%3Cpath d='M5 21h14'/%3E%3C/g%3E%3C/svg%3E"),
+      radial-gradient(52rem 32rem at 100% 0%, rgba(176, 222, 135, 0.22), rgba(176, 222, 135, 0) 70%),
+      radial-gradient(44rem 34rem at 0% 100%, rgba(47, 143, 102, 0.1), rgba(47, 143, 102, 0) 70%),
+      radial-gradient(circle at 1px 1px, rgba(47, 143, 102, 0.1) 1px, transparent 1.6px);
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+    background-size: 420px 420px, 220px 220px, auto, auto, 22px 22px;
+    background-position: right -120px bottom -110px, left -70px top 62%, 0 0, 0 0, 0 0;
+  }
+
+  /* A white card with a thin green-to-harvest-gold line along the top and its
+     own faint icon in the corner. */
+  .farm-card {
+    background-color: #fff;
+    background-image: linear-gradient(90deg, #2f8f66 0%, #6fc493 55%, #d6e39a 100%), var(--farm-card-mark, none);
+    background-repeat: no-repeat;
+    background-size: 100% 3px, 116px 116px;
+    background-position: 0 0, right -20px bottom -24px;
+    box-shadow: 0 0 0 1px rgba(47, 143, 102, 0.1), 0 1px 2px rgba(22, 78, 54, 0.06), 0 12px 28px -18px rgba(22, 78, 54, 0.35);
+  }
+  .farm-card-sprout {
+    --farm-card-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' fill-opacity='0' stroke='%232f8f66' stroke-opacity='0.1' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(0 12 12)'%3E%3Cpath d='M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3'/%3E%3Cpath d='M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4'/%3E%3Cpath d='M5 21h14'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .farm-card-wheat {
+    --farm-card-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' fill-opacity='0' stroke='%232f8f66' stroke-opacity='0.1' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(0 12 12)'%3E%3Cpath d='M2 22 16 8'/%3E%3Cpath d='M3.47 12.53 5 11l1.53 1.53a3.5 3.5 0 0 1 0 4.94L5 19l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M7.47 8.53 9 7l1.53 1.53a3.5 3.5 0 0 1 0 4.94L9 15l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M11.47 4.53 13 3l1.53 1.53a3.5 3.5 0 0 1 0 4.94L13 11l-1.53-1.53a3.5 3.5 0 0 1 0-4.94Z'/%3E%3Cpath d='M20 2h2v2a4 4 0 0 1-4 4h-2V6a4 4 0 0 1 4-4Z'/%3E%3Cpath d='M11.47 17.47 13 19l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L5 19l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M15.47 13.47 17 15l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L9 15l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3Cpath d='M19.47 9.47 21 11l-1.53 1.53a3.5 3.5 0 0 1-4.94 0L13 11l1.53-1.53a3.5 3.5 0 0 1 4.94 0Z'/%3E%3C/g%3E%3C/svg%3E");
+  }
+  .farm-card-leaf {
+    --farm-card-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' fill-opacity='0' stroke='%232f8f66' stroke-opacity='0.1' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cg transform='rotate(-12 12 12)'%3E%3Cpath d='M11 20a10 10 0 0010-10 25.9 25.9 0 00-1.04-7.281 1 1 0 00-1.755-.325C15.833 5.5 13 5.5 9.8 6.1A7 7 0 0011 20'/%3E%3Cpath d='M2 21a5 5 0 012.911-4.544C7.613 15.212 8.351 15.24 11 13'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 100% 3px, 86px 86px;
+    background-position: 0 0, right 22px center;
+  }
+}

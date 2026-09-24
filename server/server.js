@@ -27,6 +27,7 @@ const blockRoutes = require("./routes/blockRoutes");
 const marketPriceRoutes = require("./routes/marketPriceRoutes");
 const cropRoutes = require("./routes/cropRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const chatImageRoutes = require("./routes/chatImageRoutes");
 const { attachRealtime } = require("./utils/realtime");
 
 // Every session token is signed with this. Without it nobody could log in; a
@@ -112,6 +113,7 @@ app.use("/api/blocks", blockRoutes);
 app.use("/api/market-prices", marketPriceRoutes);
 app.use("/api/crops", cropRoutes);
 app.use("/api/chats", chatRoutes);
+app.use("/api/chat-images", chatImageRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
