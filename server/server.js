@@ -5,7 +5,8 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const connectDB = require("./config/db");
-const { UPLOAD_DIR } = require("./utils/fileUtils");
+const { UPLOAD_DIR, sendStoredFile } = require("./utils/fileUtils");
+const { ensureCropCatalogue } = require("./utils/cropCatalogue");
 const { describeEmailRoute } = require("./utils/sendEmail");
 const { apiLimiter } = require("./middleware/rateLimiters");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
@@ -36,7 +37,12 @@ if (process.env.JWT_SECRET.length < 32) {
   if (process.env.NODE_ENV === "production") process.exit(1);
 }
 
-connectDB();
+connectDB()
+  .then(ensureCropCatalogue)
+  .then((result) => {
+    if (result) console.log(`Crop catalogue: ${result.missing} crop(s) were missing, so it was written (${result.added} added).`);
+  })
+  .catch((err) => console.error(`Could not write the crop catalogue: ${err.message}`));
 
 const app = express();
 
@@ -67,6 +73,13 @@ app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 // Product photos and profile pictures - public by design. A farmer's ID and
 // farm documents are NOT here: they are only served by /api/documents.
 app.use("/uploads", express.static(UPLOAD_DIR, { index: false, dotfiles: "deny" }));
+// ...and from the database once the disk copy is gone (see utils/fileStore.js).
+// A file name is never reused, so a photo can be cached for a day.
+app.get("/uploads/:name", (req, res, next) =>
+  sendStoredFile(res, `/uploads/${req.params.name}`, { "Cache-Control": "public, max-age=86400" })
+    .then((sent) => (sent ? undefined : next()))
+    .catch(next)
+);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api", apiLimiter);

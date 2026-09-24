@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs");
+const { streamFromStore, deleteFromStore } = require("./fileStore");
 
 // Three places files live:
 //  - uploads/           product photos and profile pictures. Served publicly,
@@ -10,6 +11,8 @@ const fs = require("fs");
 //  - private/reports/   the photos a buyer attaches to a report. Private too:
 //                       only the buyer who sent them and admins can open one
 //                       (GET /api/report-evidence/:file).
+// Each file is also kept in the database under the same path, because the
+// disk copy doesn't survive a restart on Render - see fileStore.js.
 const UPLOAD_DIR = path.join(__dirname, "..", "uploads");
 const DOCUMENT_DIR = path.join(__dirname, "..", "private", "documents");
 const REPORT_DIR = path.join(__dirname, "..", "private", "reports");
@@ -33,7 +36,22 @@ const resolveStoredFile = (url) => {
 
 const deleteImageFile = (imageUrl) => {
   const filePath = resolveStoredFile(imageUrl);
-  if (filePath) fs.unlink(filePath, () => {});
+  if (!filePath) return;
+  fs.unlink(filePath, () => {});
+  deleteFromStore(imageUrl).catch((err) => console.error(`Could not delete ${imageUrl} from the file store: ${err.message}`));
+};
+
+// Sends the file a saved path points at: from disk while the copy there lasts,
+// otherwise from the database (see fileStore.js). Says whether it was found.
+const sendStoredFile = async (res, url, headers = {}) => {
+  const filePath = resolveStoredFile(url);
+  if (!filePath) return false;
+  if (fs.existsSync(filePath)) {
+    res.set(headers);
+    await new Promise((resolve, reject) => res.sendFile(filePath, (err) => (err ? reject(err) : resolve())));
+    return true;
+  }
+  return streamFromStore(url, res, headers);
 };
 
 module.exports = {
@@ -45,4 +63,5 @@ module.exports = {
   reportEvidencePath,
   resolveStoredFile,
   deleteImageFile,
+  sendStoredFile,
 };

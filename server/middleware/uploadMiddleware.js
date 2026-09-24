@@ -2,7 +2,16 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const crypto = require("crypto");
-const { UPLOAD_DIR, DOCUMENT_DIR, REPORT_DIR } = require("../utils/fileUtils");
+const {
+  UPLOAD_DIR,
+  DOCUMENT_DIR,
+  REPORT_DIR,
+  imagePath,
+  documentPath,
+  reportEvidencePath,
+  deleteImageFile,
+} = require("../utils/fileUtils");
+const { saveToStore } = require("../utils/fileStore");
 
 [UPLOAD_DIR, DOCUMENT_DIR, REPORT_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -67,35 +76,47 @@ const hasImageSignature = (file) => {
 
 // Runs a multer middleware, then looks inside what it saved. Anything that
 // isn't really the image it claimed to be is thrown away, along with the rest
-// of that request's files, and the request is refused.
-const withSignatureCheck = (middleware) => (req, res, next) =>
-  middleware(req, res, (err) => {
+// of that request's files, and the request is refused. What passes is copied
+// into the database before the request goes on (see utils/fileStore.js), so it
+// is still there after the server's disk has been wiped.
+const withSignatureCheck = (middleware, pathFor) => (req, res, next) =>
+  middleware(req, res, async (err) => {
     if (err) return next(err);
 
     const files = [req.file, ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat())].filter(Boolean);
-    if (files.every(hasImageSignature)) return next();
+    if (!files.every(hasImageSignature)) {
+      files.forEach((file) => fs.unlink(file.path, () => {}));
+      const error = new Error("That file isn't a valid photo. Please choose a JPG, PNG, WebP or GIF image.");
+      error.statusCode = 400;
+      return next(error);
+    }
 
-    files.forEach((file) => fs.unlink(file.path, () => {}));
-    const error = new Error("That file isn't a valid photo. Please choose a JPG, PNG, WebP or GIF image.");
-    error.statusCode = 400;
-    next(error);
+    try {
+      await Promise.all(files.map((file) => saveToStore(pathFor(file), file.path)));
+      next();
+    } catch (storeErr) {
+      // All or nothing: a request never goes on with some of its photos kept.
+      files.forEach((file) => deleteImageFile(pathFor(file)));
+      next(storeErr);
+    }
   });
 
-const wrap = (instance) => ({
-  single: (name) => withSignatureCheck(instance.single(name)),
-  array: (name, maxCount) => withSignatureCheck(instance.array(name, maxCount)),
-  fields: (fields) => withSignatureCheck(instance.fields(fields)),
+const wrap = (instance, pathFor) => ({
+  single: (name) => withSignatureCheck(instance.single(name), pathFor),
+  array: (name, maxCount) => withSignatureCheck(instance.array(name, maxCount), pathFor),
+  fields: (fields) => withSignatureCheck(instance.fields(fields), pathFor),
 });
 
 // Public photos (products, avatars): `upload.single(...)`, `upload.array(...)`.
-const upload = wrap(multer({ storage: storageIn(UPLOAD_DIR), fileFilter, limits }));
+const upload = wrap(multer({ storage: storageIn(UPLOAD_DIR), fileFilter, limits }), imagePath);
 
 // Private documents (a farmer's ID and farm papers): `upload.documents.fields(...)`.
-upload.documents = wrap(multer({ storage: storageIn(DOCUMENT_DIR), fileFilter, limits }));
+upload.documents = wrap(multer({ storage: storageIn(DOCUMENT_DIR), fileFilter, limits }), documentPath);
 
 // Photos attached to a report (private): `upload.reports.array("evidence", 5)`.
 upload.reports = wrap(
-  multer({ storage: storageIn(REPORT_DIR), fileFilter, limits: { fileSize: 5 * 1024 * 1024, files: 5, fields: 10, fieldSize: 64 * 1024 } })
+  multer({ storage: storageIn(REPORT_DIR), fileFilter, limits: { fileSize: 5 * 1024 * 1024, files: 5, fields: 10, fieldSize: 64 * 1024 } }),
+  reportEvidencePath
 );
 
 module.exports = upload;

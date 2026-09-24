@@ -1,8 +1,7 @@
 const path = require("path");
-const fs = require("fs");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
-const { DOCUMENT_DIR } = require("../utils/fileUtils");
+const { sendStoredFile } = require("../utils/fileUtils");
 
 // @desc    A farmer's government ID or farm document photo
 // @route   GET /api/documents/:filename
@@ -23,19 +22,16 @@ const getDocument = asyncHandler(async (req, res) => {
     }
   }
 
-  const file = path.join(DOCUMENT_DIR, filename);
-  if (!fs.existsSync(file)) {
-    res.status(404);
-    throw new Error("Document not found");
-  }
-
   // Never cached or shared, and never sniffed into anything but an image.
-  res.set({
+  const sent = await sendStoredFile(res, stored, {
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": "inline",
   });
-  res.sendFile(file);
+  if (!sent) {
+    res.status(404);
+    throw new Error("Document not found");
+  }
 });
 
 module.exports = { getDocument };

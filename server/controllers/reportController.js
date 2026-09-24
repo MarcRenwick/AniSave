@@ -1,11 +1,10 @@
-const fs = require("fs");
 const path = require("path");
 const mongoose = require("mongoose");
 const asyncHandler = require("express-async-handler");
 const Report = require("../models/Report");
 const User = require("../models/User");
 const validate = require("../utils/validate");
-const { REPORT_DIR, reportEvidencePath, deleteImageFile } = require("../utils/fileUtils");
+const { reportEvidencePath, deleteImageFile, sendStoredFile } = require("../utils/fileUtils");
 
 const { REASONS } = Report;
 
@@ -195,18 +194,15 @@ const getEvidence = asyncHandler(async (req, res) => {
     }
   }
 
-  const file = path.join(REPORT_DIR, filename);
-  if (!fs.existsSync(file)) {
-    res.status(404);
-    throw new Error("Evidence not found");
-  }
-
-  res.set({
+  const sent = await sendStoredFile(res, `/report-evidence/${filename}`, {
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": "inline",
   });
-  res.sendFile(file);
+  if (!sent) {
+    res.status(404);
+    throw new Error("Evidence not found");
+  }
 });
 
 module.exports = { createReport, getReports, markReviewed, decideReport, getEvidence };
