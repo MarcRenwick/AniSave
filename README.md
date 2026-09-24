@@ -210,6 +210,14 @@ Farmer settings → the menu on the profile card → **Delete Account** opens `/
 
 Deleting cascades: products and their photos, orders, ratings, reports sent and received, the profile photo, and the ID and farm documents. The reason is never stored - the account it would belong to is being deleted. Buyers keep the shorter dialog in their own settings.
 
+## The buyer's profile page
+
+`pages/buyer/BuyerSettings.jsx` is two columns. On the left, who you are: the photo with a camera button that opens the same dialog the photo is changed in, the name, a Buyer badge, the town, and three figures - orders placed, kilos ordered and what is in the cart right now. All three are counted from this account's own orders and cart; there is nothing decorative in that row.
+
+On the right the settings are grouped the way they are thought about rather than listed as buttons - Personal Information, Account & Security, Privacy & Safety, and a Danger Zone that is bordered and tinted so it doesn't look like the rest. Each row carries a line saying what it does, since "Blocked Users" alone doesn't say whether it blocks someone or lists who is blocked. What is on file - name, phone, email, address - stays readable on the page itself, not only inside the Edit Profile dialog.
+
+Every row opens exactly what the old stack of buttons did, Log Out included. Nothing was added that AniSave doesn't have: the design this follows also offered Notifications and a Language & Region page, and those aren't here because they don't exist.
+
 ## Creating an administrator
 
 Nobody can sign themselves up as an admin: `/api/auth/register` refuses the role outright. There are two ways in, and both end at the same place.
