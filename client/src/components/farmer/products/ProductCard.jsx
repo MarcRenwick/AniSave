@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { MoreHorizontal, ImageOff } from "lucide-react";
+import { MoreHorizontal, ImageOff, Package, RefreshCw } from "lucide-react";
 import { SERVER_URL } from "../../../services/api";
 import { onFlashSale, discountPercent } from "../../../utils/pricing";
 
+// One of a farmer's listings on My Products: the photo (opens the listing),
+// its name and stock, and Restock; Edit and Delete sit in the ... menu.
 export default function ProductCard({ product, isNew, onViewDetails, onRestock, onEdit, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -17,18 +19,20 @@ export default function ProductCard({ product, isNew, onViewDetails, onRestock, 
   }, [menuOpen]);
 
   return (
-    <div className="relative overflow-hidden rounded-xl bg-white shadow-sm">
+    <div className="relative rounded-xl bg-white p-2.5 shadow-sm ring-1 ring-black/5 transition hover:shadow-md">
+      {/* The photo zooms a little inside its frame on hover, rather than the
+          frame growing out of the card. */}
       <button
         type="button"
         onClick={() => onViewDetails(product)}
-        className="flex h-32 w-full items-center justify-center bg-gray-50 text-gray-300"
+        className="group flex aspect-[16/7] w-full items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300 hover:transform-none"
         title="View details"
       >
         {product.image ? (
           <img
             src={`${SERVER_URL}${product.image}`}
             alt={product.title}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <ImageOff className="h-10 w-10" />
@@ -36,13 +40,13 @@ export default function ProductCard({ product, isNew, onViewDetails, onRestock, 
       </button>
 
       {isNew && (
-        <span className="absolute left-2 top-2 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+        <span className="absolute left-4 top-4 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
           New
         </span>
       )}
       {onFlashSale(product) && (
         <span
-          className={`absolute left-2 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ${isNew ? "top-8" : "top-2"}`}
+          className={`absolute left-4 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-semibold text-white ${isNew ? "top-10" : "top-4"}`}
         >
           -{discountPercent(product)}% Sale
         </span>
@@ -52,14 +56,14 @@ export default function ProductCard({ product, isNew, onViewDetails, onRestock, 
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="absolute right-2 top-2 rounded-full bg-white/80 p-1 text-gray-400 hover:bg-gray-100"
+          className="absolute right-4 top-4 rounded-full bg-white/90 p-1 text-gray-500 shadow-sm hover:bg-white"
           aria-label="Product options"
         >
           <MoreHorizontal className="h-5 w-5" />
         </button>
 
         {menuOpen && (
-          <div className="absolute right-2 top-10 z-10 w-28 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg">
+          <div className="absolute right-4 top-12 z-10 w-28 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg">
             <button
               type="button"
               onClick={() => {
@@ -84,14 +88,20 @@ export default function ProductCard({ product, isNew, onViewDetails, onRestock, 
         )}
       </div>
 
-      <div className="space-y-2 bg-[#2f8f66] px-4 py-3 text-white">
-        <p className="text-sm font-semibold">{product.title}</p>
-        <p className="text-xs text-white/90">Current Stock: {product.stock} kg</p>
+      <div className="px-1.5 pb-1 pt-3">
+        <p className="truncate text-base font-bold text-gray-900">{product.title}</p>
+        <p className="mt-1.5 flex items-center gap-1.5 text-sm text-gray-600">
+          <Package className="h-4 w-4 shrink-0 text-[#2f8f66]" />
+          <span>
+            Current stock: <span className="font-semibold text-gray-900">{product.stock} kg</span>
+          </span>
+        </p>
         <button
           type="button"
           onClick={() => onRestock(product)}
-          className="w-full rounded-md bg-white py-1.5 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white transition hover:bg-[#267a56]"
         >
+          <RefreshCw className="h-4 w-4" />
           Restock
         </button>
       </div>

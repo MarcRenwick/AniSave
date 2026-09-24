@@ -16,6 +16,8 @@ import Avatar from "../../components/Avatar";
 import { categoryLabel as categoryLabelFor } from "../../utils/categories";
 
 const MAX_PHOTOS = 5;
+// The same limit the server holds a description to.
+const DESCRIPTION_MAX = 500;
 
 // A browser's own number box still accepts "100e+", "1e5" or a stray "-", and
 // then hands back an empty string - so the field looks filled while the form
@@ -701,11 +703,21 @@ export default function FarmerProductForm() {
                     name="description"
                     rows={4}
                     required
+                    maxLength={DESCRIPTION_MAX}
+                    aria-describedby="description-count"
                     value={form.description}
                     onChange={handleChange}
                     placeholder="Describe your product - freshness, flavor, best uses, etc."
                     className={inputClass}
                   />
+                  <p
+                    id="description-count"
+                    className={`mt-1 text-right text-xs ${
+                      form.description.length > DESCRIPTION_MAX ? "font-semibold text-red-600" : "text-gray-400"
+                    }`}
+                  >
+                    {form.description.length}/{DESCRIPTION_MAX} characters
+                  </p>
                 </div>
               </Step>
 

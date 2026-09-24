@@ -75,12 +75,9 @@ export default function FarmerSettings() {
 
   useEffect(() => {
     setLoading(true);
-    getCurrentUser()
-      .then(({ data: me }) => {
+    Promise.all([getCurrentUser(), getMyProducts(), getFarmerProfile(user._id)])
+      .then(([{ data: me }, productsRes, farmerRes]) => {
         updateUser(me);
-        return Promise.all([getMyProducts(), getFarmerProfile(me._id)]);
-      })
-      .then(([productsRes, farmerRes]) => {
         setProducts(productsRes.data);
         setRatingStats({ rating: farmerRes.data.rating || 0, ratingCount: farmerRes.data.ratingCount || 0 });
       })

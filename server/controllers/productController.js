@@ -27,6 +27,17 @@ const listingNumbers = ({ stock, price, salePrice }) => ({
 
 const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
+// A listing's description is kept short enough to read at a glance; the form
+// counts down to the limit.
+const DESCRIPTION_MAX = 500;
+const checkDescription = (description) => {
+  if (description === undefined) return null;
+  if (typeof description !== "string") return "Product description must be text";
+  if (description.trim().length > DESCRIPTION_MAX) {
+    return `Product description must be ${DESCRIPTION_MAX} characters or fewer`;
+  }
+  return null;
+};
 const FARMER_FIELDS = "name farmName location rating isVerified isBanned avatar";
 
 // Listings only reach buyers once an admin has approved the farmer behind
@@ -78,6 +89,12 @@ const createProduct = asyncHandler(async (req, res) => {
 
   const { crop: cropId, stock, price, description, productType } = req.body;
 
+  const descriptionProblem = checkDescription(description);
+  if (descriptionProblem) {
+    discardUploads(req);
+    res.status(400);
+    throw new Error(descriptionProblem);
+  }
   if (stock === undefined || price === undefined) {
     discardUploads(req);
     res.status(400);
@@ -136,11 +153,14 @@ const createProduct = asyncHandler(async (req, res) => {
 // @route   GET /api/products/mine
 // @access  Private (farmer)
 const getMyProducts = asyncHandler(async (req, res) => {
-  const products = await Product.find({ farmer: req.user._id }).sort({ createdAt: -1 });
-
-  const ratingStats = await Rating.aggregate([
-    { $match: { farmer: req.user._id, removedAt: null } },
-    { $group: { _id: "$product", avg: { $avg: "$stars" }, count: { $sum: 1 } } },
+  // Side by side rather than one after the other: each trip to the database
+  // is slow from a free server far away from it.
+  const [products, ratingStats] = await Promise.all([
+    Product.find({ farmer: req.user._id }).sort({ createdAt: -1 }),
+    Rating.aggregate([
+      { $match: { farmer: req.user._id, removedAt: null } },
+      { $group: { _id: "$product", avg: { $avg: "$stars" }, count: { $sum: 1 } } },
+    ]),
   ]);
   const statsByProduct = new Map(ratingStats.map((s) => [s._id.toString(), s]));
 
@@ -381,6 +401,14 @@ const updateProduct = asyncHandler(async (req, res) => {
     discardUploads(req);
     res.status(400);
     throw new Error("Product type must be 'sale' or 'preorder'");
+  }
+  // Only when the request changes it, so restocking a listing written before
+  // the limit still works.
+  const descriptionProblem = checkDescription(description);
+  if (descriptionProblem) {
+    discardUploads(req);
+    res.status(400);
+    throw new Error(descriptionProblem);
   }
 
   let numbers;

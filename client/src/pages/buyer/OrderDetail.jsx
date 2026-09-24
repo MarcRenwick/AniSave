@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Archive, ArchiveRestore, ImageOff, MapPin, Phone, Star, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Archive, ArchiveRestore, ImageOff, MapPin, Star, User as UserIcon } from "lucide-react";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
+import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getOrder, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
 import { BUYER_STEPS, BUYER_STATUS_TITLE } from "../../utils/orderStatus";
@@ -204,14 +205,14 @@ export default function OrderDetail() {
                       Cancel Order
                     </button>
                   )}
-                  {order.farmer?.phone && (
-                    <a
-                      href={`tel:${order.farmer.phone}`}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98]"
-                    >
-                      <Phone className="h-4 w-4" />
-                      Call Seller
-                    </a>
+                  {order.farmer?._id && (
+                    <div className="flex flex-1 flex-col">
+                      <MessageFarmerButton
+                        farmerId={order.farmer._id}
+                        label="Message Now"
+                        className="flex w-full items-center justify-center gap-2 rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
+                      />
+                    </div>
                   )}
                 </div>
               )

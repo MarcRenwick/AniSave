@@ -62,7 +62,7 @@ export default function Privacy() {
             "Administrators: the account list (to moderate accounts) and a farmer's ID and farm documents while reviewing them.",
             "Your ID and farm documents are stored privately. Only you and an administrator can open them - they are never public.",
             "A report you send, and its photos, are seen only by you and administrators. The seller is not shown who reported them, and nobody is told who reported a review.",
-            "Who you have blocked is yours alone: the seller is not told, and it is in no list an administrator can see. You can read it in your own data download.",
+            "Who you have blocked is yours alone: the seller is not told, and it is in no list an administrator can see. You can see it under Blocked Users in your profile.",
           ]}
         />
       </Section>
@@ -82,7 +82,7 @@ export default function Privacy() {
       <Section title="Your choices">
         <Bullets
           items={[
-            "Access: use “Download my data” in your profile’s Privacy & Security to get a copy of what we hold about you.",
+            "Access: your profile, orders and products show the information we hold about you.",
             "Correction: change your name, phone number, address and farm details with Edit Profile.",
             "Deletion and withdrawing consent: delete your account, as above.",
             "Extra protection: turn on two-step sign-in in Privacy & Security, so a password alone can’t open your account.",

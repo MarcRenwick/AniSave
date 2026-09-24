@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Plus, Leaf } from "lucide-react";
+import { Plus, Leaf, Apple, Egg, Beef, Fish } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import ProductCard from "../../components/farmer/products/ProductCard";
@@ -11,6 +11,9 @@ import { getMyProducts, restockProduct, deleteProduct } from "../../services/api
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { useAuth } from "../../context/AuthContext";
 import { categoryFilters } from "../../utils/categories";
+
+// Each kind of produce gets its own little picture on its filter.
+const FILTER_ICONS = { vegetable: Leaf, fruit: Apple, egg: Egg, meat: Beef, seafood: Fish };
 
 export default function FarmerProducts() {
   const navigate = useNavigate();
@@ -51,7 +54,7 @@ export default function FarmerProducts() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-2xl font-semibold text-gray-900">My Products</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">My Products</h1>
         <p className="text-sm text-gray-500">Manage your fresh fruits and vegetables</p>
       </FarmerTopBar>
 
@@ -60,23 +63,26 @@ export default function FarmerProducts() {
           <VerificationBanner />
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex gap-3">
-            {[{ key: "all", label: "All" }, ...categoryFilters(products)].map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition ${
-                  filter === key
-                    ? "bg-[#2f8f66] text-white"
-                    : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {key !== "all" && <Leaf className="h-4 w-4" />}
-                {label}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex flex-wrap gap-3">
+            {[{ key: "all", label: "All" }, ...categoryFilters(products)].map(({ key, label }) => {
+              const Icon = FILTER_ICONS[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium shadow-sm transition ${
+                    filter === key
+                      ? "bg-[#2f8f66] text-white"
+                      : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {Icon && <Icon className="h-4 w-4" />}
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
           <button
@@ -84,9 +90,9 @@ export default function FarmerProducts() {
             onClick={() => navigate("/farmer/products/new")}
             disabled={!canSell}
             title={canSell ? undefined : "Your account needs to be verified before you can list products"}
-            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Create new <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" /> Create new
           </button>
         </div>
 
@@ -100,7 +106,7 @@ export default function FarmerProducts() {
         )}
 
         {!loading && !error && visible.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {visible.map((product) => (
               <ProductCard
                 key={product._id}

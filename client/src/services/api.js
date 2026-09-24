@@ -29,6 +29,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// The farmer's pages ask for the same few things: the dashboard and the
+// notification bell both want your products and orders, and moving from page
+// to page asks again for what was on screen a moment ago. Each answer takes the
+// server most of a second (a free Render server, far from the database), so
+// for a short while one answer is reused: a request already on its way is
+// shared, and one made in the last 20 seconds is answered straight away. Any
+// change - a POST, PUT, PATCH or DELETE - forgets them all, so what someone
+// has just done always shows.
+const SHARED_FOR_MS = 20 * 1000;
+const shared = new Map();
+const sharedGet = (url) => {
+  const key = `${readToken()}|${url}`;
+  const hit = shared.get(key);
+  if (hit && Date.now() - hit.at < SHARED_FOR_MS) return hit.promise;
+  const promise = api.get(url);
+  shared.set(key, { promise, at: Date.now() });
+  promise.catch(() => shared.delete(key));
+  return promise;
+};
+api.interceptors.response.use((response) => {
+  if (response.config.method !== "get") shared.clear();
+  return response;
+});
+
 // When the server says the sign-in this browser is holding is no longer good
 // (logged out elsewhere, password changed, account banned, expired), go back to
 // the login page instead of leaving a dead session on screen. `sessionEnded`
@@ -53,7 +77,6 @@ export const logoutSession = (token) =>
   api.post("/auth/logout", null, { headers: { Authorization: `Bearer ${token}` } });
 export const getCurrentUser = () => api.get("/auth/me");
 export const setTwoStep = (enabled, password) => api.put("/auth/mfa", { enabled, password });
-export const exportMyData = () => api.get("/auth/me/export", { responseType: "blob" });
 // A farmer's ID and farm documents are private - fetched with the login token, as a file.
 export const getDocumentFile = (path) => api.get(path, { responseType: "blob" });
 export const requestLoginOtp = (email) => api.post("/auth/login-otp/request", { email });
@@ -70,7 +93,7 @@ export const changePassword = (currentPassword, newPassword) =>
 export const requestAccountDeletion = (form) => api.post("/auth/delete-account/request-otp", form);
 export const confirmAccountDeletion = (code) => api.post("/auth/delete-account/confirm", { code });
 
-export const getMyProducts = () => api.get("/products/mine");
+export const getMyProducts = () => sharedGet("/products/mine");
 export const getAllProducts = (params) => api.get("/products", { params });
 export const getFarmers = (params) => api.get("/farmers", { params });
 export const getFarmerProfile = (id) => api.get(`/farmers/${id}`);
@@ -96,7 +119,7 @@ export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
 // What buyers are searching for and opening across the marketplace, for the
 // farmer's dashboard. Nothing here is counted from sales.
-export const getTopSearchedProducts = () => api.get("/products/top-searched");
+export const getTopSearchedProducts = () => sharedGet("/products/top-searched");
 
 // The catalogue of agricultural products behind the searchable product
 // selector. A listing names its produce by one of these rows' ids.
@@ -118,7 +141,7 @@ export const updateMarketPrice = (id, body) => api.put(`/market-prices/${id}`, b
 export const archiveMarketPrice = (id) => api.delete(`/market-prices/${id}`);
 export const deleteMarketPrice = (id) => api.delete(`/market-prices/${id}`, { params: { permanent: true } });
 
-export const getFarmerOrders = () => api.get("/orders/farmer");
+export const getFarmerOrders = () => sharedGet("/orders/farmer");
 export const getBuyerOrders = () => api.get("/orders/buyer");
 export const getOrder = (id) => api.get(`/orders/${id}`);
 export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });

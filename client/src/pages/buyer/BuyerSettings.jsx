@@ -253,11 +253,11 @@ export default function BuyerSettings() {
               />
             </Group>
 
-            <Group icon={Lock} title="Privacy & Safety" blurb="Control your data and how you sign in.">
+            <Group icon={Lock} title="Privacy & Safety" blurb="Control how you sign in.">
               <Row
                 icon={ShieldCheck}
                 title="Privacy & Security"
-                blurb="Two-step sign-in, and a copy of what AniSave holds about you."
+                blurb="Two-step sign-in with a code sent to your email."
                 onClick={() => setShowPrivacy(true)}
               />
               <Row

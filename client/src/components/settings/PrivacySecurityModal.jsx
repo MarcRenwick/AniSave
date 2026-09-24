@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Download, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import Modal from "../Modal";
 import PasswordInput from "../PasswordInput";
 import { useAuth } from "../../context/AuthContext";
-import { exportMyData, setTwoStep } from "../../services/api";
-import { saveBlob } from "../../utils/downloadFile";
+import { setTwoStep } from "../../services/api";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
 
-// Two things a person controls about their own security and data: two-step
-// sign-in (an emailed code after the password), and a copy of what AniSave
-// holds about them.
+// Two-step sign-in: after the password, a code is emailed to the address the
+// account was registered with.
 export default function PrivacySecurityModal({ onClose }) {
   const { user, updateUser } = useAuth();
   const enabled = Boolean(user?.mfaEnabled);
@@ -21,7 +19,6 @@ export default function PrivacySecurityModal({ onClose }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   const handleTwoStep = async (e) => {
     e.preventDefault();
@@ -37,21 +34,6 @@ export default function PrivacySecurityModal({ onClose }) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDownload = async () => {
-    setError("");
-    setMessage("");
-    setDownloading(true);
-    try {
-      const { data } = await exportMyData();
-      saveBlob(data, "anisave-my-data.json");
-      setMessage("Your data was downloaded.");
-    } catch {
-      setError("Couldn't download your data. Please try again.");
-    } finally {
-      setDownloading(false);
     }
   };
 
@@ -105,23 +87,6 @@ export default function PrivacySecurityModal({ onClose }) {
             {saving ? "Saving..." : enabled ? "Turn off two-step sign-in" : "Turn on two-step sign-in"}
           </button>
         </form>
-      </section>
-
-      <section className="mt-6 border-t border-gray-200 pt-5">
-        <p className="text-sm font-semibold text-gray-900">Your data</p>
-        <p className="mt-1 text-xs text-gray-500">
-          Get a copy of what AniSave holds about you - your account details, orders, ratings and (for
-          farmers) products - as a file. It never includes your password.
-        </p>
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={downloading}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-2 text-sm font-semibold text-[#2f8f66] hover:bg-green-50 disabled:opacity-60"
-        >
-          <Download className="h-4 w-4" />
-          {downloading ? "Preparing..." : "Download my data"}
-        </button>
       </section>
 
       <p className="mt-5 text-center text-xs text-gray-400">
