@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 const AdminOtp = require("../models/AdminOtp");
 const generateToken = require("../utils/generateToken");
-const sendEmail = require("../utils/sendEmail");
+const { trySend, EMAIL_FAILED_MESSAGE } = require("../utils/sendEmail");
 const validate = require("../utils/validate");
 const otp = require("../utils/otp");
 
@@ -33,22 +33,34 @@ const requestAdminOtp = asyncHandler(async (req, res) => {
   }
 
   const code = otp.generateCode();
+  const hashed = otp.hashCode(code);
 
   await AdminOtp.findOneAndUpdate(
     { email },
-    { code: otp.hashCode(code), expiresAt: Date.now() + ADMIN_CODE_MS, attempts: 0 },
+    { code: hashed, expiresAt: Date.now() + ADMIN_CODE_MS, attempts: 0 },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  await sendEmail({
-    to: email,
-    subject: "Your AniSave admin registration OTP",
-    html: `
+  // Waited for, and a failure admitted: the only address that gets this far
+  // is the one already written into the server's settings, so there is nothing
+  // to give away. A code that never went out is taken back, or asking again
+  // within the minute would be told "sent" while nothing was.
+  const sent = await trySend(
+    {
+      to: email,
+      subject: "Your AniSave admin registration OTP",
+      html: `
       <p>Enter this OTP in the app to finish creating an admin account. It expires in 15 minutes.</p>
       <h2 style="letter-spacing: 6px;">${code}</h2>
       <p>If you didn't request this, you can safely ignore this email.</p>
     `,
-  });
+    },
+    { onFailure: () => AdminOtp.deleteOne({ email, code: hashed }) }
+  );
+
+  // Sent directly rather than thrown: the error handler turns every 5xx into
+  // "Something went wrong on our side", which is all this page used to say.
+  if (!sent) return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
 
   res.json({ message: "An OTP has been sent to your email." });
 });

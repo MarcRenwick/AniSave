@@ -17,7 +17,7 @@ const { TERMS_VERSION } = require("../utils/privacy");
 const validate = require("../utils/validate");
 const otp = require("../utils/otp");
 
-const { escapeHtml } = sendEmail;
+const { escapeHtml, trySend, EMAIL_FAILED_MESSAGE } = sendEmail;
 const { generateMfaToken } = generateToken;
 const { LOGIN_CODE, RESET_CODE, DELETE_CODE, MFA_CODE, selectCode } = otp;
 
@@ -37,9 +37,26 @@ const DUMMY_HASH = bcrypt.hashSync("not-a-real-password", 10);
 
 // Email sends are not waited for: the response then takes the same time whether
 // or not an account exists, and a slow or failing mail server can't hang a
-// request. A failure is logged - without the message, which holds the code.
-const sendInBackground = (message) =>
-  sendEmail(message).catch((err) => console.error(`Could not send an email (${message.subject}): ${err.message}`));
+// request. A failure is logged - without the message, which holds the code -
+// and `onFailure` takes back the code that never went out.
+const sendInBackground = (message, { onFailure } = {}) =>
+  sendEmail(message).catch((err) => {
+    console.error(`Could not send an email (${message.subject}): ${err.message}`);
+    return onFailure?.().catch(() => {});
+  });
+
+// Takes back a code whose email never went out. Without this, asking again
+// within the resend cooldown was answered "a code has been sent" while nothing
+// was - the unsent code was what the cooldown was counting from. Only removes
+// the code it was given: if a newer one has been issued since, that one stays.
+const forgetCode = (user, fields) => {
+  const issued = user[fields.code];
+  return () =>
+    User.updateOne(
+      { _id: user._id, [fields.code]: issued },
+      { $unset: { [fields.code]: "", [fields.expires]: "" }, $set: { [fields.attempts]: 0 } }
+    );
+};
 
 // Why someone is leaving, as the farmer's deletion form offers it. The labels
 // people see live in the client (client/src/utils/accountDeletion.js).
@@ -210,21 +227,32 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 // Emails a fresh two-step code to someone who has just proved their password
-// (unless one went out a moment ago).
+// (unless one went out a moment ago), and says whether it went.
+//
+// This one is waited for, unlike the codes asked for by email address alone.
+// Those can't admit a failure without revealing the address is registered;
+// this person has already proved their password, so there is nothing left to
+// reveal - and being told "we emailed you a code" when nothing was sent left
+// them waiting at the code box for an email that was never coming. Every
+// administrator signs in this way, so it is also the difference between an
+// admin being able to get in and not.
 const sendTwoStepCode = async (user) => {
-  if (otp.sentRecently(user, MFA_CODE, MFA_CODE_MS)) return;
+  if (otp.sentRecently(user, MFA_CODE, MFA_CODE_MS)) return true;
   const code = otp.issueCode(user, MFA_CODE, MFA_CODE_MS);
   await user.save();
-  sendInBackground({
-    to: user.email,
-    subject: "Your AniSave sign-in code",
-    html: codeEmail(user, {
-      intro: "Use this code to finish signing in to AniSave.",
-      code,
-      minutes: 10,
-      outro: "If this wasn't you, someone knows your password - change it right away.",
-    }),
-  });
+  return trySend(
+    {
+      to: user.email,
+      subject: "Your AniSave sign-in code",
+      html: codeEmail(user, {
+        intro: "Use this code to finish signing in to AniSave.",
+        code,
+        minutes: 10,
+        outro: "If this wasn't you, someone knows your password - change it right away.",
+      }),
+    },
+    { onFailure: forgetCode(user, MFA_CODE) }
+  );
 };
 
 // @desc    Authenticate user & get token. Accounts with two-step sign-in (all
@@ -280,7 +308,11 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   if (needsTwoStep(user)) {
-    await sendTwoStepCode(user);
+    // Sent directly rather than thrown: the error handler replaces every 5xx
+    // message with a generic apology, and this one is worth reading.
+    if (!(await sendTwoStepCode(user))) {
+      return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
+    }
     return res.json({
       mfaRequired: true,
       mfaToken: generateMfaToken(user._id),
@@ -346,7 +378,9 @@ const resendLoginMfa = asyncHandler(async (req, res) => {
     throw new Error("A code was just sent. Please wait a minute before asking for another.");
   }
 
-  await sendTwoStepCode(user);
+  if (!(await sendTwoStepCode(user))) {
+    return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
+  }
   res.json({ message: `We emailed a new code to ${maskEmail(user.email)}.` });
 });
 
@@ -373,16 +407,19 @@ const requestLoginOtp = asyncHandler(async (req, res) => {
     const code = otp.issueCode(user, LOGIN_CODE, LOGIN_CODE_MS);
     await user.save();
 
-    sendInBackground({
-      to: user.email,
-      subject: "Your AniSave login code",
-      html: codeEmail(user, {
-        intro: "Use this code to log in to AniSave.",
-        code,
-        minutes: 10,
-        outro: "If you didn't try to log in, you can safely ignore this email - nobody can get in without this code.",
-      }),
-    });
+    sendInBackground(
+      {
+        to: user.email,
+        subject: "Your AniSave login code",
+        html: codeEmail(user, {
+          intro: "Use this code to log in to AniSave.",
+          code,
+          minutes: 10,
+          outro: "If you didn't try to log in, you can safely ignore this email - nobody can get in without this code.",
+        }),
+      },
+      { onFailure: forgetCode(user, LOGIN_CODE) }
+    );
   }
 
   res.json({ message: "If that email is registered, a login code has been sent." });
@@ -430,16 +467,19 @@ const forgotPassword = asyncHandler(async (req, res) => {
     const code = otp.issueCode(user, RESET_CODE, RESET_CODE_MS);
     await user.save();
 
-    sendInBackground({
-      to: user.email,
-      subject: "Your AniSave OTP for password reset",
-      html: codeEmail(user, {
-        intro: "Someone requested a password reset for your AniSave account. Enter this OTP in the app to continue.",
-        code,
-        minutes: 15,
-        outro: "If you didn't request this, you can safely ignore this email.",
-      }),
-    });
+    sendInBackground(
+      {
+        to: user.email,
+        subject: "Your AniSave OTP for password reset",
+        html: codeEmail(user, {
+          intro: "Someone requested a password reset for your AniSave account. Enter this OTP in the app to continue.",
+          code,
+          minutes: 15,
+          outro: "If you didn't request this, you can safely ignore this email.",
+        }),
+      },
+      { onFailure: forgetCode(user, RESET_CODE) }
+    );
   }
 
   res.json({ message: "If that email is registered, an OTP has been sent." });
@@ -620,16 +660,22 @@ const requestAccountDeletion = asyncHandler(async (req, res) => {
     const code = otp.issueCode(user, DELETE_CODE, DELETE_CODE_MS);
     await user.save();
 
-    await sendEmail({
-      to: user.email,
-      subject: "Confirm deleting your AniSave account",
-      html: codeEmail(user, {
-        intro: "Enter this OTP in the app to permanently delete your AniSave account. This cannot be undone.",
-        code,
-        minutes: 15,
-        outro: "If you didn't request this, you can safely ignore this email - your account will not be deleted.",
-      }),
-    });
+    // Signed in already, so a failure can be admitted - and is, rather than
+    // sent through the error handler, which would swap it for a vague apology.
+    const sent = await trySend(
+      {
+        to: user.email,
+        subject: "Confirm deleting your AniSave account",
+        html: codeEmail(user, {
+          intro: "Enter this OTP in the app to permanently delete your AniSave account. This cannot be undone.",
+          code,
+          minutes: 15,
+          outro: "If you didn't request this, you can safely ignore this email - your account will not be deleted.",
+        }),
+      },
+      { onFailure: forgetCode(user, DELETE_CODE) }
+    );
+    if (!sent) return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
   }
 
   res.json({ message: "An OTP has been sent to your email." });

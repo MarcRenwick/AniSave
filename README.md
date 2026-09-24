@@ -239,13 +239,26 @@ MONGO_URI='<your deployed database URI>' ADMIN_PASSWORD='...' \
 
 If that username or email is already taken it stops rather than overwriting. `ADMIN_RESET=true` instead gives that account the new password and makes it an admin, and signs out every session it already had.
 
-**Signing in as an admin always emails a six-digit code**, and unlike everyone else an admin cannot switch that off. So an admin account is only usable where the server has working `EMAIL_USER` and `EMAIL_PASS`, and where you can read that mailbox. An admin created on a server with no mail settings can be created and then never used.
+**Signing in as an admin always emails a six-digit code**, and unlike everyone else an admin cannot switch that off. So an admin account is only usable where the server can actually send email (see below), and where you can read that mailbox. An admin created on a server that can't send mail can be created and then never used.
 
 ## Running it somewhere other than your machine
 
 The two halves deploy separately, and each needs its own settings - `server/.env` is never committed, so a host knows nothing that isn't configured there.
 
-The **server** needs `MONGO_URI` (the deployed database, not localhost), a `JWT_SECRET` of 32 characters or more - it refuses to start in production without one - `NODE_ENV=production`, `CLIENT_URL` set to the website's address so CORS lets it through (comma-separate several), and `EMAIL_USER` / `EMAIL_PASS` for the codes that password resets, two-step sign-in and admin registration all depend on. Behind a proxy or load balancer the app already sets `trust proxy`, so the rate limiter counts real visitors rather than the proxy.
+The **server** needs `MONGO_URI` (the deployed database, not localhost), a `JWT_SECRET` of 32 characters or more - it refuses to start in production without one - `NODE_ENV=production`, `CLIENT_URL` set to the website's address so CORS lets it through (comma-separate several), and a way to send email (next section). Behind a proxy or load balancer the app already sets `trust proxy`, so the rate limiter counts real visitors rather than the proxy.
+
+### Sending email from a host
+
+Every one-time code - login by email, password reset, two-step sign-in, account deletion and admin registration - goes through `server/utils/sendEmail.js`, which sends one of two ways:
+
+- **Gmail over SMTP**, with `EMAIL_USER` and `EMAIL_PASS` (a Gmail App Password). This is what runs on your own machine.
+- **Brevo over HTTPS**, whenever `BREVO_API_KEY` is set. `EMAIL_USER` is still the sender and still the only address admin registration accepts; `EMAIL_PASS` isn't used.
+
+**A host that blocks SMTP needs the second.** Render's free web services can't send on ports 25, 465 or 587, so from there Gmail's mail server never answers and every send times out - the server log shows `Error: Connection timeout` from nodemailer's `smtp-connection`, and no setting of `EMAIL_PASS` can fix it. HTTPS goes out on port 443 like any web request.
+
+To set Brevo up: make a free account at brevo.com, add the `EMAIL_USER` address as a sender and verify it from the email Brevo sends there, create an API key under *SMTP & API > API Keys*, and put it in the host's environment as `BREVO_API_KEY`. A Gmail address can be verified as a sender but not authenticated as a domain, so Brevo delivers it from an address of its own while keeping *AniSave* as the name - check the spam folder the first time.
+
+Either way a send gives up after 15 seconds rather than nodemailer's two minutes, and a failure is logged with the mail service's own reason, never the message, which holds the code. What the person is told depends on whether saying so gives anything away. Admin registration, two-step sign-in and account deletion say plainly that the email couldn't be sent: by then the person has proved who they are, or is using the one address the server already knows. Login-by-email and password reset answer exactly as they would for an address that isn't registered, so a failure there is only in the log. Either way, a code that never went out is taken back, so asking again sends a new one at once instead of being told for a minute that one was sent.
 
 The **client** needs `VITE_API_URL` pointing at the deployed API, ending in `/api`. It is baked in at build time, so changing it means rebuilding, not just restarting.
 
