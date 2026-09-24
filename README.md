@@ -249,18 +249,28 @@ The **server** needs `MONGO_URI` (the deployed database, not localhost), a `JWT_
 
 ### Sending email from a host
 
-Every one-time code - login by email, password reset, two-step sign-in, account deletion and admin registration - goes through `server/utils/sendEmail.js`, which sends one of two ways:
+Every one-time code - login by email, password reset, two-step sign-in, account deletion and admin registration - goes through `server/utils/sendEmail.js`, which sends it one of three ways:
 
 - **Gmail over SMTP**, with `EMAIL_USER` and `EMAIL_PASS` (a Gmail App Password). This is what runs on your own machine.
-- **Brevo over HTTPS**, whenever `BREVO_API_KEY` is set. `EMAIL_USER` is still the sender and still the only address admin registration accepts; `EMAIL_PASS` isn't used.
+- **Through the mail relay**, whenever `MAIL_RELAY_URL` is set. The relay is `client/api/send-email.js`, a small function Vercel deploys along with the website, and it sends through the same Gmail account from there.
+- **Brevo over HTTPS**, whenever `BREVO_API_KEY` is set and `MAIL_RELAY_URL` isn't. `EMAIL_USER` is still the sender; `EMAIL_PASS` isn't used.
 
-**A host that blocks SMTP needs the second.** Render's free web services can't send on ports 25, 465 or 587, so from there Gmail's mail server never answers and every send times out - the server log shows `Error: Connection timeout` from nodemailer's `smtp-connection`, and no setting of `EMAIL_PASS` can fix it. HTTPS goes out on port 443 like any web request.
+Whichever way, `EMAIL_USER` is still the only address admin registration accepts.
 
-To set Brevo up: make a free account at brevo.com, add the `EMAIL_USER` address as a sender and verify it from the email Brevo sends there, create an API key under *SMTP & API > API Keys*, and put it in the host's environment as `BREVO_API_KEY`. A Gmail address can be verified as a sender but not authenticated as a domain, so Brevo delivers it from an address of its own while keeping *AniSave* as the name - check the spam folder the first time.
+**Render's free plan needs the relay or Brevo.** Render's free web services can't send on ports 25, 465 or 587, so from there Gmail's mail server never answers: the server log shows `Connection timeout`, or `ENETUNREACH` for Gmail's IPv6 addresses, and no setting of `EMAIL_PASS` can fix it. Vercel blocks only port 25, and the server reaches the relay over HTTPS like any web request. The server's first lines in the log say which way email will go, and on Render without either of the two, that no email will arrive.
 
-Either way a send gives up after 15 seconds rather than nodemailer's two minutes, and a failure is logged with the mail service's own reason, never the message, which holds the code. What the person is told depends on whether saying so gives anything away. Admin registration, two-step sign-in and account deletion say plainly that the email couldn't be sent: by then the person has proved who they are, or is using the one address the server already knows. Login-by-email and password reset answer exactly as they would for an address that isn't registered, so a failure there is only in the log. Either way, a code that never went out is taken back, so asking again sends a new one at once instead of being told for a minute that one was sent.
+To use the relay, which needs no new account:
 
-The **client** needs `VITE_API_URL` pointing at the deployed API, ending in `/api`. It is baked in at build time, so changing it means rebuilding, not just restarting.
+1. In the **Vercel** project, under *Settings > Environment Variables*, add `EMAIL_USER` and `EMAIL_PASS` with the same values the server has. Then redeploy (*Deployments*, the latest one, *Redeploy*), because Vercel gives new settings only to new deployments.
+2. On **Render**, under *Environment*, add `MAIL_RELAY_URL` set to `https://<your site>.vercel.app/api/send-email`, keep `EMAIL_USER` and `EMAIL_PASS`, and choose *Save, rebuild, and deploy*.
+
+Only the server can use the relay. Each request is signed with `EMAIL_PASS`, a signature is good only for that one message and only for five minutes, and the relay sends nothing it can't verify. That is why `EMAIL_PASS` has to be the same in both places; if it isn't, the server log says so. Neither variable starts with `VITE_`, so neither ever reaches the browser.
+
+To use Brevo instead: make a free account at brevo.com, add the `EMAIL_USER` address as a sender and verify it from the email Brevo sends there, create an API key under *SMTP & API > API Keys*, and put it in the host's environment as `BREVO_API_KEY`. A Gmail address can be verified as a sender but not authenticated as a domain, so Brevo delivers it from an address of its own while keeping *AniSave* as the name - check the spam folder the first time.
+
+A send gives up after 15 seconds (over SMTP, after 15 seconds for each of Gmail's addresses it tries) rather than nodemailer's two minutes, and a failure is logged with the mail service's own reason, never the message, which holds the code. What the person is told depends on whether saying so gives anything away. Admin registration, two-step sign-in and account deletion say plainly that the email couldn't be sent: by then the person has proved who they are, or is using the one address the server already knows. Login-by-email and password reset answer exactly as they would for an address that isn't registered, so a failure there is only in the log. Either way, a code that never went out is taken back, so asking again sends a new one at once instead of being told for a minute that one was sent.
+
+The **client** needs `VITE_API_URL` pointing at the deployed API, ending in `/api`. It is baked in at build time, so changing it means rebuilding, not just restarting. When the client also carries the mail relay, it needs `EMAIL_USER` and `EMAIL_PASS` too (see above).
 
 `GET /api/health` answers `{"status":"ok"}` without a token and without touching the database, which is the quickest way to tell a server that is down from one that is up but refusing you.
 

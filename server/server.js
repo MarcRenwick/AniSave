@@ -6,6 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const connectDB = require("./config/db");
 const { UPLOAD_DIR } = require("./utils/fileUtils");
+const { describeEmailRoute } = require("./utils/sendEmail");
 const { apiLimiter } = require("./middleware/rateLimiters");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
 const authRoutes = require("./routes/authRoutes");
@@ -95,4 +96,7 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(describeEmailRoute());
+});
