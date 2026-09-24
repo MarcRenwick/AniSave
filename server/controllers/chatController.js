@@ -25,6 +25,8 @@ const PERSON = "name farmName avatar role isBanned lastActiveAt blockedUsers";
 const ORDER_LIMIT = 20;
 
 const otherSideOf = (side) => (side === "buyer" ? "farmer" : "buyer");
+// A person in a conversation, whether it has been populated or not.
+const idOf = (person) => person?._id ?? person;
 
 const messageView = (message) => ({
   _id: message._id,
@@ -32,8 +34,49 @@ const messageView = (message) => ({
   sender: message.sender,
   text: message.text || "",
   image: message.image || null,
+  deleted: Boolean(message.deletedAt),
   createdAt: message.createdAt,
 });
+
+// Deleting. A message can be deleted by its sender for everyone, which leaves
+// "This message was deleted" in its place, or by either person for
+// themselves only. A conversation is only ever deleted for the person who
+// deletes it. What neither of them can see any more is deleted for good.
+
+// The messages in a conversation one side can still see: not the ones they
+// deleted for themselves, nor anything from before they deleted the whole
+// conversation. (As a query - stillHas is the same for a message in hand.)
+const visibleTo = (conversation, side) => {
+  const clearedAt = conversation[`${side}ClearedAt`];
+  return {
+    conversation: conversation._id,
+    hiddenFor: { $ne: idOf(conversation[side]) },
+    ...(clearedAt ? { createdAt: { $gt: clearedAt } } : {}),
+  };
+};
+const stillHas = (message, conversation, side) => {
+  const clearedAt = conversation[`${side}ClearedAt`];
+  const person = String(idOf(conversation[side]));
+  return !(message.hiddenFor || []).some((id) => String(id) === person) && !(clearedAt && message.createdAt <= clearedAt);
+};
+// The opposite of visibleTo. Someone whose account is gone sees nothing.
+const hiddenFrom = (conversation, side) => {
+  const person = idOf(conversation[side]);
+  if (!person) return {};
+  const clearedAt = conversation[`${side}ClearedAt`];
+  return { $or: [{ hiddenFor: person }, ...(clearedAt ? [{ createdAt: { $lte: clearedAt } }] : [])] };
+};
+// Picks out the conversation whose newest message this is.
+const isLastMessage = (message) => ({ "lastMessage.sender": message.sender, "lastMessage.createdAt": message.createdAt });
+
+// Deletes for good, photos and all, the messages that match - ones neither
+// person can see any more.
+async function purge(filter) {
+  const gone = await Message.find(filter).select("image").lean();
+  if (!gone.length) return;
+  await Message.deleteMany({ _id: { $in: gone.map((m) => m._id) } });
+  gone.forEach((m) => m.image && deleteImageFile(m.image));
+}
 
 // Has the buyer in this conversation blocked the farmer in it? Then neither
 // sees when the other is active, on top of not being able to message.
@@ -42,12 +85,14 @@ const isBlockedPair = (conversation) =>
 
 // What one person is shown about a conversation: who it is with and whether
 // they are active, the newest message, how many messages they haven't read,
-// and whether the other person has seen what they sent.
-const viewFor = (conversation, userId) => {
+// and whether the other person has seen what they sent. `latest` stands in
+// for the newest message when that one isn't theirs to see (listViewFor).
+const viewFor = (conversation, userId, { latest } = {}) => {
   const side = conversation.buyer?._id?.toString() === userId.toString() ? "buyer" : "farmer";
   const otherSide = otherSideOf(side);
   const other = conversation[otherSide];
   const showsActivity = Boolean(other) && !isBlockedPair(conversation);
+  const newest = latest === undefined ? conversation.lastMessage : latest && { ...latest, deleted: Boolean(latest.deletedAt) };
   return {
     _id: conversation._id,
     other: other
@@ -61,14 +106,37 @@ const viewFor = (conversation, userId) => {
           lastActiveAt: showsActivity ? other.lastActiveAt || null : null,
         }
       : { _id: null, name: "Deleted account", farmName: null, role: otherSide, avatar: null, online: false, lastActiveAt: null },
-    lastMessage: conversation.lastMessage?.text || conversation.lastMessage?.image ? conversation.lastMessage : null,
-    lastMessageAt: conversation.lastMessageAt,
+    lastMessage:
+      newest && (newest.text || newest.image || newest.deleted)
+        ? {
+            text: newest.text || "",
+            image: Boolean(newest.image),
+            deleted: Boolean(newest.deleted),
+            sender: newest.sender,
+            createdAt: newest.createdAt,
+          }
+        : null,
+    lastMessageAt: latest === undefined ? conversation.lastMessageAt : latest?.createdAt || null,
     unread: conversation[`${side}Unread`] || 0,
     // The other side's unread count only ever holds this person's messages,
     // so when it is 0 they have seen everything this person sent.
     seen: !conversation[`${otherSide}Unread`],
   };
 };
+
+// viewFor, for the conversation list. When the newest message is one this
+// person deleted for themselves, the newest one they still have is shown
+// instead - and with nothing left, lastMessageAt is null and the list leaves
+// the conversation out.
+async function listViewFor(conversation, userId) {
+  const hidden = (conversation.lastMessage?.hiddenFor || []).some((id) => String(id) === String(userId));
+  if (!hidden) return viewFor(conversation, userId);
+  const side = conversation.buyer?._id?.toString() === userId.toString() ? "buyer" : "farmer";
+  const latest = await Message.findOne(visibleTo(conversation, side)).sort({ createdAt: -1 }).lean();
+  return viewFor(conversation, userId, { latest });
+}
+
+const reload = (conversation) => Conversation.findById(conversation._id).populate("buyer farmer", PERSON);
 
 // Everything one person hasn't read, across all their conversations - the
 // number on the Messages link.
@@ -94,6 +162,21 @@ async function findMine(req, res) {
   return conversation;
 }
 
+// A message in that conversation the signed-in person can still see, or "not
+// found" - the same answer for one that doesn't exist, is in another
+// conversation, or they have already deleted.
+async function findVisibleMessage(req, res, conversation) {
+  const { messageId } = req.params;
+  const message = mongoose.isValidObjectId(messageId)
+    ? await Message.findOne({ _id: messageId, ...visibleTo(conversation, req.user.role) })
+    : null;
+  if (!message) {
+    res.status(404);
+    throw new Error("Message not found");
+  }
+  return message;
+}
+
 // Why this person can't send a message here right now, if they can't. Blocking
 // works both ways: a buyer who blocked a farmer can't message them, and the
 // farmer can't message that buyer either.
@@ -113,11 +196,18 @@ async function sendProblem(conversation, user) {
 // @route   GET /api/chats
 // @access  Private (buyer, farmer)
 const getConversations = asyncHandler(async (req, res) => {
-  const conversations = await Conversation.find({ [req.user.role]: req.user._id, lastMessageAt: { $ne: null } })
+  const side = req.user.role;
+  const conversations = await Conversation.find({
+    [side]: req.user._id,
+    lastMessageAt: { $ne: null },
+    // Not one they deleted, unless something has been sent since.
+    $or: [{ [`${side}ClearedAt`]: null }, { $expr: { $gt: ["$lastMessageAt", `$${side}ClearedAt`] } }],
+  })
     .sort({ lastMessageAt: -1 })
     .limit(100)
     .populate("buyer farmer", PERSON);
-  res.json(conversations.map((c) => viewFor(c, req.user._id)));
+  const views = await Promise.all(conversations.map((c) => listViewFor(c, req.user._id)));
+  res.json(views.filter((v) => v.lastMessageAt).sort((a, b) => b.lastMessageAt - a.lastMessageAt));
 });
 
 // @desc    How many messages the signed-in person hasn't read
@@ -163,7 +253,7 @@ const startConversation = asyncHandler(async (req, res) => {
 // @access  Private (the two people in it)
 const getConversation = asyncHandler(async (req, res) => {
   const conversation = await findMine(req, res);
-  const messages = await Message.find({ conversation: conversation._id })
+  const messages = await Message.find(visibleTo(conversation, req.user.role))
     .sort({ createdAt: -1 })
     .limit(MESSAGE_PAGE)
     .lean();
@@ -260,6 +350,85 @@ const sendMessage = asyncHandler(async (req, res) => {
   res.status(201).json({ message: view, conversation: viewFor(updated, req.user._id) });
 });
 
+// @desc    Delete one of your own messages for both people. "This message was
+//          deleted" stays in its place, for both.
+// @route   POST /api/chats/:id/messages/:messageId/unsend
+// @access  Private (the two people in it)
+const unsendMessage = asyncHandler(async (req, res) => {
+  const conversation = await findMine(req, res);
+  const message = await findVisibleMessage(req, res, conversation);
+  if (!message.sender.equals(req.user._id)) {
+    res.status(403);
+    throw new Error("You can only delete your own messages for everyone.");
+  }
+  if (!message.deletedAt) {
+    await Message.updateOne({ _id: message._id }, { $set: { deletedAt: new Date() }, $unset: { text: "", image: "" } });
+    await Conversation.updateOne(
+      { _id: conversation._id, ...isLastMessage(message) },
+      { $set: { "lastMessage.text": "", "lastMessage.image": false, "lastMessage.deleted": true } }
+    );
+    if (message.image) deleteImageFile(message.image);
+  }
+
+  const [deleted, updated] = await Promise.all([Message.findById(message._id).lean(), reload(conversation)]);
+  const view = messageView(deleted);
+  const event = (conversationView) => ({
+    conversationId: conversation._id,
+    messageId: message._id,
+    message: view,
+    conversation: conversationView,
+  });
+  const mine = await listViewFor(updated, req.user._id);
+  emitToUser(req.user._id, "chat:deleted", event(mine));
+  // The other person's open tabs too - unless they had already deleted it.
+  const otherSide = otherSideOf(req.user.role);
+  const other = updated[otherSide];
+  if (other && stillHas(deleted, updated, otherSide)) {
+    emitToUser(other._id, "chat:deleted", event(await listViewFor(updated, other._id)));
+  }
+
+  res.json({ message: view, conversation: mine });
+});
+
+// @desc    Delete one message (either person's) for the signed-in person only
+// @route   DELETE /api/chats/:id/messages/:messageId
+// @access  Private (the two people in it)
+const deleteMessageForMe = asyncHandler(async (req, res) => {
+  const conversation = await findMine(req, res);
+  const message = await findVisibleMessage(req, res, conversation);
+  await Message.updateOne({ _id: message._id }, { $addToSet: { hiddenFor: req.user._id } });
+  await Conversation.updateOne(
+    { _id: conversation._id, ...isLastMessage(message) },
+    { $addToSet: { "lastMessage.hiddenFor": req.user._id } }
+  );
+  // Had the other person deleted it already, nobody has it now.
+  await purge({ _id: message._id, ...hiddenFrom(conversation, otherSideOf(req.user.role)) });
+
+  const view = await listViewFor(await reload(conversation), req.user._id);
+  // Their own other tabs.
+  emitToUser(req.user._id, "chat:deleted", { conversationId: conversation._id, messageId: message._id, conversation: view });
+  res.json({ conversation: view });
+});
+
+// @desc    Delete a conversation from the signed-in person's Messages. Only
+//          theirs: the other person keeps it, and it comes back to this
+//          person's list, with just the new messages, if a new one is sent.
+// @route   DELETE /api/chats/:id
+// @access  Private (the two people in it)
+const deleteConversation = asyncHandler(async (req, res) => {
+  const conversation = await findMine(req, res);
+  const side = req.user.role;
+  const clearedAt = new Date();
+  await Conversation.updateOne({ _id: conversation._id }, { $set: { [`${side}ClearedAt`]: clearedAt, [`${side}Unread`]: 0 } });
+  // Whatever the other person had deleted as well is gone for good.
+  await purge({ conversation: conversation._id, createdAt: { $lte: clearedAt }, ...hiddenFrom(conversation, otherSideOf(side)) });
+
+  const total = await unreadTotal(req.user._id, side);
+  emitToUser(req.user._id, "chat:cleared", { conversationId: conversation._id });
+  emitToUser(req.user._id, "chat:read", { conversationId: conversation._id, unreadTotal: total });
+  res.json({ unreadTotal: total });
+});
+
 // @desc    What the buyer has ordered from the farmer in this conversation, newest first
 // @route   GET /api/chats/:id/orders
 // @access  Private (the buyer in it)
@@ -287,13 +456,19 @@ const getConversationOrders = asyncHandler(async (req, res) => {
 
 // @desc    A photo sent in a conversation
 // @route   GET /api/chat-images/:filename
-// @access  Private (the two people in that conversation)
+// @access  Private (the two people in that conversation, while they still have it)
 const getChatImage = asyncHandler(async (req, res) => {
+  const side = req.user.role;
   const image = `/chat-images/${path.basename(String(req.params.filename))}`;
-  const message = await Message.findOne({ image }).select("conversation").lean();
-  const theirs = message && (await Conversation.exists({ _id: message.conversation, [req.user.role]: req.user._id }));
+  const message = await Message.findOne({ image }).select("conversation createdAt hiddenFor").lean();
+  const conversation =
+    message &&
+    (await Conversation.findOne({ _id: message.conversation, [side]: req.user._id })
+      .select(`${side} ${side}ClearedAt`)
+      .lean());
   const sent =
-    Boolean(theirs) &&
+    Boolean(conversation) &&
+    stillHas(message, conversation, side) &&
     (await sendStoredFile(res, image, {
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
@@ -365,6 +540,9 @@ module.exports = {
   markRead,
   checkCanSend,
   sendMessage,
+  unsendMessage,
+  deleteMessageForMe,
+  deleteConversation,
   getConversationOrders,
   getChatImage,
 };

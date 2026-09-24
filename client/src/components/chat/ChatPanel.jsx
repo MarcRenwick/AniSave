@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, CheckCheck, Image as ImageIcon, ImagePlus, MessageCircle, Send, X } from "lucide-react";
+import { ArrowLeft, Ban, Check, CheckCheck, Image as ImageIcon, ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
 import Avatar from "../Avatar";
+import Modal from "../Modal";
 import ChatOrders from "./ChatOrders";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
@@ -15,6 +16,9 @@ import {
   markConversationRead,
   sendChatMessage,
   sendChatPhoto,
+  unsendChatMessage,
+  deleteChatMessage,
+  deleteConversation,
 } from "../../services/api";
 
 const MAX_MESSAGE = 1000;
@@ -41,6 +45,13 @@ const listTime = (date) => (date ? (isToday(date) ? clock(date) : day(date)) : "
 
 // The newest conversation first, without the same one twice.
 const upsert = (list, conversation) => [conversation, ...list.filter((c) => c._id !== conversation._id)];
+// A conversation back in its place after a message in it was deleted: in
+// order of its newest message, or out of the list when none is left.
+const place = (list, conversation) => {
+  const rest = list.filter((c) => c._id !== conversation._id);
+  if (!conversation.lastMessageAt) return rest;
+  return [...rest, conversation].sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt));
+};
 
 const photoForm = (file, caption) => {
   const form = new FormData();
@@ -107,6 +118,22 @@ function ChatPhoto({ path, onOpen }) {
   );
 }
 
+// Beside each message. It shows while the pointer is over the message or it
+// has keyboard focus - and all the time on a touch screen, which can't hover.
+function DeleteMessageButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Delete message"
+      title="Delete message"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-gray-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+    >
+      <Trash2 className="h-4 w-4" />
+    </button>
+  );
+}
+
 function TypingBubble({ name }) {
   return (
     <div className="flex flex-col items-start" data-testid="typing-indicator">
@@ -124,9 +151,9 @@ function TypingBubble({ name }) {
   );
 }
 
-// Conversations down the side, the open one beside them. New messages, "Seen",
-// "typing..." and who is active arrive over the live connection
-// (context/ChatContext.jsx) without a refresh.
+// Conversations down the side, the open one beside them. New messages,
+// deleted ones, "Seen", "typing..." and who is active arrive over the live
+// connection (context/ChatContext.jsx) without a refresh.
 export default function ChatPanel({ basePath, heightClass }) {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -143,8 +170,13 @@ export default function ChatPanel({ basePath, heightClass }) {
   const [sendError, setSendError] = useState("");
   // The conversations where the other person is typing right now.
   const [typingIn, setTypingIn] = useState({});
-  // A photo being looked at full size.
+  // A photo being looked at full size: { url, messageId, conversationId }.
   const [viewing, setViewing] = useState(null);
+  // What the delete dialog is asking about - { message } or { conversation } -
+  // and which way it is being deleted while that is under way.
+  const [deleting, setDeleting] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(null);
+  const [deleteError, setDeleteError] = useState("");
   const scrollRef = useRef(null);
   const fileRef = useRef(null);
   // Which conversation is open, for a message that arrives while it is.
@@ -240,6 +272,35 @@ export default function ChatPanel({ basePath, heightClass }) {
   // When a "Seen" last arrived for each conversation (see send).
   const seenArrived = useRef({});
 
+  // A message deleted - here, in another tab, or by the other person for
+  // everyone. Deleted for everyone, `message` is what stands in its place;
+  // otherwise it goes. `conversation` updates the list's preview.
+  const applyDeleted = useCallback(({ conversationId, messageId, message, conversation }) => {
+    setThread((current) =>
+      current.id !== conversationId
+        ? current
+        : {
+            ...current,
+            messages: message
+              ? current.messages.map((m) => (m._id === messageId ? message : m))
+              : current.messages.filter((m) => m._id !== messageId),
+            conversation:
+              conversation && current.conversation ? { ...current.conversation, ...conversation, unread: 0 } : current.conversation,
+          }
+    );
+    if (conversation) {
+      setConversations((list) => place(list, conversation._id === openId.current ? { ...conversation, unread: 0 } : conversation));
+    }
+    setViewing((current) => (current?.messageId === messageId ? null : current));
+  }, []);
+
+  // A conversation this person deleted, here or in another tab.
+  const applyCleared = useCallback((conversationId) => {
+    setConversations((list) => list.filter((c) => c._id !== conversationId));
+    setThread((current) => (current.id === conversationId ? { ...current, messages: [] } : current));
+    setViewing((current) => (current?.conversationId === conversationId ? null : current));
+  }, []);
+
   useEffect(() => {
     const stops = [
       // A new message, from either side, the moment the server saves it.
@@ -276,9 +337,11 @@ export default function ChatPanel({ basePath, heightClass }) {
         setConversations((list) => list.map(update));
         setThread((current) => (current.conversation ? { ...current, conversation: update(current.conversation) } : current));
       }),
+      subscribe("chat:deleted", applyDeleted),
+      subscribe("chat:cleared", ({ conversationId }) => applyCleared(conversationId)),
     ];
     return () => stops.forEach((stop) => stop());
-  }, [subscribe, myId, markReadWhenSeen, showTyping]);
+  }, [subscribe, myId, markReadWhenSeen, showTyping, applyDeleted, applyCleared]);
 
   // Telling the other person this one is typing.
   const typingSent = useRef({ conversation: null, at: 0, idle: null });
@@ -386,17 +449,70 @@ export default function ChatPanel({ basePath, heightClass }) {
     }
   };
 
+  const askDelete = (target) => {
+    setDeleteError("");
+    setDeleting(target);
+  };
+  const closeDelete = () => {
+    if (!deleteBusy) setDeleting(null);
+  };
+
+  const removeMessage = async (forEveryone) => {
+    const { message } = deleting;
+    setDeleteBusy(forEveryone ? "everyone" : "me");
+    setDeleteError("");
+    try {
+      const { data } = forEveryone
+        ? await unsendChatMessage(message.conversation, message._id)
+        : await deleteChatMessage(message.conversation, message._id);
+      applyDeleted({ conversationId: message.conversation, messageId: message._id, ...data });
+      setDeleting(null);
+    } catch (err) {
+      // Already deleted for them in another tab: all that is left is to say so here.
+      if (err.response?.status === 404) {
+        applyDeleted({ conversationId: message.conversation, messageId: message._id });
+        setDeleting(null);
+      } else {
+        setDeleteError(err.response?.data?.message || "Could not delete that. Please try again.");
+      }
+    } finally {
+      setDeleteBusy(null);
+    }
+  };
+
+  const removeConversation = async () => {
+    const conversationId = id;
+    setDeleteBusy("conversation");
+    setDeleteError("");
+    try {
+      const { data } = await deleteConversation(conversationId);
+      setUnreadTotal(data.unreadTotal);
+      applyCleared(conversationId);
+      setDeleting(null);
+      navigate(basePath);
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || "Could not delete this conversation. Please try again.");
+    } finally {
+      setDeleteBusy(null);
+    }
+  };
+
   const other = active?.other;
-  // "Sent" or "Seen" goes under the last message, when it is this person's.
+  // "Sent" or "Seen" goes under the last message, when it is this person's
+  // and hasn't been deleted.
   const last = thread.messages[thread.messages.length - 1];
-  const receiptOn = active && last?.sender === myId ? last._id : null;
+  const receiptOn = active && last?.sender === myId && !last.deleted ? last._id : null;
+  const deletingMessage = deleting?.message;
+  const canUnsend = Boolean(deletingMessage && deletingMessage.sender === myId && !deletingMessage.deleted);
 
   return (
     <div
       className={`grid overflow-hidden rounded-2xl bg-white shadow-sm md:grid-cols-[20rem_1fr] ${heightClass}`}
       data-testid="chat-panel"
     >
-      <aside className={`${id ? "hidden md:flex" : "flex"} min-h-0 flex-col border-r border-gray-200`}>
+      {/* min-w-0 on both columns: without it a long line (an order, a name)
+          widens the column past a phone's screen and the edge is cut off. */}
+      <aside className={`${id ? "hidden md:flex" : "flex"} min-h-0 min-w-0 flex-col border-r border-gray-200`}>
         <p className="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900">Conversations</p>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {listLoading && <li className="px-5 py-4 text-sm text-gray-500">Loading...</li>}
@@ -446,6 +562,10 @@ export default function ChatPanel({ basePath, heightClass }) {
                       >
                         {typing ? (
                           "typing..."
+                        ) : lastMessage?.deleted ? (
+                          <span className="italic">
+                            {lastMessage.sender === myId ? "You deleted a message" : "This message was deleted"}
+                          </span>
                         ) : (
                           <>
                             {lastMessage?.sender === myId ? "You: " : ""}
@@ -471,7 +591,7 @@ export default function ChatPanel({ basePath, heightClass }) {
         </ul>
       </aside>
 
-      <section className={`${id ? "flex" : "hidden md:flex"} min-h-0 flex-col`}>
+      <section className={`${id ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-col`}>
         {!id && (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-gray-500">
             <MessageCircle className="h-10 w-10 text-gray-300" />
@@ -511,6 +631,15 @@ export default function ChatPanel({ basePath, heightClass }) {
                   View Shop
                 </Link>
               )}
+              <button
+                type="button"
+                onClick={() => askDelete({ conversation: true })}
+                aria-label="Delete conversation"
+                title="Delete conversation"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
             </div>
 
             {isBuyer && other._id && <ChatOrders key={id} conversationId={id} reloadKey={reconnects} />}
@@ -523,15 +652,37 @@ export default function ChatPanel({ basePath, heightClass }) {
               )}
               {thread.messages.map((m) => {
                 const mine = m.sender === myId;
+                const remove = <DeleteMessageButton onClick={() => askDelete({ message: m })} />;
                 return (
-                  <div key={m._id} className={`flex flex-col ${mine ? "items-end" : "items-start"}`} data-mine={mine}>
-                    <div
-                      className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl text-sm ${m.image ? "p-1" : "px-4 py-2"} ${
-                        mine ? "rounded-br-sm bg-[#2f8f66] text-white" : "rounded-bl-sm bg-white text-gray-900 ring-1 ring-gray-200"
-                      }`}
-                    >
-                      {m.image && <ChatPhoto path={m.image} onOpen={setViewing} />}
-                      {m.image ? m.text && <p className="px-3 pb-1.5 pt-1.5">{m.text}</p> : m.text}
+                  <div key={m._id} className={`group flex flex-col ${mine ? "items-end" : "items-start"}`} data-mine={mine}>
+                    <div className={`flex w-full items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
+                      {mine && remove}
+                      {m.deleted ? (
+                        <div
+                          data-testid="deleted-message"
+                          className={`flex max-w-[75%] items-center gap-1.5 rounded-2xl bg-white px-4 py-2 text-sm italic text-gray-400 ring-1 ring-gray-200 ${
+                            mine ? "rounded-br-sm" : "rounded-bl-sm"
+                          }`}
+                        >
+                          <Ban className="h-3.5 w-3.5 shrink-0" />
+                          {mine ? "You deleted this message" : "This message was deleted"}
+                        </div>
+                      ) : (
+                        <div
+                          className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl text-sm ${m.image ? "p-1" : "px-4 py-2"} ${
+                            mine ? "rounded-br-sm bg-[#2f8f66] text-white" : "rounded-bl-sm bg-white text-gray-900 ring-1 ring-gray-200"
+                          }`}
+                        >
+                          {m.image && (
+                            <ChatPhoto
+                              path={m.image}
+                              onOpen={(url) => setViewing({ url, messageId: m._id, conversationId: m.conversation })}
+                            />
+                          )}
+                          {m.image ? m.text && <p className="px-3 pb-1.5 pt-1.5">{m.text}</p> : m.text}
+                        </div>
+                      )}
+                      {!mine && remove}
                     </div>
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
                       <span>
@@ -620,6 +771,94 @@ export default function ChatPanel({ basePath, heightClass }) {
         )}
       </section>
 
+      {deletingMessage && (
+        <Modal title="Delete Message?" onClose={closeDelete}>
+          <p className="text-sm text-gray-600">
+            {canUnsend
+              ? `Delete for everyone removes it for you and ${displayName(other)}, who will see "This message was deleted" instead. Delete for me removes it only from your Messages.`
+              : deletingMessage.deleted
+                ? "It will be removed from your Messages."
+                : `It will be removed from your Messages only. ${displayName(other)} will still have it.`}
+          </p>
+          {deleteError && <p className="mt-3 text-sm text-red-600">{deleteError}</p>}
+          {canUnsend ? (
+            <div className="mt-5 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => removeMessage(true)}
+                disabled={Boolean(deleteBusy)}
+                className="rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleteBusy === "everyone" ? "Deleting..." : "Delete for everyone"}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeMessage(false)}
+                disabled={Boolean(deleteBusy)}
+                className="rounded-md border border-red-600 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+              >
+                {deleteBusy === "me" ? "Deleting..." : "Delete for me"}
+              </button>
+              <button
+                type="button"
+                onClick={closeDelete}
+                disabled={Boolean(deleteBusy)}
+                className="rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                No, keep it
+              </button>
+            </div>
+          ) : (
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={closeDelete}
+                disabled={Boolean(deleteBusy)}
+                className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                No, keep it
+              </button>
+              <button
+                type="button"
+                onClick={() => removeMessage(false)}
+                disabled={Boolean(deleteBusy)}
+                className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {deleteBusy === "me" ? "Deleting..." : "Delete for me"}
+              </button>
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {deleting?.conversation && active && (
+        <Modal title="Delete Conversation?" onClose={closeDelete}>
+          <p className="text-sm text-gray-600">
+            Delete your conversation with <span className="font-medium">{displayName(other)}</span>? It will be removed
+            from your Messages, with every message and photo in it. {displayName(other)} will still have their copy.
+          </p>
+          {deleteError && <p className="mt-3 text-sm text-red-600">{deleteError}</p>}
+          <div className="mt-5 flex gap-3">
+            <button
+              type="button"
+              onClick={closeDelete}
+              disabled={Boolean(deleteBusy)}
+              className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              No, keep it
+            </button>
+            <button
+              type="button"
+              onClick={removeConversation}
+              disabled={Boolean(deleteBusy)}
+              className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {deleteBusy === "conversation" ? "Deleting..." : "Yes, delete it!"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {viewing &&
         createPortal(
           <div
@@ -631,7 +870,7 @@ export default function ChatPanel({ basePath, heightClass }) {
             className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4"
           >
             <img
-              src={viewing}
+              src={viewing.url}
               alt="Photo"
               onClick={(e) => e.stopPropagation()}
               className="max-h-full max-w-full rounded-lg object-contain"

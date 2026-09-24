@@ -21,12 +21,30 @@ const conversationSchema = new mongoose.Schema(
       text: String,
       // Whether it was a photo, so the list can say so.
       image: Boolean,
+      // Deleted for everyone since: the list says so instead.
+      deleted: Boolean,
+      // Who deleted it for themselves - their list shows the one before it.
+      hiddenFor: {
+        type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+        default: undefined,
+      },
       sender: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       createdAt: Date,
     },
     // Null until the first message: a conversation nobody has written in yet
     // isn't shown in either person's list.
     lastMessageAt: {
+      type: Date,
+      default: null,
+    },
+    // When each side deleted the conversation. They no longer see anything
+    // sent before then, and it only comes back to their list with a new
+    // message. The other side keeps everything.
+    buyerClearedAt: {
+      type: Date,
+      default: null,
+    },
+    farmerClearedAt: {
       type: Date,
       default: null,
     },

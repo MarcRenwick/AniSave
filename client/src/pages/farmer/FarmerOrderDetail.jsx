@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, ImageOff, MapPin, Phone, Star, Undo2, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Check, ImageOff, MapPin, Star, Undo2, User as UserIcon } from "lucide-react";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
 import { getOrder, updateOrderStatus, undoOrderStatus, SERVER_URL } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
@@ -101,16 +101,6 @@ export default function FarmerOrderDetail() {
                   </p>
                 </div>
               </div>
-
-              {order.buyer?.phone && (
-                <a
-                  href={`tel:${order.buyer.phone}`}
-                  className="mt-3 inline-flex items-center gap-2 rounded-md border-2 border-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
-                >
-                  <Phone className="h-4 w-4" />
-                  Call Buyer
-                </a>
-              )}
 
               <div className="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300">

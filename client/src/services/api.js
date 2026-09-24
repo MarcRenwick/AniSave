@@ -168,6 +168,11 @@ export const sendChatMessage = (id, text) => api.post(`/chats/${id}/messages`, {
 // A photo, with an optional caption: multipart { image, text? }.
 export const sendChatPhoto = (id, formData) =>
   api.post(`/chats/${id}/messages`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+// Deleting: your own message for both of you, any message for yourself only,
+// or the whole conversation from your Messages (only yours).
+export const unsendChatMessage = (id, messageId) => api.post(`/chats/${id}/messages/${messageId}/unsend`);
+export const deleteChatMessage = (id, messageId) => api.delete(`/chats/${id}/messages/${messageId}`);
+export const deleteConversation = (id) => api.delete(`/chats/${id}`);
 // A buyer's orders from the farmer they are chatting with.
 export const getConversationOrders = (id) => api.get(`/chats/${id}/orders`);
 export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);

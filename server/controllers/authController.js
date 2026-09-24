@@ -860,6 +860,7 @@ const exportMyData = asyncHandler(async (req, res) => {
             from: m.sender.equals(me._id) ? "me" : "them",
             text: m.text,
             ...(m.image ? { photo: true } : {}),
+            ...(m.deletedAt ? { deleted: true } : {}),
             sentAt: m.createdAt,
           })),
       };

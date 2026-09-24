@@ -5,8 +5,8 @@ import { SERVER_URL, getUnreadMessages } from "../services/api";
 
 // The live connection behind chat (Socket.IO). While a buyer or farmer is
 // signed in, the server pushes to it the moment something happens in their
-// conversations: a new message, their message being seen, the other person
-// typing, or coming online and going offline. The Messages page listens
+// conversations: a new message, a deleted one, their message being seen, the
+// other person typing, or coming online and going offline. The Messages page listens
 // through `subscribe`, and the navigation shows `unreadTotal`. The connection
 // signs in with the same token as every API request, and closes when they log
 // out.
@@ -14,7 +14,7 @@ const ChatContext = createContext(null);
 
 const CHAT_ROLES = ["buyer", "farmer"];
 // What the Messages page can listen for.
-const EVENTS = ["chat:message", "chat:seen", "chat:typing", "chat:presence"];
+const EVENTS = ["chat:message", "chat:seen", "chat:typing", "chat:presence", "chat:deleted", "chat:cleared"];
 
 export function ChatProvider({ children }) {
   const { user } = useAuth();

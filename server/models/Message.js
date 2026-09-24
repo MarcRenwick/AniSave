@@ -19,7 +19,7 @@ const messageSchema = new mongoose.Schema(
       // A photo can be sent on its own; anything else needs words.
       required: [
         function () {
-          return !this.image;
+          return !this.image && !this.deletedAt;
         },
         "A message can't be empty",
       ],
@@ -30,6 +30,17 @@ const messageSchema = new mongoose.Schema(
     // people in the conversation can open it (GET /api/chat-images/:file).
     image: {
       type: String,
+    },
+    // Set when the sender deleted it for everyone: its words and photo are
+    // gone, and both people see "This message was deleted" in its place.
+    deletedAt: {
+      type: Date,
+    },
+    // Who has deleted it for themselves only. Once neither person can see it,
+    // it is deleted for good.
+    hiddenFor: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+      default: undefined,
     },
   },
   { timestamps: true }
