@@ -33,18 +33,18 @@ const cropSchema = new mongoose.Schema(
     },
     // What kind of produce it is. This is the catalogue's own grouping, used
     // for searching and for the admin price list; it is deliberately richer
-    // than a listing's own vegetable/fruit category.
+    // than a listing's own category.
     group: {
       type: String,
-      enum: ["fruit", "vegetable", "root crop", "grain"],
+      enum: ["fruit", "vegetable", "root crop", "grain", "egg", "meat", "seafood"],
       required: true,
     },
-    // Which of the marketplace's two categories a listing of this crop belongs
-    // in, since that is what buyers filter by. Root crops and grains sit with
-    // the vegetables there.
+    // Which of the marketplace's categories a listing of this crop belongs in,
+    // since that is what buyers filter by. Root crops and grains sit with the
+    // vegetables there; eggs, meat and seafood are categories of their own.
     listingCategory: {
       type: String,
-      enum: ["vegetable", "fruit"],
+      enum: ["vegetable", "fruit", "egg", "meat", "seafood"],
       required: true,
     },
     // Every name this crop can be found by - its own and its other names -

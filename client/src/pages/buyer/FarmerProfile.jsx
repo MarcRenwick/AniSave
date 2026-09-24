@@ -6,6 +6,7 @@ import Avatar from "../../components/Avatar";
 import Modal from "../../components/Modal";
 import BlockUserModal from "../../components/buyer/BlockUserModal";
 import BlockResultDialog from "../../components/buyer/BlockResultDialog";
+import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import PriceTag from "../../components/products/PriceTag";
 import shopBackground from "../../assets/bckgrnd.jpg";
 import { useAuth } from "../../context/AuthContext";
@@ -23,12 +24,11 @@ import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { formatDistance } from "../../utils/address";
 import { forgetReportSent, reportJustSent } from "../../utils/reports";
 import { usePageSettled, useSmoothNavigate } from "../../utils/pageTransition";
+import { categoryFilters } from "../../utils/categories";
 
-const tabs = [
+const baseTabs = [
   { key: "home", label: "Home" },
   { key: "all", label: "All Products" },
-  { key: "vegetable", label: "Vegetables" },
-  { key: "fruit", label: "Fruits" },
 ];
 
 function Stat({ label, value }) {
@@ -278,15 +278,21 @@ export default function FarmerProfile() {
                       {activeAgo(farmer.lastActiveAt) && (
                         <p className="text-sm text-gray-600">{activeAgo(farmer.lastActiveAt)}</p>
                       )}
-                      {farmer.phone && (
-                        <a
-                          href={`tel:${farmer.phone}`}
-                          className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95"
-                        >
-                          <Phone className="h-4 w-4" />
-                          Call Now
-                        </a>
-                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {farmer.phone && (
+                          <a
+                            href={`tel:${farmer.phone}`}
+                            className="inline-flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95"
+                          >
+                            <Phone className="h-4 w-4" />
+                            Call Now
+                          </a>
+                        )}
+                        <MessageFarmerButton
+                          farmerId={farmer._id}
+                          className="inline-flex items-center gap-2 rounded-full border border-[#2f8f66] bg-white px-4 py-[5px] text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95 disabled:opacity-60"
+                        />
+                      </div>
                     </div>
                   </div>
 
@@ -340,7 +346,7 @@ export default function FarmerProfile() {
             </div>
 
             <div className="flex flex-wrap gap-2 rounded-b-2xl bg-[#2f8f66] px-4 py-3">
-              {tabs.map(({ key, label }) => (
+              {[...baseTabs, ...categoryFilters(products)].map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"

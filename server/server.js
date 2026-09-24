@@ -1,6 +1,7 @@
 const dotenv = require("dotenv");
 dotenv.config();
 
+const http = require("http");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -25,6 +26,8 @@ const reviewReportRoutes = require("./routes/reviewReportRoutes");
 const blockRoutes = require("./routes/blockRoutes");
 const marketPriceRoutes = require("./routes/marketPriceRoutes");
 const cropRoutes = require("./routes/cropRoutes");
+const chatRoutes = require("./routes/chatRoutes");
+const { attachRealtime } = require("./utils/realtime");
 
 // Every session token is signed with this. Without it nobody could log in; a
 // short one could be guessed - so the server won't start in production with one.
@@ -65,13 +68,14 @@ const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
   .flatMap((origin) =>
     process.env.NODE_ENV === "production" || !origin.includes("//localhost") ? [origin] : [origin, origin.replace("//localhost", "//127.0.0.1")]
   );
+const isAllowedOrigin = (origin) => !origin || allowedOrigins.includes(origin);
 // maxAge lets the browser remember the answer to its "may I?" check before a
 // signed-in request for a day (browsers cap it lower) instead of asking again
 // - a whole extra round trip to the server - before every call. Without it a
 // browser only remembers for 5 seconds.
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     maxAge: 86400,
   })
 );
@@ -107,6 +111,7 @@ app.use("/api/review-reports", reviewReportRoutes);
 app.use("/api/blocks", blockRoutes);
 app.use("/api/market-prices", marketPriceRoutes);
 app.use("/api/crops", cropRoutes);
+app.use("/api/chats", chatRoutes);
 
 app.use(notFound);
 app.use(errorHandler);
@@ -118,7 +123,11 @@ process.on("unhandledRejection", (reason) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+// One HTTP server for both the API and chat's real-time connections (Socket.IO,
+// see utils/realtime.js), which are allowed from the same places as the API.
+const server = http.createServer(app);
+attachRealtime(server, isAllowedOrigin);
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(describeEmailRoute());
 });

@@ -5,6 +5,7 @@ const Report = require("../models/Report");
 const User = require("../models/User");
 const validate = require("../utils/validate");
 const { reportEvidencePath, deleteImageFile, sendStoredFile } = require("../utils/fileUtils");
+const { disconnectUser } = require("../utils/realtime");
 
 const { REASONS } = Report;
 
@@ -163,6 +164,7 @@ const decideReport = asyncHandler(async (req, res) => {
       // Whatever they are signed in on stops working with the suspension.
       farmer.tokenVersion = (farmer.tokenVersion || 0) + 1;
       await farmer.save();
+      disconnectUser(farmer._id);
     }
   }
 

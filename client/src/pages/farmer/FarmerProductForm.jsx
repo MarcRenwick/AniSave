@@ -13,6 +13,7 @@ import { productImages } from "../../utils/productImages";
 import CropSelect from "../../components/products/CropSelect";
 import PriceTag from "../../components/products/PriceTag";
 import Avatar from "../../components/Avatar";
+import { categoryLabel as categoryLabelFor } from "../../utils/categories";
 
 const MAX_PHOTOS = 5;
 
@@ -37,10 +38,9 @@ const peso = (amount) => `₱${Math.round(amount).toLocaleString()}`;
 const recordedOn = (date) =>
   new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 
-// Buyers filter by Fruits or Vegetables, and that follows from the catalogue
-// product rather than being asked for again - so a mango can't be filed under
-// vegetables.
-const categoryLabel = (crop) => (crop?.listingCategory === "fruit" ? "Fruits" : "Vegetables");
+// The category buyers filter by follows from the catalogue product rather than
+// being asked for again - so a mango can't be filed under vegetables.
+const categoryLabel = (crop) => categoryLabelFor(crop?.listingCategory);
 
 // A photo is either one the listing already has, on the server, or one just
 // picked, still only in this browser.

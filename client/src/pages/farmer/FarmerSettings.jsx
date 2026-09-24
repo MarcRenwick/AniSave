@@ -29,8 +29,7 @@ import PrivacySecurityModal from "../../components/settings/PrivacySecurityModal
 import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../../services/api";
 import { useSmoothNavigate, withPageTransition } from "../../utils/pageTransition";
-
-const categoryLabels = { vegetable: "Vegetables", fruit: "Fruits" };
+import { listCategories } from "../../utils/categories";
 
 export default function FarmerSettings() {
   const { user, updateUser, logout } = useAuth();
@@ -101,7 +100,7 @@ export default function FarmerSettings() {
   const productsLabel =
     categories.length === 0
       ? "No products yet"
-      : categories.map((c) => categoryLabels[c] || c).join(" and ");
+      : listCategories(categories);
 
   const sellerSince = user?.createdAt ? new Date(user.createdAt).getFullYear() : "—";
   const ratingText =

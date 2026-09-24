@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: [20, "Phone number is too long"],
-      match: [PHONE_PATTERN, "Enter a valid phone number"],
+      match: [PHONE_PATTERN, "Contact number must be exactly 11 digits, numbers only"],
     },
     // Uploaded profile photo, already cropped to a square by the client
     avatar: {
@@ -147,6 +147,9 @@ const userSchema = new mongoose.Schema(
     suspendedAt: {
       type: Date,
     },
+    // Why the account was restricted: the admin's note when a report ended in
+    // a suspension, or the reason they gave when banning it outright. The
+    // person is shown it when they try to log in (utils/restriction.js).
     suspensionReason: {
       type: String,
       trim: true,

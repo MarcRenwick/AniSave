@@ -1,8 +1,18 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutGrid, Package, ShoppingBag, CircleUserRound, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  LayoutGrid,
+  Package,
+  ShoppingBag,
+  MessageCircle,
+  CircleUserRound,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
+import { useChat } from "../../context/ChatContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
 import { withPageTransition } from "../../utils/pageTransition";
 
@@ -10,6 +20,7 @@ const navItems = [
   { to: "/farmer/dashboard", label: "Dashboard", icon: LayoutGrid },
   { to: "/farmer/products", label: "Products", icon: Package },
   { to: "/farmer/orders", label: "Orders", icon: ShoppingBag },
+  { to: "/farmer/messages", label: "Messages", icon: MessageCircle, showsUnread: true },
   { to: "/farmer/settings", label: "Profile", icon: CircleUserRound },
 ];
 
@@ -23,6 +34,7 @@ function readCollapsed() {
 
 export default function FarmerSidebar() {
   const { logout } = useAuth();
+  const { unreadTotal } = useChat();
   const navigate = useNavigate();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
@@ -79,21 +91,34 @@ export default function FarmerSidebar() {
       </div>
 
       <nav className="mt-8 flex flex-col gap-2">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            title={collapsed ? label : undefined}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
-                collapsed ? "justify-center px-2" : ""
-              } ${isActive ? "bg-[#8ee6b0] text-[#1f5c42]" : "text-white/90 hover:bg-white/10"}`
-            }
-          >
-            <Icon className="h-5 w-5 shrink-0" />
-            {!collapsed && label}
-          </NavLink>
-        ))}
+        {navItems.map(({ to, label, icon: Icon, showsUnread }) => {
+          const badge = showsUnread ? unreadTotal : 0;
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              title={collapsed ? label : undefined}
+              className={({ isActive }) =>
+                `relative flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
+                  collapsed ? "justify-center px-2" : ""
+                } ${isActive ? "bg-[#8ee6b0] text-[#1f5c42]" : "text-white/90 hover:bg-white/10"}`
+              }
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!collapsed && label}
+              {badge > 0 && (
+                <span
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white ${
+                    collapsed ? "absolute right-1 top-1" : "ml-auto"
+                  }`}
+                  aria-label={`${badge} unread`}
+                >
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       <button

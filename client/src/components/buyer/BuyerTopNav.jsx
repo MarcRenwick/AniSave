@@ -3,6 +3,7 @@ import { Search, ShoppingBasket } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
+import { useChat } from "../../context/ChatContext";
 
 const linkClass = ({ isActive }) =>
   `rounded-full px-5 py-2 text-base font-medium transition duration-150 active:scale-95 ${
@@ -12,6 +13,7 @@ const linkClass = ({ isActive }) =>
 export default function BuyerTopNav() {
   const { user } = useAuth();
   const { count } = useCart();
+  const { unreadTotal } = useChat();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [params] = useSearchParams();
@@ -34,6 +36,7 @@ export default function BuyerTopNav() {
     ...(user
       ? [
           { to: "/buyer/orders", label: "My Orders" },
+          { to: "/buyer/messages", label: "Messages", badge: unreadTotal },
           { to: "/buyer/settings", label: "Profile" },
         ]
       : []),
@@ -74,9 +77,17 @@ export default function BuyerTopNav() {
       </div>
 
       <nav className="flex shrink-0 items-center justify-end gap-1.5">
-        {navItems.map(({ to, label }) => (
-          <NavLink key={to} to={to} className={linkClass}>
+        {navItems.map(({ to, label, badge }) => (
+          <NavLink key={to} to={to} className={(state) => `${linkClass(state)} ${badge ? "relative" : ""}`}>
             {label}
+            {badge > 0 && (
+              <span
+                className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white"
+                aria-label={`${badge} unread`}
+              >
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
           </NavLink>
         ))}
 

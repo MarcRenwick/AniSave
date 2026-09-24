@@ -6,6 +6,7 @@ import ImageCropperModal from "../ImageCropperModal";
 import AddressPicker from "../AddressPicker";
 import { updateProfile, uploadAvatar } from "../../services/api";
 import { addressFromUser, isAddressComplete, sameAddress } from "../../utils/address";
+import { getPhoneError } from "../../utils/accountRules";
 
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
@@ -25,10 +26,14 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
   const [cropping, setCropping] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    if (e.target.name === "phone") setPhoneError("");
+  };
 
   const handlePick = (e) => {
     const file = e.target.files?.[0];
@@ -58,6 +63,10 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    const phoneProblem = getPhoneError(form.phone);
+    setPhoneError(phoneProblem);
+    if (phoneProblem) return;
 
     const addressChanged = !sameAddress(address, savedAddress);
     if (addressChanged && !isAddressComplete(address)) {
@@ -118,8 +127,17 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
             value={form.phone}
             onChange={handleChange}
             placeholder="e.g. 09171234567"
-            className={inputClass}
+            inputMode="numeric"
+            maxLength={11}
+            aria-invalid={Boolean(phoneError)}
+            aria-describedby={phoneError ? "phone-error" : undefined}
+            className={`${inputClass} ${phoneError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
           />
+          {phoneError && (
+            <p id="phone-error" role="alert" className="mt-1 text-xs text-red-600">
+              {phoneError}
+            </p>
+          )}
         </div>
         <div>
           <p className="block text-sm font-medium text-gray-700">Address</p>

@@ -5,8 +5,7 @@ import ProductGallery from "../../components/products/ProductGallery";
 import PriceTag from "../../components/products/PriceTag";
 import { getProduct } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
-
-const categoryLabels = { vegetable: "Vegetables", fruit: "Fruits" };
+import { categoryLabel } from "../../utils/categories";
 
 function Row({ label, children }) {
   return (
@@ -112,7 +111,7 @@ export default function FarmerProductDetail() {
                       Pick-up
                     </span>
                   </Row>
-                  <Row label="Category">{categoryLabels[product.category] || product.category}</Row>
+                  <Row label="Category">{categoryLabel(product.category)}</Row>
                   <Row label="Product Type">{isPreOrder ? "For Pre-Order" : "For Sale"}</Row>
                   <Row label="Address">{product.location || "Not set"}</Row>
                   <Row label="Quantity">{product.stock} kilos Available</Row>

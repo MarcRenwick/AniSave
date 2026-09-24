@@ -4,6 +4,7 @@ const Rating = require("../models/Rating");
 const ReviewReport = require("../models/ReviewReport");
 const User = require("../models/User");
 const validate = require("../utils/validate");
+const { disconnectUser } = require("../utils/realtime");
 
 const { REASONS } = ReviewReport;
 
@@ -189,6 +190,7 @@ const decideReviewReport = asyncHandler(async (req, res) => {
       // Whatever they are signed in on stops working with the suspension.
       author.tokenVersion = (author.tokenVersion || 0) + 1;
       await author.save();
+      disconnectUser(author._id);
     }
   }
 

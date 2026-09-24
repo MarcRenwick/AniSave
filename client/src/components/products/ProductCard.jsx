@@ -3,11 +3,7 @@ import { SERVER_URL } from "../../services/api";
 import { discountPercent, effectivePrice, onFlashSale } from "../../utils/pricing";
 import { formatDistance } from "../../utils/address";
 import ProductImage from "./ProductImage";
-
-// Buyers browse by Fruits or Vegetables, which is what a listing's category
-// says. Root crops and grains are filed under Vegetables, so those are the
-// only two words a card ever shows.
-const categoryLabel = (category) => (category === "fruit" ? "Fruits" : "Vegetables");
+import { categoryLabel } from "../../utils/categories";
 
 const peso = (amount) => `₱${Number(amount ?? 0).toLocaleString()}`;
 

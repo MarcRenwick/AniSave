@@ -16,9 +16,9 @@
  *                are deliberately not the same thing.
  *
  * `group` is the catalogue's own grouping. `listingCategory` is which of the
- * marketplace's two buyer-facing categories a listing lands in - root crops
- * and grains sit with the vegetables, since those are the only two categories
- * the marketplace filters by.
+ * marketplace's buyer-facing categories a listing lands in - Vegetables,
+ * Fruits, Eggs, Meat or Seafood. Root crops and grains sit with the
+ * vegetables.
  *
  * Aliases are the other names a crop goes by locally. They are what lets a
  * farmer type "ampalaya" and still be shown the price recorded for it.
@@ -139,9 +139,39 @@ const ALSO_GROWN = [
   ["fruit", "Pomegranate", ["granada"]],
 ];
 
-// Root crops and grains are sold alongside the vegetables, because those are
-// the only two categories the marketplace lets buyers filter by.
-const listingCategoryFor = (group) => (group === "fruit" ? "fruit" : "vegetable");
+// Eggs, meat and seafood - what poultry and livestock raisers and fisherfolk
+// sell. Each kind is a buyer-facing category of its own rather than being
+// filed under vegetables. Like ALSO_GROWN, nobody records a market price for
+// them yet, so no price is recommended.
+const EGGS_MEAT_SEAFOOD = [
+  // ---- Eggs ----
+  ["egg", "Chicken Egg", ["egg", "itlog", "itlog ng manok", "fresh egg"]],
+  ["egg", "Duck Egg", ["itlog ng pato", "pato egg"]],
+  ["egg", "Quail Egg", ["itlog ng pugo", "pugo egg"]],
+
+  // ---- Meat ----
+  ["meat", "Pork", ["baboy", "karne ng baboy", "pig"]],
+  ["meat", "Beef", ["baka", "karne ng baka"]],
+  ["meat", "Chicken", ["manok", "karne ng manok", "native chicken"]],
+  ["meat", "Carabeef", ["kalabaw", "carabao meat", "karne ng kalabaw"]],
+  ["meat", "Goat Meat", ["kambing", "karne ng kambing", "chevon"]],
+
+  // ---- Seafood ----
+  ["seafood", "Milkfish (Bangus)", ["bangus", "milkfish"]],
+  ["seafood", "Tilapia", ["tilapya"]],
+  ["seafood", "Round Scad (Galunggong)", ["galunggong", "round scad"]],
+  ["seafood", "Catfish (Hito)", ["hito", "catfish"]],
+  ["seafood", "Shrimp", ["hipon", "sugpo", "prawn"]],
+  ["seafood", "Crab", ["alimango", "alimasag", "mud crab"]],
+  ["seafood", "Squid", ["pusit"]],
+  ["seafood", "Mussels (Tahong)", ["tahong", "mussels"]],
+  ["seafood", "Oysters (Talaba)", ["talaba", "oysters"]],
+];
+
+// Root crops and grains are sold alongside the vegetables; fruit, eggs, meat
+// and seafood are each a category buyers can filter by.
+const OWN_CATEGORIES = ["fruit", "egg", "meat", "seafood"];
+const listingCategoryFor = (group) => (OWN_CATEGORIES.includes(group) ? group : "vegetable");
 
 const rowsOf = (list, priceSupported) =>
   list.map(([group, name, aliases, pricesFrom = null]) => ({
@@ -162,6 +192,7 @@ const CROPS = [
   ...rowsOf(SUPPORTED, true),
   ...rowsOf(VARIETIES, true),
   ...rowsOf(ALSO_GROWN, false),
+  ...rowsOf(EGGS_MEAT_SEAFOOD, false),
 ];
 
-module.exports = { CROPS, SUPPORTED, VARIETIES, ALSO_GROWN, listingCategoryFor };
+module.exports = { CROPS, SUPPORTED, VARIETIES, ALSO_GROWN, EGGS_MEAT_SEAFOOD, listingCategoryFor };

@@ -38,6 +38,8 @@ const searchCrops = asyncHandler(async (req, res) => {
       .lean();
 
   let found;
+  // The typed words, when the search falls back to matching them one by one.
+  let fallbackWords = [];
   if (!key) {
     found = await Crop.find(base).select(`${PUBLIC} terms`).limit(60).lean();
   } else {
@@ -50,24 +52,35 @@ const searchCrops = asyncHandler(async (req, res) => {
     const words = key.split(" ").filter((w) => w.length >= 3);
     if (found.length === 0 && words.length > 1) {
       found = await matching(new RegExp(`^(${words.map(literal).join("|")})`));
+      fallbackWords = words;
     }
   }
+
+  // Matched word by word, the crop that more of the words point at comes
+  // first: "Talong (Egg Plant)" is Eggplant by all three words, while Chicken
+  // Egg only shares "egg".
+  const wordsMatched = (crop) =>
+    fallbackWords.filter((word) => crop.terms.some((term) => term.split(" ").some((part) => part.startsWith(word)))).length;
 
   // A crop's own name beats one of its other names at every level, so typing
   // "man" offers Mango before Cassava (whose local name is "manioc") and
   // Peanut (whose local name is "mani"). The first term is always the crop's
   // own name; the rest are its other names.
+  //
+  // A whole word of the name comes next, ahead of a name that merely starts
+  // with what was typed: "egg" offers Duck Egg and Quail Egg before Eggplant.
   const rank = (crop) => {
     if (!key) return 9;
     const [own, ...others] = crop.terms;
     if (own === key) return 0;
     if (others.includes(key)) return 1;
-    if (own.startsWith(key)) return 2;
-    if (others.some((a) => a.startsWith(key))) return 3;
-    if (own.includes(key)) return 4;
-    return 5;
+    if (own.split(" ").includes(key)) return 2;
+    if (own.startsWith(key)) return 3;
+    if (others.some((a) => a.startsWith(key))) return 4;
+    if (own.includes(key)) return 5;
+    return 6;
   };
-  found.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  found.sort((a, b) => wordsMatched(b) - wordsMatched(a) || rank(a) - rank(b) || a.name.localeCompare(b.name));
 
   res.json(
     found.slice(0, MAX_RESULTS).map(({ _id, name, group, listingCategory, priceSupported }) => ({

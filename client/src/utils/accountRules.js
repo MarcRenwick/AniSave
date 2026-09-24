@@ -2,17 +2,26 @@
 // all of this again (server/utils/validate.js) - these are here so the form
 // can say what is wrong before it is sent, in the same words.
 
-// A first or last name: letters only. A space is called out rather than
-// trimmed away, because typing "Dela Cruz" into First name is a mistake worth
-// pointing out instead of quietly turning into "DelaCruz".
+// A first or last name: letters, with spaces between words allowed - "Maria
+// Clara", "Dela Cruz". Spaces at either end and doubled spaces are tidied away
+// (the server saves "Dela  Cruz" as "Dela Cruz"), so they aren't errors here.
 export function getNameError(label, value) {
-  const name = String(value ?? "");
-  if (name.trim() === "") return `${label} is required`;
-  if (/\s/.test(name)) return `${label} can't contain spaces`;
+  const name = String(value ?? "").trim().replace(/\s+/g, " ");
+  if (name === "") return `${label} is required`;
   if (/[0-9]/.test(name)) return `${label} can't contain numbers`;
-  if (!/^[A-Za-z]+$/.test(name)) return `${label} can only use letters`;
-  if (name.length < 2) return `${label} must be at least 2 letters`;
-  if (name.length > 40) return `${label} must be 40 letters or fewer`;
+  if (!/^[A-Za-z]+(?: [A-Za-z]+)*$/.test(name)) return `${label} can only use letters and spaces`;
+  if (name.replace(/ /g, "").length < 2) return `${label} must be at least 2 letters`;
+  if (name.length > 40) return `${label} must be 40 characters or fewer`;
+  return "";
+}
+
+// A contact number: exactly 11 digits, nothing else (09171234567). Optional -
+// an empty box is fine.
+export function getPhoneError(value) {
+  const phone = String(value ?? "").trim();
+  if (phone === "") return "";
+  if (!/^\d+$/.test(phone)) return "Contact number can only use numbers";
+  if (phone.length !== 11) return "Contact number must be exactly 11 digits";
   return "";
 }
 

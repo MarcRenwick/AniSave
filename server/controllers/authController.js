@@ -7,7 +7,10 @@ const Order = require("../models/Order");
 const Rating = require("../models/Rating");
 const Report = require("../models/Report");
 const ReviewReport = require("../models/ReviewReport");
+const Conversation = require("../models/Conversation");
+const Message = require("../models/Message");
 const generateToken = require("../utils/generateToken");
+const { disconnectUser } = require("../utils/realtime");
 const { restrictionMessage } = require("../utils/restriction");
 const sendEmail = require("../utils/sendEmail");
 const { imagePath, documentPath, deleteImageFile } = require("../utils/fileUtils");
@@ -509,6 +512,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.failedLoginAttempts = 0;
   user.lockUntil = undefined;
   await user.save();
+  disconnectUser(user._id);
 
   res.json({ message: "Password has been reset. You can now log in." });
 });
@@ -604,6 +608,9 @@ const changePassword = asyncHandler(async (req, res) => {
   // password - is signed out; this device gets a fresh token so it isn't.
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
+  // Before answering, so this device's chat reconnects with its new token
+  // rather than being cut off along with the old ones.
+  disconnectUser(user._id);
 
   res.json({
     message: "Password changed successfully.",
@@ -617,6 +624,7 @@ const changePassword = asyncHandler(async (req, res) => {
 // @access  Private
 const logoutUser = asyncHandler(async (req, res) => {
   await User.updateOne({ _id: req.user._id }, { $inc: { tokenVersion: 1 } });
+  disconnectUser(req.user._id);
   res.json({ message: "You have been logged out." });
 });
 
@@ -716,6 +724,12 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   await Report.deleteMany({ $or: [{ reporter: user._id }, { farmer: user._id }] });
   // A deleted farmer leaves nothing behind in anyone's block list either.
   await User.updateMany({ blockedUsers: user._id }, { $pull: { blockedUsers: user._id } });
+  // Their conversations go too, with every message in them: a conversation
+  // can't carry on with only one person left in it.
+  const conversationIds = await Conversation.distinct("_id", { $or: [{ buyer: user._id }, { farmer: user._id }] });
+  await Message.deleteMany({ conversation: { $in: conversationIds } });
+  await Conversation.deleteMany({ _id: { $in: conversationIds } });
+  disconnectUser(user._id);
   if (user.avatar) deleteImageFile(user.avatar);
   // A farmer's ID and farm documents are the most sensitive thing kept about
   // anyone - they go too, not just the account they were attached to.
@@ -780,7 +794,7 @@ const submitVerification = asyncHandler(async (req, res) => {
 // @access  Private
 const exportMyData = asyncHandler(async (req, res) => {
   const me = req.user;
-  const [orders, ratings, reports, reviewReports, products, blockedShops] = await Promise.all([
+  const [orders, ratings, reports, reviewReports, products, blockedShops, conversations] = await Promise.all([
     Order.find({ $or: [{ buyer: me._id }, { farmer: me._id }] })
       .select("productTitle pricePerKilo quantity total status createdAt acceptedAt readyAt doneAt cancelledAt")
       .lean(),
@@ -796,7 +810,14 @@ const exportMyData = asyncHandler(async (req, res) => {
     me.role === "buyer"
       ? User.find({ _id: { $in: me.blockedUsers || [] } }).select("name farmName").lean()
       : [],
+    ["buyer", "farmer"].includes(me.role)
+      ? Conversation.find({ [me.role]: me._id, lastMessageAt: { $ne: null } }).populate("buyer farmer", "name farmName").lean()
+      : [],
   ]);
+  // Their chats, both sides of each - they are part of every conversation they are in.
+  const chatMessages = await Message.find({ conversation: { $in: conversations.map((c) => c._id) } })
+    .sort({ createdAt: 1 })
+    .lean();
 
   const data = {
     exportedAt: new Date().toISOString(),
@@ -826,6 +847,15 @@ const exportMyData = asyncHandler(async (req, res) => {
     reviewReportsIFiled: reviewReports,
     myProducts: products,
     shopsIBlocked: blockedShops.map((shop) => shop.farmName || shop.name),
+    messages: conversations.map((conversation) => {
+      const other = me.role === "buyer" ? conversation.farmer : conversation.buyer;
+      return {
+        with: other?.farmName || other?.name || "Deleted account",
+        messages: chatMessages
+          .filter((m) => m.conversation.equals(conversation._id))
+          .map((m) => ({ from: m.sender.equals(me._id) ? "me" : "them", text: m.text, sentAt: m.createdAt })),
+      };
+    }),
   };
 
   res.set("Content-Disposition", 'attachment; filename="anisave-my-data.json"');

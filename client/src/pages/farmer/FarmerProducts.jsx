@@ -10,12 +10,7 @@ import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmMo
 import { getMyProducts, restockProduct, deleteProduct } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { useAuth } from "../../context/AuthContext";
-
-const filters = [
-  { key: "all", label: "All" },
-  { key: "vegetable", label: "Vegetables" },
-  { key: "fruit", label: "Fruits" },
-];
+import { categoryFilters } from "../../utils/categories";
 
 export default function FarmerProducts() {
   const navigate = useNavigate();
@@ -67,7 +62,7 @@ export default function FarmerProducts() {
 
         <div className="flex items-center justify-between">
           <div className="flex gap-3">
-            {filters.map(({ key, label }) => (
+            {[{ key: "all", label: "All" }, ...categoryFilters(products)].map(({ key, label }) => (
               <button
                 key={key}
                 type="button"

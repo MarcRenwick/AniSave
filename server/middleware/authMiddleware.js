@@ -88,4 +88,4 @@ const optionalProtect = asyncHandler(async (req, res, next) => {
   next();
 });
 
-module.exports = { protect, authorize, optionalProtect };
+module.exports = { protect, authorize, optionalProtect, userForToken };

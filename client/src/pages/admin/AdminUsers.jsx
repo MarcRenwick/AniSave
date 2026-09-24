@@ -39,8 +39,8 @@ export default function AdminUsers() {
   const replaceUser = (updated) =>
     setUsers((prev) => prev.map((u) => (u._id === updated._id ? updated : u)));
 
-  const handleConfirm = async () => {
-    const { data } = target.isBanned ? await unbanUser(target._id) : await banUser(target._id);
+  const handleConfirm = async (reason) => {
+    const { data } = target.isBanned ? await unbanUser(target._id) : await banUser(target._id, reason);
     replaceUser(data);
     setTarget(null);
   };

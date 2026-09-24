@@ -8,6 +8,7 @@ import CheckoutModal from "../../components/buyer/CheckoutModal";
 import ProductGallery from "../../components/products/ProductGallery";
 import PriceTag from "../../components/products/PriceTag";
 import Avatar from "../../components/Avatar";
+import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getProduct, getFarmerProfile } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -253,12 +254,18 @@ export default function ProductDetail() {
                 {activeAgo(farmerStats.lastActiveAt) && (
                   <p className="text-sm text-gray-500">{activeAgo(farmerStats.lastActiveAt)}</p>
                 )}
-                <Link
-                  to={`/buyer/farmers/${product.farmer._id}`}
-                  className="mt-2 inline-block rounded-md border border-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
-                >
-                  View Seller
-                </Link>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Link
+                    to={`/buyer/farmers/${product.farmer._id}`}
+                    className="inline-block rounded-md border border-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
+                  >
+                    View Seller
+                  </Link>
+                  <MessageFarmerButton
+                    farmerId={product.farmer._id}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[#2f8f66] bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95 disabled:opacity-60"
+                  />
+                </div>
               </div>
             </div>
 

@@ -132,7 +132,16 @@ export const submitVerification = (formData) =>
   api.post("/auth/verification", formData, { headers: { "Content-Type": "multipart/form-data" } });
 
 export const getAdminUsers = (role) => api.get("/admin/users", { params: role ? { role } : {} });
-export const banUser = (id) => api.patch(`/admin/users/${id}/ban`);
+export const banUser = (id, reason) => api.patch(`/admin/users/${id}/ban`, { reason });
+
+// Chat between a buyer and a farmer. Messages are sent here; new ones arrive
+// over the live connection in context/ChatContext.jsx.
+export const getConversations = () => api.get("/chats");
+export const getUnreadMessages = () => api.get("/chats/unread");
+export const startConversation = (farmerId) => api.post("/chats", { farmerId });
+export const getConversation = (id) => api.get(`/chats/${id}`);
+export const markConversationRead = (id) => api.patch(`/chats/${id}/read`);
+export const sendChatMessage = (id, text) => api.post(`/chats/${id}/messages`, { text });
 export const unbanUser = (id) => api.patch(`/admin/users/${id}/unban`);
 export const reviewFarmerVerification = (id, approved, note) =>
   api.patch(`/admin/users/${id}/verification`, { approved, note });

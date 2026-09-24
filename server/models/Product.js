@@ -56,7 +56,7 @@ const productSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["vegetable", "fruit"],
+      enum: ["vegetable", "fruit", "egg", "meat", "seafood"],
       required: [true, "Category is required"],
     },
     // A discounted price the farmer sets to move old stock - null means no

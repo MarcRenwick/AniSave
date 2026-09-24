@@ -1,6 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
+const validate = require("../utils/validate");
 const { effectiveVerificationStatus } = require("../utils/verification");
+const { disconnectUser } = require("../utils/realtime");
 
 const withStatus = (user) => ({
   ...user.toObject(),
@@ -27,9 +29,17 @@ const findModeratableUser = async (id) => {
 };
 
 // @desc    Ban a farmer/buyer account
-// @route   PATCH /api/admin/users/:id/ban
+// @route   PATCH /api/admin/users/:id/ban   { reason }
 // @access  Private (admin)
 const banUser = asyncHandler(async (req, res) => {
+  // The person is shown this when they try to log in, so it is required - the
+  // same as when a report ends in a suspension.
+  const reason = validate.optionalText(validate.plainBody(req.body).reason, "The reason", { max: 500 });
+  if (!reason) {
+    res.status(400);
+    throw new Error("A reason is required when banning a user");
+  }
+
   const { user, error } = await findModeratableUser(req.params.id);
   if (error) {
     res.status(error.status);
@@ -37,10 +47,12 @@ const banUser = asyncHandler(async (req, res) => {
   }
 
   user.isBanned = true;
+  user.suspensionReason = reason;
   // Any session they already have ends with the ban, and stays ended if they
   // are ever unbanned - they log in again.
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
+  disconnectUser(user._id);
   res.json(withStatus(user));
 });
 

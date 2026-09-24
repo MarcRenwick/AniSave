@@ -36,4 +36,7 @@ const registerLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 20 });
 // Sending reports: a few an hour from one address (on top of a per-account daily cap).
 const reportLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 10 });
 
-module.exports = { apiLimiter, guessLimiter, emailLimiter, registerLimiter, reportLimiter };
+// Chat messages: plenty for a real conversation, not enough to flood one.
+const chatLimiter = limiter({ windowMs: 60 * 1000, limit: 30 });
+
+module.exports = { apiLimiter, guessLimiter, emailLimiter, registerLimiter, reportLimiter, chatLimiter };
