@@ -73,6 +73,16 @@ Open http://localhost:5173, register as a Farmer or Buyer, then log in.
 
 Login uses **username**, not email — email is collected at registration only so it's available for a future "forgot password" flow. Passwords must be 6-12 characters with at least one capital letter and one special character (enforced both client-side in `Register.jsx` and server-side in the `User` model, so the API rejects a weak password even if someone bypasses the form).
 
+### What sign-up will accept
+
+The form asks for a **First Name** and a **Last Name** rather than one full name, so each can be checked on its own; the server joins them back into the single `name` every other part of the app reads. Each must be letters only - a space, a digit or a symbol is refused rather than stripped out, because "Dela Cruz" typed into First name is a mistake worth pointing out - and at least two letters long.
+
+A **username** is letters and digits, at least seven of them and no spaces. A **password** may not contain a space anywhere, on top of the length and strength rules above.
+
+`client/src/utils/accountRules.js` and `client/src/utils/password.js` hold the client's copy so the form can say what is wrong before it is sent; `server/utils/validate.js` holds the real one. The form deliberately carries no `minLength` on these fields: the browser's own message would fire first and say something vaguer than the form can.
+
+Two rules are kept deliberately looser than the sign-up form. `USERNAME_PATTERN` - the shape the `User` schema will save - still allows the dots, underscores and three-character names that accounts made before this rule have, or those people could never save their own profile again. And `validate.password` stays lenient where a password is being *checked* rather than set, so an account whose password predates the no-spaces rule can still prove who it is; `validate.newPassword` is the strict one, used by sign-up, reset and change-password.
+
 The client stores the JWT + user info in `localStorage` via `AuthContext` and attaches it to future API requests automatically.
 
 ## Addresses and "nearest"
@@ -108,6 +118,10 @@ The top of the marketplace is a carousel (`components/buyer/HomeBanner.jsx`, `h-
 Sections drift up into place as they are scrolled to. A page marks a single element with `data-reveal` and a list or grid with `data-reveal-children`; `useScrollReveal` watches what is marked, and anything it sees come into view gets `.scroll-reveal-visible`. `data-reveal-children` is what keeps a long grid animating the whole way down instead of arriving in one go at its first row: each item comes in as it is reached, a little after the one to its left on the same row (rows are worked out from `offsetTop`, so the stagger is right at any width). A page that marks nothing has its top-level blocks revealed instead, which is how every page behaved before. Anything already on screen when a page opens is revealed immediately, so nothing below a fold is ever the reason a page looks empty, and `prefers-reduced-motion` turns the whole thing off.
 
 The cart (`pages/buyer/CartPage.jsx`) is a table: a tick, the photo and name, the price per kilo, the quantity, that row's total and a remove button, with the **total expense** of the ticked rows underneath. Quantities can be typed as well as stepped, and are held between 1 and the stock the farmer has. Unticking a row leaves it in the cart but takes it out of the total and out of what Check Out sends on to the checkout page.
+
+The cart opens with **nothing ticked**. It is where a basket is looked over, not a checkout queue: ticking everything on arrival made the total and the Check Out button speak for items the buyer had not chosen yet, and left them unticking row by row.
+
+In the Add to Cart and Checkout dialogs (`components/buyer/QuantityInput.jsx`) an empty box or a typed **0 is refused**, not tidied. It used to be turned into 1 on the way out, so asking for 0 kilos quietly ordered one; now the box says so and the dialog's confirm button is off until it holds a real quantity.
 
 ## Marketplace product cards
 
