@@ -10,6 +10,16 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
+// A free Render server goes to sleep after 15 quiet minutes and takes about a
+// minute to wake, and it only starts waking when a request arrives - so the
+// first button someone presses would be the one that waits. Asking it a
+// harmless question as the site opens starts that wake-up while they are still
+// reading the page. The answer is ignored; if it fails, the real requests
+// will say so themselves.
+export const wakeServer = () => {
+  fetch(`${API_URL}/health`, { cache: "no-store" }).catch(() => {});
+};
+
 // Attach the saved JWT (if any) to every outgoing request
 api.interceptors.request.use((config) => {
   const token = readToken();

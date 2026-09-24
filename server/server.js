@@ -65,7 +65,16 @@ const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:5173")
   .flatMap((origin) =>
     process.env.NODE_ENV === "production" || !origin.includes("//localhost") ? [origin] : [origin, origin.replace("//localhost", "//127.0.0.1")]
   );
-app.use(cors({ origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)) }));
+// maxAge lets the browser remember the answer to its "may I?" check before a
+// signed-in request for a day (browsers cap it lower) instead of asking again
+// - a whole extra round trip to the server - before every call. Without it a
+// browser only remembers for 5 seconds.
+app.use(
+  cors({
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.includes(origin)),
+    maxAge: 86400,
+  })
+);
 
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
