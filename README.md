@@ -210,6 +210,41 @@ Farmer settings → the menu on the profile card → **Delete Account** opens `/
 
 Deleting cascades: products and their photos, orders, ratings, reports sent and received, the profile photo, and the ID and farm documents. The reason is never stored - the account it would belong to is being deleted. Buyers keep the shorter dialog in their own settings.
 
+## Creating an administrator
+
+Nobody can sign themselves up as an admin: `/api/auth/register` refuses the role outright. There are two ways in, and both end at the same place.
+
+**From the site.** Go to `/admin/register`, enter the authorized admin address - the one in `EMAIL_USER`, and only that one - and finish with the six-digit code it emails there. This is the normal route, and it is the only one that works on a deployed site you have no terminal on.
+
+**From a terminal.** `server/scripts/createAdmin.js` writes an admin straight to the database:
+
+```bash
+ADMIN_PASSWORD='...' node scripts/createAdmin.js siteadmin "Site Admin" admin@example.com
+```
+
+It applies the same username, password and email rules the sign-up form does, keeps the password out of your shell history, and never prints it back. It writes to whatever `MONGO_URI` points at - **the local database unless you say otherwise** - so it prints which database it actually reached before writing anything:
+
+```bash
+MONGO_URI='<your deployed database URI>' ADMIN_PASSWORD='...' \
+  node scripts/createAdmin.js siteadmin "Site Admin" admin@example.com
+```
+
+If that username or email is already taken it stops rather than overwriting. `ADMIN_RESET=true` instead gives that account the new password and makes it an admin, and signs out every session it already had.
+
+**Signing in as an admin always emails a six-digit code**, and unlike everyone else an admin cannot switch that off. So an admin account is only usable where the server has working `EMAIL_USER` and `EMAIL_PASS`, and where you can read that mailbox. An admin created on a server with no mail settings can be created and then never used.
+
+## Running it somewhere other than your machine
+
+The two halves deploy separately, and each needs its own settings - `server/.env` is never committed, so a host knows nothing that isn't configured there.
+
+The **server** needs `MONGO_URI` (the deployed database, not localhost), a `JWT_SECRET` of 32 characters or more - it refuses to start in production without one - `NODE_ENV=production`, `CLIENT_URL` set to the website's address so CORS lets it through (comma-separate several), and `EMAIL_USER` / `EMAIL_PASS` for the codes that password resets, two-step sign-in and admin registration all depend on. Behind a proxy or load balancer the app already sets `trust proxy`, so the rate limiter counts real visitors rather than the proxy.
+
+The **client** needs `VITE_API_URL` pointing at the deployed API, ending in `/api`. It is baked in at build time, so changing it means rebuilding, not just restarting.
+
+`GET /api/health` answers `{"status":"ok"}` without a token and without touching the database, which is the quickest way to tell a server that is down from one that is up but refusing you.
+
+A deployed database starts empty. Accounts, products and orders made against a local database are not in it, which is why a local administrator account cannot sign in to a deployed site.
+
 ## Viewing the Database
 
 MongoDB Compass (a GUI) is installed on this machine — open it from the Start Menu, connect to `mongodb://127.0.0.1:27017`, then open the `anisave` database → `users` collection to see registered accounts. Passwords are stored bcrypt-hashed, not in plain text.
