@@ -7,6 +7,7 @@ import logo from "../assets/logo.png";
 import { requestAdminOtp, registerAdmin } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { getPasswordError } from "../utils/password";
+import { getUsernameError } from "../utils/accountRules";
 
 export default function AdminRegister() {
   const { setSession } = useAuth();
@@ -37,6 +38,14 @@ export default function AdminRegister() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
+
+    // The same username rule the sign-up form uses - the server applies it to
+    // every account, so saying so here beats a round trip to be told.
+    const usernameError = getUsernameError(form.username);
+    if (usernameError) {
+      setError(usernameError);
+      return;
+    }
 
     const passwordError = getPasswordError(form.password);
     if (passwordError) {
@@ -156,7 +165,7 @@ export default function AdminRegister() {
               name="username"
               type="text"
               required
-              minLength={3}
+              minLength={7}
               value={form.username}
               onChange={handleChange}
               className="mt-1 w-full rounded-md border border-transparent bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#3a7d38]"

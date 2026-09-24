@@ -8,15 +8,31 @@ import { useState } from "react";
 // what these dialogs used to do - snaps it straight back to 1 and makes
 // typing a quantity impossible. So: the text is free while editing, `value`
 // only ever holds the last valid quantity, and the text is tidied on blur.
-export default function QuantityInput({ value, onChange, max }) {
+//
+// An empty box or a 0 is not tidied, though: it is wrong, and says so. It used
+// to be turned into 1 on the way out, so asking for 0 kilos quietly ordered
+// one. `onValidChange` lets the dialog turn its confirm button off until the
+// box holds a real quantity - pass a setState function, which never changes
+// identity between renders.
+export default function QuantityInput({ value, onChange, max, onValidChange }) {
   const [text, setText] = useState(String(value));
 
+  const typed = text.trim();
+  const invalid = typed === "" || Number(typed) < 1;
+
   const clamp = (n) => Math.max(1, max === undefined ? n : Math.min(max, n));
+
+  // Every path that changes the box also says whether what's in it counts as
+  // a quantity, so the dialog never has to work it out from the text itself.
+  const setDraft = (next, ok) => {
+    setText(next);
+    onValidChange?.(ok);
+  };
 
   // Set both at once: used by the buttons, arrow keys and blur.
   const commit = (n) => {
     const next = clamp(n);
-    setText(String(next));
+    setDraft(String(next), true);
     onChange(next);
   };
 
@@ -25,16 +41,17 @@ export default function QuantityInput({ value, onChange, max }) {
     const digits = e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
     const n = Number(digits);
 
-    // Empty or 0 is fine while typing - just don't call it the quantity yet.
+    // Empty or 0: shown as typed, not treated as a quantity, and not silently
+    // replaced by 1 either here or on the way out.
     if (digits === "" || n < 1) {
-      setText(digits);
+      setDraft(digits, false);
       return;
     }
     if (max !== undefined && n > max) {
       commit(max);
       return;
     }
-    setText(digits);
+    setDraft(digits, true);
     onChange(n);
   };
 
@@ -49,37 +66,53 @@ export default function QuantityInput({ value, onChange, max }) {
   };
 
   return (
-    <div className="mt-4 flex items-center justify-center gap-4">
-      <button
-        type="button"
-        onClick={() => commit(value - 1)}
-        aria-label="Decrease quantity"
-        className="h-10 w-10 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-      >
-        −
-      </button>
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={6}
-        aria-label="Quantity in kilos"
-        value={text}
-        onChange={handleTyped}
-        onKeyDown={handleKeyDown}
-        // Emptied out (or 0) and left: go back to the last real quantity.
-        onBlur={() => commit(text === "" ? value : Number(text))}
-        // Selecting it all means typing replaces the 1 instead of appending to it.
-        onFocus={(e) => e.target.select()}
-        className="w-16 rounded-md border border-gray-300 py-1.5 text-center text-xl font-semibold text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
-      />
-      <button
-        type="button"
-        onClick={() => commit(value + 1)}
-        aria-label="Increase quantity"
-        className="h-10 w-10 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
-      >
-        +
-      </button>
-    </div>
+    <>
+      <div className="mt-4 flex items-center justify-center gap-4">
+        <button
+          type="button"
+          onClick={() => commit(value - 1)}
+          aria-label="Decrease quantity"
+          className="h-10 w-10 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
+        >
+          −
+        </button>
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          aria-label="Quantity in kilos"
+          aria-invalid={invalid}
+          value={text}
+          onChange={handleTyped}
+          onKeyDown={handleKeyDown}
+          // Left with a real number: tidy it. Left empty or at 0: leave it be,
+          // so what is wrong stays on screen to be corrected.
+          onBlur={() => {
+            if (!invalid) commit(Number(text));
+          }}
+          // Selecting it all means typing replaces the 1 instead of appending to it.
+          onFocus={(e) => e.target.select()}
+          className={`w-16 rounded-md border py-1.5 text-center text-xl font-semibold focus:outline-none focus:ring-1 ${
+            invalid
+              ? "border-red-400 text-red-600 focus:border-red-500 focus:ring-red-500"
+              : "border-gray-300 text-gray-900 focus:border-[#2f8f66] focus:ring-[#2f8f66]"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => commit(value + 1)}
+          aria-label="Increase quantity"
+          className="h-10 w-10 rounded-md border border-gray-300 text-lg font-semibold text-gray-600 hover:bg-gray-50"
+        >
+          +
+        </button>
+      </div>
+
+      {invalid && (
+        <p role="alert" className="mt-2 text-center text-xs font-medium text-red-600">
+          Enter at least 1 kilo.
+        </p>
+      )}
+    </>
   );
 }

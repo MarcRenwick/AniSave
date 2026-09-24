@@ -150,7 +150,7 @@ export default function ProductDetail() {
                     onClick={() => setShowCheckout(true)}
                     disabled={soldOut}
                     className={`flex-1 rounded-md py-3 text-sm font-semibold text-white transition disabled:opacity-60 ${
-                      isPreOrder ? "bg-amber-500 hover:bg-amber-600" : "bg-red-600 hover:bg-red-700"
+                      isPreOrder ? "bg-amber-500 hover:bg-amber-600" : "bg-green-600 hover:bg-green-700"
                     }`}
                   >
                     {isPreOrder ? "Pre-Order" : soldOut ? "Out of Stock" : "Buy Now"}

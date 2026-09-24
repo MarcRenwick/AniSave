@@ -173,7 +173,7 @@ export default function Checkout() {
           type="button"
           onClick={handlePlaceOrder}
           disabled={submitting}
-          className="w-full rounded-md bg-red-600 py-4 text-base font-semibold text-white transition hover:bg-red-700 disabled:opacity-60"
+          className="w-full rounded-md bg-green-600 py-4 text-base font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
         >
           {submitting ? "Placing Order..." : isPreOrder ? "Place Pre-Order" : "Place Order"}
         </button>

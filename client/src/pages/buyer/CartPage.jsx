@@ -83,7 +83,11 @@ export default function CartPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { items, updateQuantity, removeFromCart } = useCart();
-  const [selected, setSelected] = useState(() => new Set(items.map((i) => i.productId)));
+  // Nothing is ticked on arrival. The cart is where a basket is looked over,
+  // not a checkout queue: opening it used to tick everything in it, so the
+  // total and the Check Out button spoke for items the buyer had not chosen
+  // yet and had to be unticked one by one.
+  const [selected, setSelected] = useState(() => new Set());
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
 
@@ -165,7 +169,7 @@ export default function CartPage() {
                   <th scope="col" className="w-14 px-4 py-4">
                     <input
                       type="checkbox"
-                      checked={selected.size === items.length}
+                      checked={items.length > 0 && selected.size === items.length}
                       onChange={toggleSelectAll}
                       aria-label="Select every item in the cart"
                       className="h-5 w-5 accent-[#2f8f66]"

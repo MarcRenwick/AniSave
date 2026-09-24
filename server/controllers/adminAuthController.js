@@ -61,7 +61,7 @@ const registerAdmin = asyncHandler(async (req, res) => {
   const email = validate.email(body.email);
   const code = validate.codeInput(body.code);
   const username = validate.username(body.username);
-  const password = validate.password(body.password);
+  const password = validate.newPassword(body.password);
   const name = validate.fullName(body.name);
 
   if (!isAuthorizedAdminEmail(email)) {

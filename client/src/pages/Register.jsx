@@ -9,10 +9,12 @@ import AddressPicker from "../components/AddressPicker";
 import { useSmoothNavigate } from "../utils/pageTransition";
 import VerificationDocumentFields from "../components/verification/VerificationDocumentFields";
 import { getPasswordError } from "../utils/password";
+import { getNameError, getUsernameError } from "../utils/accountRules";
 import { emptyAddress, isAddressComplete } from "../utils/address";
 
 const initialForm = {
-  name: "",
+  firstName: "",
+  lastName: "",
   username: "",
   email: "",
   password: "",
@@ -115,6 +117,17 @@ export default function Register() {
   const handleDetailsSubmit = (e) => {
     e.preventDefault();
     setError("");
+
+    // Checked in the order they are asked for, so the message points at the
+    // first field that needs attention rather than the last.
+    const fieldError =
+      getNameError("First name", form.firstName) ||
+      getNameError("Last name", form.lastName) ||
+      getUsernameError(form.username);
+    if (fieldError) {
+      setError(fieldError);
+      return;
+    }
 
     const passwordError = getPasswordError(form.password);
     if (passwordError) {
@@ -303,16 +316,31 @@ export default function Register() {
         <form onSubmit={handleDetailsSubmit} className="mt-6">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="name" className={labelClass}>
-                Full Name
+              <label htmlFor="firstName" className={labelClass}>
+                First Name
               </label>
               <input
-                id="name"
-                name="name"
+                id="firstName"
+                name="firstName"
                 required
-                value={form.name}
+                value={form.firstName}
                 onChange={handleChange}
-                placeholder="Your full name"
+                placeholder="Your first name"
+                className={`mt-1 ${inputClass}`}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="lastName" className={labelClass}>
+                Last Name
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                required
+                value={form.lastName}
+                onChange={handleChange}
+                placeholder="Your last name"
                 className={`mt-1 ${inputClass}`}
               />
             </div>
@@ -325,16 +353,14 @@ export default function Register() {
                 id="username"
                 name="username"
                 required
-                minLength={3}
                 value={form.username}
                 onChange={handleChange}
-                placeholder="Your username"
+                placeholder="Letters and numbers, 7 or more"
                 className={`mt-1 ${inputClass}`}
               />
             </div>
 
-            {/* A buyer has nothing to pair the email with, so it takes the row. */}
-            <div className={role === "farmer" ? "" : "sm:col-span-2"}>
+            <div>
               <label htmlFor="email" className={labelClass}>
                 Your Email
               </label>
@@ -350,6 +376,8 @@ export default function Register() {
               />
             </div>
 
+            {/* The two farm fields share a row, so splitting the name in two
+                leaves a farmer's step exactly as tall as it was. */}
             {role === "farmer" && (
               <div>
                 <label htmlFor="farmName" className={labelClass}>
@@ -362,6 +390,22 @@ export default function Register() {
                   value={form.farmName}
                   onChange={handleChange}
                   placeholder="Your farm name"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
+            )}
+
+            {role === "farmer" && (
+              <div>
+                <label htmlFor="farmDescription" className={labelClass}>
+                  Farm Details
+                </label>
+                <input
+                  id="farmDescription"
+                  name="farmDescription"
+                  value={form.farmDescription}
+                  onChange={handleChange}
+                  placeholder="Crops, farm size (optional)"
                   className={`mt-1 ${inputClass}`}
                 />
               </div>
@@ -408,21 +452,6 @@ export default function Register() {
               />
             </div>
 
-            {role === "farmer" && (
-              <div className="sm:col-span-2">
-                <label htmlFor="farmDescription" className={labelClass}>
-                  Farm Details
-                </label>
-                <input
-                  id="farmDescription"
-                  name="farmDescription"
-                  value={form.farmDescription}
-                  onChange={handleChange}
-                  placeholder="Crops, farm size (optional)"
-                  className={`mt-1 ${inputClass}`}
-                />
-              </div>
-            )}
           </div>
 
           {/* A farmer agrees on the last step, once they've seen what they're handing over. */}

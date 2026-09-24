@@ -8,6 +8,9 @@ import { effectivePrice } from "../../utils/pricing";
 
 export default function CheckoutModal({ product, preorder = false, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
+  // Off while the quantity box holds nothing or a 0, so nobody can go through
+  // to the checkout having asked for 0 kilos.
+  const [quantityValid, setQuantityValid] = useState(true);
 
   const total = effectivePrice(product) * quantity;
 
@@ -33,7 +36,12 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
 
       {/* A pre-order isn't capped by current stock - the farmer fills it as
           the produce comes in. */}
-      <QuantityInput value={quantity} onChange={setQuantity} max={preorder ? undefined : product.stock} />
+      <QuantityInput
+        value={quantity}
+        onChange={setQuantity}
+        max={preorder ? undefined : product.stock}
+        onValidChange={setQuantityValid}
+      />
       <p className="mt-2 text-center text-xs text-gray-400">
         {preorder
           ? "Pre-order - the farmer prepares this once it's available"
@@ -56,7 +64,8 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
         <button
           type="button"
           onClick={() => onConfirm(quantity)}
-          className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700"
+          disabled={!quantityValid}
+          className="flex-1 rounded-md bg-green-600 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
           {preorder ? "Proceed to Pre-Order" : "Proceed to Checkout"}
         </button>

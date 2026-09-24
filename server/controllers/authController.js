@@ -125,10 +125,15 @@ const registerUser = asyncHandler(async (req, res) => {
   };
 
   try {
-    const name = validate.fullName(body.name);
+    // The form asks for the two halves separately so each can be checked on
+    // its own; everything downstream - orders, ratings, the admin lists -
+    // reads one `name`, so they are joined back together here.
+    const firstName = validate.personName(body.firstName, "First name");
+    const lastName = validate.personName(body.lastName, "Last name");
+    const name = `${firstName} ${lastName}`;
     const username = validate.username(body.username);
     const email = validate.email(body.email);
-    const password = validate.password(body.password);
+    const password = validate.newPassword(body.password);
     const farmName = validate.optionalText(body.farmName, "Farm name", { max: 100, blockMarkup: true });
     const farmDescription = validate.optionalText(body.farmDescription, "Farm details", { max: 1000 });
 
@@ -447,7 +452,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   const body = validate.plainBody(req.body);
   const email = validate.email(body.email);
   const code = validate.codeInput(body.code);
-  const password = validate.password(body.password, "New password");
+  const password = validate.newPassword(body.password, "New password");
 
   const user = await User.findOne({ email }).select(`${selectCode(RESET_CODE)} +failedLoginAttempts +lockUntil`);
 
@@ -545,7 +550,7 @@ const uploadAvatar = asyncHandler(async (req, res) => {
 const changePassword = asyncHandler(async (req, res) => {
   const body = validate.plainBody(req.body);
   const currentPassword = validate.password(body.currentPassword, "Current password");
-  const newPassword = validate.password(body.newPassword, "New password");
+  const newPassword = validate.newPassword(body.newPassword, "New password");
 
   const user = await User.findById(req.user._id).select("+password");
 

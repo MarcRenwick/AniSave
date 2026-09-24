@@ -39,6 +39,8 @@ connectDB();
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 // Security headers (no X-Powered-By, nosniff, frame protection, HSTS...).
 // Cross-origin resource policy is relaxed only because the web app lives on a
 // different origin from the API and has to be able to show the product photos
