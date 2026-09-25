@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Leaf, Users, Truck, Search, ShoppingBasket, Package, ArrowUpRight, Sprout } from "lucide-react";
+import { Leaf, Users, Search, ShoppingBasket, Package, ArrowUpRight, Sprout } from "lucide-react";
 import SmoothLink from "../components/SmoothLink";
 import heroImage from "../assets/lndingpge.jpg";
 import logo from "../assets/logo.png";
@@ -7,7 +7,7 @@ import useScrollReveal from "../hooks/useScrollReveal";
 
 const steps = [
   { icon: Search, title: "Browse", text: "Explore fresh produce listed directly by local farmers." },
-  { icon: ShoppingBasket, title: "Order", text: "Add items to your cart and check out - cash on delivery or pickup." },
+  { icon: ShoppingBasket, title: "Order", text: "Add items to your cart and check out to reserve your order." },
   { icon: Package, title: "Pick Up", text: "Head to the farmer's location and collect your order when it's ready." },
 ];
 
@@ -98,8 +98,8 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#2f8f66] px-4 py-3 text-sm font-semibold text-white">
-                  <Truck className="h-4 w-4" />
-                  Cash on Delivery & Easy Pickup
+                  <Package className="h-4 w-4" />
+                  Easy Pickup
                 </div>
               </div>
             </div>
