@@ -97,7 +97,7 @@ export default function Landing() {
                     <p className="text-xs text-gray-500">Reviewed before they can sell</p>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-center gap-5 rounded-xl bg-[#2f8f66] px-4 py-3 text-sm font-semibold text-white">
+                <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-[#2f8f66] px-4 py-3 text-sm font-semibold text-white">
                   <Package className="h-4 w-4" />
                   Easy Pickup
                 </div>
