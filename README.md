@@ -63,13 +63,16 @@ Copy `.env.example` to `.env` if needed — it points the client at the local AP
 
 ### 3. Try it out
 
-Open http://localhost:5173, register as a Farmer or Buyer, then log in.
+Open http://localhost:5173, register as a Farmer or Buyer, enter the code emailed to you, and you're in.
 
 ## Auth Flow (currently implemented)
 
-- `POST /api/auth/register` — creates a user (`farmer` or `buyer`) with the address they picked (`provinceCode`, `cityCode`), hashes the password, returns a JWT
-- `POST /api/auth/login` — logs in with **username** (not email) + password, returns a JWT (or, for accounts with two-step sign-in, asks for an emailed code first - see Security)
+- `POST /api/auth/register` — creates a user (`farmer` or `buyer`) with the address they picked (`provinceCode`, `cityCode`) and hashes the password. It does **not** sign them in: it emails a 6-digit code to verify the address and answers `{ verificationRequired, username, email (masked), emailSent }`
+- `POST /api/auth/verify-email` `{ username, code }` — the code from that email (15 minutes, 5 tries). It verifies the account and returns a JWT: this is a new account's first sign-in. `POST /api/auth/verify-email/resend` `{ username }` sends a new code
+- `POST /api/auth/login` — logs in with **username** (not email) + password, returns a JWT (or, for accounts with two-step sign-in, asks for an emailed code first - see Security). An account that never verified its email gets a fresh code and the same "Verify your email" step instead of a session
 - `GET /api/auth/me` — returns the logged-in user (requires `Authorization: Bearer <token>`)
+
+**Email verification.** A new account has `emailVerified: false` until its code is entered; accounts made before this existed have no value and count as verified, so nobody already using the site is locked out. Signing in with an email code or resetting the password also verifies it, since both prove the inbox is theirs. An account nobody verified doesn't keep its username or email: signing up again with either (after a typo in the email, or a lost message) replaces it, documents and all - the sign-up page's "Wrong email? Go back and change it" does exactly that. Unverified sign-ups are left out of the admin's Users list.
 
 Login uses **username**, not email — email is collected at registration only so it's available for a future "forgot password" flow. Passwords must be 6-12 characters with at least one capital letter and one special character (enforced both client-side in `Register.jsx` and server-side in the `User` model, so the API rejects a weak password even if someone bypasses the form).
 
@@ -104,6 +107,7 @@ The restriction is the data, not a filter: `server/data/locations.json` holds th
 How sign-up, login and sessions are protected. Everything here is enforced on the server, not just in the forms.
 
 - **Input validation** — `server/utils/validate.js` checks every auth request (types, lengths, email/username/phone formats; objects where text is expected get a 400), and the `User` schema repeats the rules. A listing's numbers go through the same file: a quantity or price is digits only, so a browser number box's "100e+" or "24e+" is refused rather than stored as NaN, and the form itself won't accept those characters in the first place. Uploads are limited to JPG/PNG/WebP/GIF, saved under a name the server picks, and their first bytes are checked - an `.html`/`.svg` file dressed up as an image is refused.
+- **Verified email** — a new account only gets a session once it enters the code emailed at sign-up (see Auth Flow).
 - **Passwords and codes** — passwords are bcrypt hashes. One-time codes are made with `crypto.randomInt`, stored as an HMAC, expire in 10-15 minutes, work once, and die after 5 wrong guesses (`server/utils/otp.js`).
 - **Brute force** — 5 wrong passwords lock an account for 15 minutes; per-IP rate limits cover failed logins/codes, anything that sends email, sign-ups and chat messages (`server/middleware/rateLimiters.js`).
 - **Two-step sign-in** — after the password, an emailed code (`POST /api/auth/login/mfa`). Always on for admins; optional for everyone else under Profile → Privacy & Security. The passwordless "email code" login is switched off for accounts that use two steps, so it can't be used to skip the password.
@@ -120,7 +124,7 @@ The top of the marketplace is a carousel (`components/buyer/HomeBanner.jsx`, `h-
 
 Sections drift up into place as they are scrolled to. A page marks a single element with `data-reveal` and a list or grid with `data-reveal-children`; `useScrollReveal` watches what is marked, and anything it sees come into view gets `.scroll-reveal-visible`. `data-reveal-children` is what keeps a long grid animating the whole way down instead of arriving in one go at its first row: each item comes in as it is reached, a little after the one to its left on the same row (rows are worked out from `offsetTop`, so the stagger is right at any width). A page that marks nothing has its top-level blocks revealed instead, which is how every page behaved before. Anything already on screen when a page opens is revealed immediately, so nothing below a fold is ever the reason a page looks empty, and `prefers-reduced-motion` turns the whole thing off.
 
-The cart (`pages/buyer/CartPage.jsx`) is a table: a tick, the photo and name, the price per kilo, the quantity, that row's total and a remove button, with the **total expense** of the ticked rows underneath. Quantities can be typed as well as stepped, and are held between 1 and the stock the farmer has. Unticking a row leaves it in the cart but takes it out of the total and out of what Check Out sends on to the checkout page.
+The cart (`pages/buyer/CartPage.jsx`) is a table: a tick, the photo and name, the price per kilo, the quantity, that row's total and a remove button, with the **total expense** of the ticked rows underneath. The remove button asks first - "Remove this item?", with the item's photo, kilos and subtotal - and "No, keep it" has the focus, so an Enter pressed out of habit keeps it. Quantities can be typed as well as stepped, and are held between 1 and the stock the farmer has. Unticking a row leaves it in the cart but takes it out of the total and out of what Check Out sends on to the checkout page.
 
 The cart opens with **nothing ticked**. It is where a basket is looked over, not a checkout queue: ticking everything on arrival made the total and the Check Out button speak for items the buyer had not chosen yet, and left them unticking row by row.
 
@@ -176,6 +180,7 @@ An order moves in a straight line: **New** (or **Pre-Order**, for a pre-order li
 - Every reply about a single order carries the whole order — the buyer, the farmer and the product, not just their ids — so a status change never leaves the page holding an order whose buyer and product are bare ids (that is what once turned an accepted order's pickup card into "Unknown buyer").
 - **Undo** (`PATCH /api/orders/:id/undo`, the farmer's own orders only) takes the last change back one step, for a mis-tapped Accept or Ready. The stage's timestamp is cleared with it, and a pre-order goes back to **Pre-Order** with its stock returned — `openedAs` on the order remembers which status it opened in. Two statuses are the end of the line and are never undone: a **Completed** order (it has been picked up, and may already be rated) and a **declined** one (the buyer has been told, and the stock is back). Orders placed before `openedAs` existed are treated as ordinary orders; to fill it in for them, run `node scripts/backfillOrderOpenedAs.js --dry-run` (then without `--dry-run`) once.
 - Both Orders pages list **Pre-Order** right after **New** — the two statuses that are still waiting on the farmer's answer.
+- **The two sides of one order look different on purpose**, so nobody testing both accounts mistakes one for the other. The farmer's (`pages/farmer/FarmerOrderDetail.jsx`) sits in the farmer portal, sidebar and all: "Order from *buyer*", a **Customer** card (name, phone, location), **Order items**, and beside them **Order progress** - the steps top to bottom (`components/orders/OrderTimeline.jsx`) with a status badge and the next action. The buyer's (`pages/buyer/OrderDetail.jsx`) sits under the marketplace's green navigation: "My Order", a coloured banner saying where it stands in the buyer's words ("Waiting for the farmer", "Ready for pickup!"), the steps across the page (`OrderStatusTracker`), **Pick up from** (the farm, with View Shop) and **Your item**. Both show the same order number (`#` and the last 8 characters of its id).
 
 ## Reports
 
@@ -282,7 +287,7 @@ The website also saves trips of its own: the farmer's pages share the requests t
 
 ### Sending email from a host
 
-Every one-time code - login by email, password reset, two-step sign-in, account deletion and admin registration - goes through `server/utils/sendEmail.js`, which sends it one of three ways:
+Every one-time code - verifying a new account's email, login by email, password reset, two-step sign-in, account deletion and admin registration - goes through `server/utils/sendEmail.js`, which sends it one of three ways:
 
 - **Gmail over SMTP**, with `EMAIL_USER` and `EMAIL_PASS` (a Gmail App Password). This is what runs on your own machine.
 - **Through the mail relay**, whenever `MAIL_RELAY_URL` is set. The relay is `client/api/send-email.js`, a small function Vercel deploys along with the website, and it sends through the same Gmail account from there.

@@ -22,7 +22,7 @@ const otp = require("../utils/otp");
 
 const { escapeHtml, trySend, EMAIL_FAILED_MESSAGE } = sendEmail;
 const { generateMfaToken } = generateToken;
-const { LOGIN_CODE, RESET_CODE, DELETE_CODE, MFA_CODE, selectCode } = otp;
+const { LOGIN_CODE, RESET_CODE, DELETE_CODE, MFA_CODE, VERIFY_EMAIL_CODE, selectCode } = otp;
 
 // Five wrong passwords in a row lock the account for a quarter of an hour.
 const MAX_FAILED_LOGINS = 5;
@@ -32,6 +32,7 @@ const LOGIN_CODE_MS = 10 * 60 * 1000;
 const MFA_CODE_MS = 10 * 60 * 1000;
 const RESET_CODE_MS = 15 * 60 * 1000;
 const DELETE_CODE_MS = 15 * 60 * 1000;
+const VERIFY_EMAIL_MS = 15 * 60 * 1000;
 
 // Checked against when a username doesn't exist, so an unknown username costs
 // the same time as a wrong password and the response time can't be used to
@@ -127,6 +128,55 @@ const sessionPayload = (user) => ({
 // Admins always sign in with two steps; anyone else can switch it on.
 const needsTwoStep = (user) => user.role === "admin" || Boolean(user.mfaEnabled);
 
+// A new account's email is verified before it gets a session: sign-up emails a
+// code, and entering it (POST /verify-email) signs them in. Until then the
+// password alone only leads back to the code.
+const isUnverified = (user) => user.emailVerified === false;
+
+// Emails a verification code (unless one went out a moment ago) and says
+// whether it went. Waited for, like the two-step code: whoever asks has just
+// signed up or proved the password, so a failure can be admitted - and the
+// code is taken back, so "Send a new code" works straight away.
+const sendVerificationCode = async (user) => {
+  if (otp.sentRecently(user, VERIFY_EMAIL_CODE, VERIFY_EMAIL_MS)) return true;
+  const code = otp.issueCode(user, VERIFY_EMAIL_CODE, VERIFY_EMAIL_MS);
+  await user.save();
+  return trySend(
+    {
+      to: user.email,
+      subject: "Verify your AniSave email",
+      html: codeEmail(user, {
+        intro: "Welcome to AniSave! Enter this code to verify your email address and start using your account.",
+        code,
+        minutes: 15,
+        outro: "If you didn't sign up for AniSave, you can safely ignore this email - the account stays unusable without this code.",
+      }),
+    },
+    { onFailure: forgetCode(user, VERIFY_EMAIL_CODE) }
+  );
+};
+
+// In place of a session, for an account still waiting on its email.
+const verificationReply = (user, sent) => ({
+  verificationRequired: true,
+  username: user.username,
+  email: maskEmail(user.email),
+  emailSent: sent,
+  message: sent ? `We emailed a 6-digit code to ${maskEmail(user.email)}.` : EMAIL_FAILED_MESSAGE,
+});
+
+// An account nobody finished verifying doesn't hold on to its username or
+// email: whoever signs up with them next - most often the same person, after a
+// typo or a lost email - replaces it. It never had a session, so nothing can
+// have been done with it; only the documents it uploaded go with it.
+const discardUnverified = async (user) => {
+  const { deletedCount } = await User.deleteOne({ _id: user._id, emailVerified: false });
+  if (!deletedCount) return;
+  if (user.governmentId) deleteImageFile(user.governmentId);
+  (user.farmDocuments || []).forEach(deleteImageFile);
+  if (user.avatar) deleteImageFile(user.avatar);
+};
+
 // @desc    Register a new user (farmer or buyer). A farmer sends their
 //          verification documents in this same request.
 // @route   POST /api/auth/register
@@ -144,6 +194,7 @@ const registerUser = asyncHandler(async (req, res) => {
     farmDocumentFiles.forEach((file) => deleteImageFile(documentPath(file)));
   };
 
+  let user;
   try {
     // The form asks for the two halves separately so each can be checked on
     // its own; everything downstream - orders, ratings, the admin lists -
@@ -188,20 +239,20 @@ const registerUser = asyncHandler(async (req, res) => {
       throw new Error("At least one farm-related document is required");
     }
 
-    const usernameTaken = await User.findOne({ username });
-    if (usernameTaken) {
+    const [usernameTaken, emailTaken] = await Promise.all([User.findOne({ username }), User.findOne({ email })]);
+    if (usernameTaken && !isUnverified(usernameTaken)) {
       res.status(400);
       throw new Error("Username is already exist");
     }
-
-    const emailTaken = await User.findOne({ email });
-    if (emailTaken) {
+    if (emailTaken && !isUnverified(emailTaken)) {
       res.status(400);
       throw new Error("Email is already registered");
     }
+    if (usernameTaken) await discardUnverified(usernameTaken);
+    if (emailTaken && !emailTaken._id.equals(usernameTaken?._id)) await discardUnverified(emailTaken);
 
     const now = new Date();
-    const user = await User.create({
+    user = await User.create({
       name,
       username,
       email,
@@ -217,16 +268,19 @@ const registerUser = asyncHandler(async (req, res) => {
       farmDocuments: isFarmer ? farmDocumentFiles.map(documentPath) : undefined,
       verificationSubmittedAt: isFarmer ? now : undefined,
       consent: { termsVersion: TERMS_VERSION, acceptedAt: now, documentsConsentAt: isFarmer ? now : undefined },
+      emailVerified: false,
     });
 
     // Buyers don't have documents, so nothing they sent is worth keeping.
     if (!isFarmer) discardUploads();
-
-    res.status(201).json(sessionPayload(user));
   } catch (err) {
     discardUploads();
     throw err;
   }
+
+  // No session yet: the code emailed now is what signs them in.
+  const sent = await sendVerificationCode(user);
+  res.status(201).json(verificationReply(user, sent));
 });
 
 // Emails a fresh two-step code to someone who has just proved their password
@@ -274,7 +328,7 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ username: body.username.trim().toLowerCase() }).select(
-    `+password +failedLoginAttempts +lockUntil ${selectCode(MFA_CODE)}`
+    `+password +failedLoginAttempts +lockUntil ${selectCode(MFA_CODE)} ${selectCode(VERIFY_EMAIL_CODE)}`
   );
 
   // A locked account isn't tried at all - not even with the right password.
@@ -308,6 +362,12 @@ const loginUser = asyncHandler(async (req, res) => {
   if (user.isBanned) {
     res.status(403);
     throw new Error(restrictionMessage(user));
+  }
+
+  // Signed up but never entered the emailed code: the password leads back to
+  // that step, with a fresh code, instead of to a session.
+  if (isUnverified(user)) {
+    return res.json(verificationReply(user, await sendVerificationCode(user)));
   }
 
   if (needsTwoStep(user)) {
@@ -387,6 +447,53 @@ const resendLoginMfa = asyncHandler(async (req, res) => {
   res.json({ message: `We emailed a new code to ${maskEmail(user.email)}.` });
 });
 
+// The unverified account a verification request names, with its code fields.
+const unverifiedByUsername = (username) =>
+  typeof username === "string" && username.trim() && username.length <= 254
+    ? User.findOne({ username: username.trim().toLowerCase(), emailVerified: false }).select(selectCode(VERIFY_EMAIL_CODE))
+    : null;
+
+// @desc    Verify a new account's email with the code sent to it, and sign in
+// @route   POST /api/auth/verify-email   { username, code }
+// @access  Public
+const verifyEmail = asyncHandler(async (req, res) => {
+  const body = validate.plainBody(req.body);
+  const code = validate.codeInput(body.code);
+  const user = await unverifiedByUsername(body.username);
+
+  if (!user || !(await otp.checkCode(user, VERIFY_EMAIL_CODE, code))) {
+    res.status(400);
+    throw new Error("That code is invalid or has expired");
+  }
+
+  if (user.isBanned) {
+    res.status(403);
+    throw new Error(restrictionMessage(user));
+  }
+
+  user.emailVerified = true;
+  otp.clearCode(user, VERIFY_EMAIL_CODE);
+  await user.save();
+
+  res.json(sessionPayload(user));
+});
+
+// @desc    Email a new verification code (if the last one is more than a minute old)
+// @route   POST /api/auth/verify-email/resend   { username }
+// @access  Public
+const resendVerification = asyncHandler(async (req, res) => {
+  const user = await unverifiedByUsername(validate.plainBody(req.body).username);
+
+  if (user && otp.sentRecently(user, VERIFY_EMAIL_CODE, VERIFY_EMAIL_MS)) {
+    res.status(429);
+    throw new Error("A code was just sent. Please wait a minute before asking for another.");
+  }
+  if (user && !(await sendVerificationCode(user))) {
+    return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
+  }
+  res.json({ message: "We emailed you a new code." });
+});
+
 // @desc    Get current logged-in user's profile
 // @route   GET /api/auth/me
 // @access  Private
@@ -449,8 +556,10 @@ const loginWithOtp = asyncHandler(async (req, res) => {
     throw new Error(restrictionMessage(user));
   }
 
-  // A code is good for exactly one login.
+  // A code is good for exactly one login. It came to the account's inbox, so
+  // it verifies the email too if that step was never finished.
   otp.clearCode(user, LOGIN_CODE);
+  if (isUnverified(user)) user.emailVerified = true;
   await user.save();
 
   res.json(sessionPayload(user));
@@ -511,6 +620,8 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   user.failedLoginAttempts = 0;
   user.lockUntil = undefined;
+  // The code came to the account's inbox, which verifies it as well.
+  if (isUnverified(user)) user.emailVerified = true;
   await user.save();
   disconnectUser(user._id);
 
@@ -876,6 +987,8 @@ module.exports = {
   loginUser,
   verifyLoginMfa,
   resendLoginMfa,
+  verifyEmail,
+  resendVerification,
   requestLoginOtp,
   loginWithOtp,
   submitVerification,

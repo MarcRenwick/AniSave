@@ -78,6 +78,9 @@ export const BUYER_STATUS_TITLE = {
   cancelled: "Cancelled",
 };
 
+// A short reference for an order, the same on both sides: "#6878D4C7".
+export const orderNumber = (order) => `#${String(order._id).slice(-8).toUpperCase()}`;
+
 export function formatDateTime(date) {
   return new Date(date).toLocaleString(undefined, {
     month: "short",

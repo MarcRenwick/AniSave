@@ -8,6 +8,7 @@ import SmoothLink from "../components/SmoothLink";
 import AddressPicker from "../components/AddressPicker";
 import { useSmoothNavigate } from "../utils/pageTransition";
 import VerificationDocumentFields from "../components/verification/VerificationDocumentFields";
+import VerifyEmailForm from "../components/VerifyEmailForm";
 import { getPasswordError } from "../utils/password";
 import { getNameError, getUsernameError } from "../utils/accountRules";
 import { emptyAddress, isAddressComplete } from "../utils/address";
@@ -64,7 +65,7 @@ const TermsConsent = ({ checked, onChange }) => (
 );
 
 export default function Register() {
-  const { register } = useAuth();
+  const { register, setSession } = useAuth();
   const navigate = useSmoothNavigate();
 
   const [role, setRole] = useState(null);
@@ -81,6 +82,8 @@ export default function Register() {
   const [consentDocuments, setConsentDocuments] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Set once the account is made: whose it is and where its code went.
+  const [verification, setVerification] = useState(null);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -90,9 +93,11 @@ export default function Register() {
           "Choose account type",
           "Personal information",
           "Government ID & farm documents",
+          "Verify your email",
           "Administrator reviews your documents",
         ]
-      : ["Choose account type", "Personal information"];
+      : ["Choose account type", "Personal information", "Verify your email"];
+  const verifyStep = flow.indexOf("Verify your email") + 1;
 
   const chooseRole = (next) => {
     setRole(next);
@@ -100,10 +105,13 @@ export default function Register() {
     setStep(2);
   };
 
+  // Going back from the code step to fix a detail (a mistyped email) and
+  // signing up again replaces the account that was never verified.
   const goBack = () => {
     setError("");
-    if (step === 3) {
-      setStep(2);
+    if (step > 2) {
+      setVerification(null);
+      setStep(step - 1);
       return;
     }
     setRole(null);
@@ -176,6 +184,7 @@ export default function Register() {
   const submitRegistration = async () => {
     setSubmitting(true);
     setError("");
+    let created;
     try {
       const { confirmPassword: _confirmPassword, ...rest } = form;
       const details = { ...rest, ...address, acceptTerms: acceptedTerms };
@@ -187,16 +196,28 @@ export default function Register() {
         Object.entries({ ...details, role, consentDocuments }).forEach(([key, value]) => data.append(key, value));
         data.append("governmentId", governmentId);
         farmDocuments.forEach((file) => data.append("farmDocuments", file));
-        await register(data);
-        navigate("/farmer/dashboard");
+        created = await register(data);
       } else {
-        await register({ ...details, role });
-        navigate("/buyer/home");
+        created = await register({ ...details, role });
       }
+      // No session yet: the code just emailed is what signs them in.
+      setVerification({
+        username: created.username,
+        email: form.email.trim(),
+        emailSent: created.emailSent,
+        message: created.message,
+      });
+      setStep(verifyStep);
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
+    } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleVerified = (session) => {
+    setSession(session);
+    navigate(session.role === "farmer" ? "/farmer/dashboard" : "/buyer/home");
   };
 
   const steps = (
@@ -268,9 +289,10 @@ export default function Register() {
       <p className="mt-6 text-sm text-gray-500">
         {step === 1 && "How will you use AniSave?"}
         {step === 2 && "Tell us a little about yourself"}
-        {step === 3 && "Documents an administrator will review"}
+        {step === 3 && role === "farmer" && "Documents an administrator will review"}
+        {step === verifyStep && "One last step - check your email"}
       </p>
-      <h1 className="mt-1 text-3xl font-bold text-gray-900">Sign Up</h1>
+      <h1 className="mt-1 text-3xl font-bold text-gray-900">{step === verifyStep ? "Verify Your Email" : "Sign Up"}</h1>
 
       {error && (
         <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
@@ -473,7 +495,22 @@ export default function Register() {
         </form>
       )}
 
-      {step === 3 && (
+      {step === verifyStep && verification && (
+        <VerifyEmailForm
+          username={verification.username}
+          email={verification.email}
+          emailSent={verification.emailSent}
+          message={verification.message}
+          onVerified={handleVerified}
+          footer={
+            <button type="button" onClick={goBack} className="hover:text-[#2f8f66] hover:underline">
+              Wrong email? Go back and change it
+            </button>
+          }
+        />
+      )}
+
+      {step === 3 && role === "farmer" && (
         <form onSubmit={handleDocumentsSubmit} className="mt-4 space-y-3">
           <VerificationDocumentFields
             governmentId={governmentId}

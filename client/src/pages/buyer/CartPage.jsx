@@ -5,6 +5,7 @@ import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { SERVER_URL } from "../../services/api";
 import ProductImage from "../../components/products/ProductImage";
+import RemoveCartItemModal from "../../components/buyer/RemoveCartItemModal";
 import useScrollReveal from "../../hooks/useScrollReveal";
 
 const peso = (amount) => `₱ ${Number(amount || 0).toLocaleString()}`;
@@ -88,6 +89,8 @@ export default function CartPage() {
   // total and the Check Out button spoke for items the buyer had not chosen
   // yet and had to be unticked one by one.
   const [selected, setSelected] = useState(() => new Set());
+  // The row whose bin was pressed, while the buyer is asked to confirm.
+  const [removing, setRemoving] = useState(null);
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
 
@@ -258,7 +261,7 @@ export default function CartPage() {
                     <td className="px-4 py-5 text-center">
                       <button
                         type="button"
-                        onClick={() => handleRemove(item.productId)}
+                        onClick={() => setRemoving(item)}
                         aria-label={`Remove ${item.title} from the cart`}
                         className="text-orange-500 transition hover:text-red-600"
                       >
@@ -303,6 +306,17 @@ export default function CartPage() {
             )}
           </div>
         </div>
+      )}
+
+      {removing && (
+        <RemoveCartItemModal
+          item={removing}
+          onClose={() => setRemoving(null)}
+          onConfirm={() => {
+            handleRemove(removing.productId);
+            setRemoving(null);
+          }}
+        />
       )}
     </div>
   );

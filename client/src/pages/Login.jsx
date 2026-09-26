@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
 import PasswordInput from "../components/PasswordInput";
 import SmoothLink from "../components/SmoothLink";
+import VerifyEmailForm from "../components/VerifyEmailForm";
 import { useSmoothNavigate } from "../utils/pageTransition";
 import { requestLoginOtp, loginWithOtp, verifyLoginMfa, resendLoginMfa } from "../services/api";
 
@@ -38,6 +39,10 @@ export default function Login() {
   const [mfa, setMfa] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
 
+  // Set when the password was right but the account's email was never
+  // verified: a fresh code has been emailed, and entering it signs them in.
+  const [verify, setVerify] = useState(null);
+
   const goToPortal = (user) => {
     if (user.role === "farmer") navigate("/farmer/dashboard");
     else if (user.role === "buyer") navigate("/buyer/home");
@@ -58,6 +63,10 @@ export default function Login() {
     setSubmitting(true);
     try {
       const data = await login(form.username, form.password, remember);
+      if (data.verificationRequired) {
+        setVerify(data);
+        return;
+      }
       if (data.mfaRequired) {
         setMfa({ token: data.mfaToken, email: data.email });
         setMfaCode("");
@@ -169,9 +178,9 @@ export default function Login() {
       blurb="Log in to order fresh produce, or to manage the harvest you're selling."
     >
       <p className="text-sm text-gray-500">Welcome</p>
-      <h1 className="mt-1 text-3xl font-bold text-gray-900">Log In</h1>
+      <h1 className="mt-1 text-3xl font-bold text-gray-900">{verify ? "Verify Your Email" : "Log In"}</h1>
 
-      {!mfa && (
+      {!mfa && !verify && (
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"
@@ -207,7 +216,27 @@ export default function Login() {
         <div className="mt-5 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
       )}
 
-      {mfa ? (
+      {verify ? (
+        <VerifyEmailForm
+          username={verify.username}
+          email={verify.email}
+          emailSent={verify.emailSent}
+          message={verify.message}
+          onVerified={(data) => {
+            setSession(data, remember);
+            goToPortal(data);
+          }}
+          footer={
+            <button
+              type="button"
+              onClick={() => setVerify(null)}
+              className="hover:text-[#2f8f66] hover:underline"
+            >
+              Use a different account
+            </button>
+          }
+        />
+      ) : mfa ? (
         <form onSubmit={handleVerifyMfa} className="mt-6 space-y-4">
           <div>
             <label htmlFor="mfaCode" className={labelClass}>

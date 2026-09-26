@@ -69,6 +69,9 @@ api.interceptors.response.use(
 );
 
 export const registerUser = (data) => api.post("/auth/register", data);
+// A new account's first sign-in: the code emailed when it was made.
+export const verifyEmail = (username, code) => api.post("/auth/verify-email", { username, code });
+export const resendVerificationEmail = (username) => api.post("/auth/verify-email/resend", { username });
 export const loginUser = (data) => api.post("/auth/login", data);
 export const verifyLoginMfa = (mfaToken, code) => api.post("/auth/login/mfa", { mfaToken, code });
 export const resendLoginMfa = (mfaToken) => api.post("/auth/login/mfa/resend", { mfaToken });

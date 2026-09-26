@@ -4,6 +4,8 @@ const {
   loginUser,
   verifyLoginMfa,
   resendLoginMfa,
+  verifyEmail,
+  resendVerification,
   requestLoginOtp,
   loginWithOtp,
   submitVerification,
@@ -33,6 +35,9 @@ const verificationUploads = upload.documents.fields([
 ]);
 
 router.post("/register", registerLimiter, verificationUploads, registerUser);
+// A new account signs in for the first time with the code emailed at sign-up.
+router.post("/verify-email", guessLimiter, verifyEmail);
+router.post("/verify-email/resend", emailLimiter, resendVerification);
 router.post("/login", guessLimiter, loginUser);
 router.post("/login/mfa", guessLimiter, verifyLoginMfa);
 router.post("/login/mfa/resend", emailLimiter, resendLoginMfa);

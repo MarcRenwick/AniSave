@@ -1,4 +1,5 @@
-// One-time codes (login, two-step sign-in, password reset, account deletion).
+// One-time codes (verifying a new account's email, login, two-step sign-in,
+// password reset, account deletion).
 //
 //  - Generated with crypto.randomInt: Math.random() is a predictable generator.
 //  - Stored as an HMAC keyed with the server secret, so a leaked database
@@ -73,6 +74,7 @@ const LOGIN_CODE = { code: "loginCode", expires: "loginCodeExpires", attempts: "
 const RESET_CODE = { code: "resetPasswordCode", expires: "resetPasswordExpires", attempts: "resetPasswordAttempts" };
 const DELETE_CODE = { code: "deleteAccountCode", expires: "deleteAccountExpires", attempts: "deleteAccountAttempts" };
 const MFA_CODE = { code: "mfaCode", expires: "mfaCodeExpires", attempts: "mfaCodeAttempts" };
+const VERIFY_EMAIL_CODE = { code: "verifyEmailCode", expires: "verifyEmailExpires", attempts: "verifyEmailAttempts" };
 
 // The "+field" selects that load a kind of code along with its user.
 const selectCode = (fields) => `+${fields.code} +${fields.expires} +${fields.attempts}`;
@@ -91,4 +93,5 @@ module.exports = {
   RESET_CODE,
   DELETE_CODE,
   MFA_CODE,
+  VERIFY_EMAIL_CODE,
 };

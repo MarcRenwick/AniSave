@@ -13,7 +13,9 @@ const withStatus = (user) => ({
 // @route   GET /api/admin/users
 // @access  Private (admin)
 const getAllUsers = asyncHandler(async (req, res) => {
-  const filter = { role: { $in: ["farmer", "buyer"] } };
+  // A sign-up whose email was never verified isn't an account yet - nothing to
+  // moderate, and no documents worth an admin's time.
+  const filter = { role: { $in: ["farmer", "buyer"] }, emailVerified: { $ne: false } };
   if (req.query.role && ["farmer", "buyer"].includes(req.query.role)) {
     filter.role = req.query.role;
   }

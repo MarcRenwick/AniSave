@@ -172,6 +172,26 @@ const userSchema = new mongoose.Schema(
       default: [],
     },
 
+    // False from sign-up until the owner enters the code emailed to them; only
+    // then do they get a session. Accounts made before sign-ups were verified
+    // have no value and count as verified - only `false` holds one back.
+    emailVerified: {
+      type: Boolean,
+    },
+    verifyEmailCode: {
+      type: String,
+      select: false,
+    },
+    verifyEmailExpires: {
+      type: Date,
+      select: false,
+    },
+    verifyEmailAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+
     // One-time code for signing in by email instead of a password. Every kind
     // of code is stored hashed, with an expiry and a count of wrong guesses
     // (see utils/otp.js), and none of it is ever selected by default.
@@ -278,6 +298,9 @@ const PRIVATE_FIELDS = [
   "tokenVersion",
   "failedLoginAttempts",
   "lockUntil",
+  "verifyEmailCode",
+  "verifyEmailExpires",
+  "verifyEmailAttempts",
   "loginCode",
   "loginCodeExpires",
   "loginCodeAttempts",

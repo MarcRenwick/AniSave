@@ -19,18 +19,20 @@ export function AuthProvider({ children }) {
     setUser(data);
   };
 
-  // An account with two-step sign-in doesn't get a session from its password:
-  // the reply says a code was emailed (`mfaRequired`) and the login page
-  // finishes the job, so nothing is stored yet.
+  // An account with two-step sign-in, or one whose email was never verified,
+  // doesn't get a session from its password: the reply says a code was emailed
+  // (`mfaRequired` / `verificationRequired`) and the login page finishes the
+  // job, so nothing is stored yet.
   const login = async (username, password, remember = true) => {
     const { data } = await loginUser({ username, password });
-    if (!data.mfaRequired) persistSession(data, remember);
+    if (!data.mfaRequired && !data.verificationRequired) persistSession(data, remember);
     return data;
   };
 
+  // Signing up doesn't sign anyone in: it emails a code to verify the address,
+  // and the session comes from entering it (see VerifyEmailForm).
   const register = async (formData) => {
     const { data } = await registerUser(formData);
-    persistSession(data);
     return data;
   };
 
