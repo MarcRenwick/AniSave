@@ -917,7 +917,7 @@ const exportMyData = asyncHandler(async (req, res) => {
     Report.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     ReviewReport.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     me.role === "farmer"
-      ? Product.find({ farmer: me._id }).select("title category productType price salePrice stock location description createdAt").lean()
+      ? Product.find({ farmer: me._id }).select("title category productType price salePrice expensePerKg stock location description createdAt").lean()
       : [],
     // Who a buyer has blocked is held about them, so it is theirs to take with
     // them - by name, since an account id means nothing outside this database.

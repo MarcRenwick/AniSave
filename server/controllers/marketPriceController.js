@@ -28,13 +28,112 @@ function municipalityOf(user) {
   return match ? { cityCode: match.code, name: match.name } : null;
 }
 
-// The latest live record for one crop in one municipality. This is the whole
-// of the matching rule: same crop, same municipality, most recently recorded,
-// not archived. There is no fallback to another town and no estimate.
-const latestPriceFor = (cropId, cityCode) =>
-  MarketPrice.findOne({ crop: cropId, cityCode, archived: false })
-    .sort({ recordedAt: -1, createdAt: -1 })
-    .lean();
+// The latest live record for each of some crops in one municipality. This is
+// the whole of the matching rule: same crop, same municipality, most recently
+// recorded, not archived. There is no fallback to another town and no
+// estimate. Returns a Map of crop id -> record.
+async function latestPricesFor(cropIds, cityCode) {
+  if (cropIds.length === 0) return new Map();
+  const latest = await MarketPrice.aggregate([
+    { $match: { crop: { $in: cropIds }, cityCode, archived: false } },
+    { $sort: { recordedAt: -1, createdAt: -1 } },
+    { $group: { _id: "$crop", record: { $first: "$$ROOT" } } },
+  ]);
+  return new Map(latest.map(({ _id, record }) => [_id.toString(), record]));
+}
+
+// The latest market price for each of a farmer's crops in their own
+// municipality, as a suggested selling price. The farmer is free to ignore it.
+//
+// One crop is what the product form asks about; the Profit figures ask about
+// every crop a farmer lists, and get the very same answers in a few trips to
+// the database however many crops there are. Returns a Map of crop id ->
+// answer, in the shape GET /recommendation sends.
+async function recommendationsFor(user, cropIds) {
+  // Written the one way an id prints, so "507F..." and "507f..." are one crop.
+  const ids = [
+    ...new Set(
+      cropIds.filter((id) => mongoose.isValidObjectId(id)).map((id) => new mongoose.Types.ObjectId(id).toString())
+    ),
+  ];
+  const answers = new Map();
+  if (ids.length === 0) return answers;
+
+  const crops = await Crop.find({ _id: { $in: ids } }).select("name priceSupported active pricesFrom").lean();
+  const cropsById = new Map(crops.map((crop) => [crop._id.toString(), crop]));
+
+  // A variety is priced as the crop it is a variety of: the market records a
+  // price for bananas, not for Lakatan separately. The record found is then
+  // that crop's, and the answer says so rather than presenting it as the
+  // variety's own price.
+  const parentIds = crops.map((crop) => crop.pricesFrom).filter(Boolean);
+  const parents =
+    parentIds.length > 0
+      ? await Crop.find({ _id: { $in: parentIds } }).select("name priceSupported active").lean()
+      : [];
+  const parentsById = new Map(parents.map((crop) => [crop._id.toString(), crop]));
+  const pricedCropOf = (crop) => (crop.pricesFrom ? parentsById.get(crop.pricesFrom.toString()) : crop);
+
+  const municipality = municipalityOf(user);
+  const priceable = crops
+    .filter((crop) => crop.active && crop.priceSupported && pricedCropOf(crop)?.active)
+    .map((crop) => pricedCropOf(crop)._id);
+  const records = municipality ? await latestPricesFor(priceable, municipality.cityCode) : new Map();
+
+  for (const id of ids) {
+    const crop = cropsById.get(id);
+    if (!crop || !crop.active) {
+      answers.set(id, { available: false, reason: "no-product" });
+      continue;
+    }
+
+    // Without a registered municipality there is nothing to look a price up
+    // in. The farmer is told what to do about it rather than shown a guess.
+    if (!municipality) {
+      answers.set(id, { available: false, product: crop.name, reason: "no-municipality" });
+      continue;
+    }
+
+    // The catalogue is wider than the Recommended Price feature on purpose: a
+    // farmer may list produce nobody records a market price for.
+    const pricedCrop = pricedCropOf(crop);
+    if (!crop.priceSupported || !pricedCrop?.active) {
+      answers.set(id, {
+        available: false,
+        product: crop.name,
+        municipality: municipality.name,
+        reason: "not-supported",
+      });
+      continue;
+    }
+
+    const record = records.get(pricedCrop._id.toString());
+    if (!record) {
+      answers.set(id, {
+        available: false,
+        product: crop.name,
+        municipality: municipality.name,
+        reason: "no-data",
+      });
+      continue;
+    }
+
+    answers.set(id, {
+      available: true,
+      product: crop.name,
+      // Only when the price is recorded against another crop - the one this
+      // is a variety of - so the form can say whose figure it is showing.
+      pricedAs: pricedCrop._id.toString() === crop._id.toString() ? null : pricedCrop.name,
+      municipality: municipality.name,
+      // The recommendation IS the market price - the app never adjusts it,
+      // marks it up, or averages anything together.
+      pricePerKilo: record.pricePerKilo,
+      recordedAt: record.recordedAt,
+      source: record.source || null,
+    });
+  }
+  return answers;
+}
 
 // @desc    The latest market price for a crop in the farmer's own
 //          municipality, as a suggested selling price. The farmer is free to
@@ -47,61 +146,8 @@ const getPriceRecommendation = asyncHandler(async (req, res) => {
     return res.json({ available: false, reason: "no-product" });
   }
 
-  const crop = await Crop.findById(cropId).select("name priceSupported active pricesFrom").lean();
-  if (!crop || !crop.active) {
-    return res.json({ available: false, reason: "no-product" });
-  }
-
-  // A variety is priced as the crop it is a variety of: the market records a
-  // price for bananas, not for Lakatan separately. The record found is then
-  // that crop's, and the answer says so rather than presenting it as the
-  // variety's own price.
-  const pricedCrop = crop.pricesFrom
-    ? await Crop.findById(crop.pricesFrom).select("name priceSupported active").lean()
-    : crop;
-
-  const municipality = municipalityOf(req.user);
-
-  // Without a registered municipality there is nothing to look a price up in.
-  // The farmer is told what to do about it rather than shown a guess.
-  if (!municipality) {
-    return res.json({ available: false, product: crop.name, reason: "no-municipality" });
-  }
-
-  // The catalogue is wider than the Recommended Price feature on purpose: a
-  // farmer may list produce nobody records a market price for.
-  if (!crop.priceSupported || !pricedCrop?.active) {
-    return res.json({
-      available: false,
-      product: crop.name,
-      municipality: municipality.name,
-      reason: "not-supported",
-    });
-  }
-
-  const record = await latestPriceFor(pricedCrop._id, municipality.cityCode);
-  if (!record) {
-    return res.json({
-      available: false,
-      product: crop.name,
-      municipality: municipality.name,
-      reason: "no-data",
-    });
-  }
-
-  res.json({
-    available: true,
-    product: crop.name,
-    // Only when the price is recorded against another crop - the one this is a
-    // variety of - so the form can say whose figure it is showing.
-    pricedAs: pricedCrop._id.toString() === crop._id.toString() ? null : pricedCrop.name,
-    municipality: municipality.name,
-    // The recommendation IS the market price - the app never adjusts it, marks
-    // it up, or averages anything together.
-    pricePerKilo: record.pricePerKilo,
-    recordedAt: record.recordedAt,
-    source: record.source || null,
-  });
+  const [answer] = (await recommendationsFor(req.user, [cropId])).values();
+  res.json(answer || { available: false, reason: "no-product" });
 });
 
 // ---------------------------------------------------------------------------
@@ -282,4 +328,5 @@ module.exports = {
   updateMarketPrice,
   removeMarketPrice,
   municipalityOf,
+  recommendationsFor,
 };

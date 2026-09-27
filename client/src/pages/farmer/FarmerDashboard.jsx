@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronRight } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
 import DemandChart from "../../components/farmer/DemandChart";
 import { useAuth } from "../../context/AuthContext";
-import { getMyProducts, getFarmerOrders, getTopSearchedProducts } from "../../services/api";
+import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
+import { money } from "../../utils/profit";
 
 // "Old stock nobody bought" - long enough that a normal slow week doesn't
 // get flagged as needing a discount.
@@ -56,6 +58,10 @@ export default function FarmerDashboard() {
   // What buyers are searching for and opening - demand, not sales.
   const [topSearched, setTopSearched] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Expense, income and profit totals, worked out by the server. Asked for on
+  // their own, so the rest of the dashboard still shows if they can't be.
+  const [profit, setProfit] = useState(null);
+  const [profitFailed, setProfitFailed] = useState(false);
 
   useEffect(() => {
     Promise.all([getMyProducts(), getFarmerOrders(), getTopSearchedProducts()])
@@ -66,6 +72,10 @@ export default function FarmerDashboard() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    getMyProfit()
+      .then(({ data }) => setProfit(data.totals))
+      .catch(() => setProfitFailed(true));
   }, []);
 
   const lowStock = useMemo(
@@ -142,12 +152,40 @@ export default function FarmerDashboard() {
                 <span className="text-2xl font-bold text-gray-900">₱{todaysSales}</span>
               </div>
             </div>
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <CardHeader>Profit</CardHeader>
-              <div className="p-4">
-                <span className="text-lg font-bold text-gray-400">N/A</span>
+            {/* Profit made so far on completed sales; the whole card opens the
+                Profit page, with every product's figures and the estimates. */}
+            <Link
+              to="/farmer/dashboard/profit"
+              data-testid="profit-card"
+              className="group block overflow-hidden rounded-xl bg-white shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f8f66]"
+            >
+              <CardHeader>
+                <span className="flex items-center justify-between gap-2">
+                  Profit
+                  <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+                </span>
+              </CardHeader>
+              <div className="p-4 text-sm text-gray-700">
+                {profit ? (
+                  <>
+                    <p className={`text-2xl font-bold ${profit.actual.profit < 0 ? "text-red-600" : "text-gray-900"}`}>
+                      {money(profit.actual.profit)}
+                    </p>
+                    <p>
+                      {profit.actual.soldKg > 0 ? `from ${profit.actual.soldKg} kg sold` : "No completed sales yet"}
+                    </p>
+                    {profit.estimated.products > 0 && (
+                      <p className="text-gray-500">Est. {money(profit.estimated.profit)} on stock</p>
+                    )}
+                    {profit.missingExpense > 0 && (
+                      <p className="text-amber-600">{profit.missingExpense} product(s) need an expense</p>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-lg font-bold text-gray-400">{profitFailed ? "N/A" : "..."}</span>
+                )}
               </div>
-            </div>
+            </Link>
             <div className="overflow-hidden rounded-xl bg-white shadow-sm">
               <CardHeader>Stock</CardHeader>
               <div className="p-4 text-sm text-gray-700">

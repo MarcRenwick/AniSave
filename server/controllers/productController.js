@@ -11,18 +11,21 @@ const { distanceFields, byNearest } = require("../utils/geo");
 const { blockedIdsFor, hasBlocked } = require("../utils/blocks");
 const validate = require("../utils/validate");
 const { recordView, recordSearchHits, forgetProducts } = require("../utils/interest");
+const { productProfit, profitTotals, salesByProduct } = require("../utils/profit");
+const { recommendationsFor } = require("./marketPriceController");
 
 // The numbers on a listing, checked before they reach the database. A form
 // sends text, and a browser's own number field still lets things like "100e+"
 // or "12abc" through - which would be stored as NaN, or as an exponent nobody
 // meant to type. Not given at all means "leave this field alone"; blank means
 // "clear the sale price".
-const listingNumbers = ({ stock, price, salePrice }) => ({
+const listingNumbers = ({ stock, price, salePrice, expensePerKg }) => ({
   ...(stock !== undefined ? { stock: validate.wholeNumber(stock, "Available quantity") } : {}),
   ...(price !== undefined ? { price: validate.number(price, "Price") } : {}),
   ...(salePrice !== undefined
     ? { salePrice: validate.number(salePrice, "Flash sale price", { allowBlank: true }) }
     : {}),
+  ...(expensePerKg !== undefined ? { expensePerKg: validate.number(expensePerKg, "Expense per kg") } : {}),
 });
 
 const MAX_IMAGES = 5;
@@ -99,6 +102,13 @@ const createProduct = asyncHandler(async (req, res) => {
     discardUploads(req);
     res.status(400);
     throw new Error("Product, stock and price are required");
+  }
+  // What the listing cost to produce is part of every new one - it is what
+  // the farmer's expense, income and profit figures are worked out from.
+  if (req.body.expensePerKg === undefined) {
+    discardUploads(req);
+    res.status(400);
+    throw new Error("Expense per kg is required");
   }
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -265,7 +275,9 @@ const getAllProducts = asyncHandler(async (req, res) => {
       // this buyer - is left out rather than just ranked last.
       { $match: { $or: [{ boughtBefore: true }, { avgRating: { $gte: 4 } }] } },
       { $sort: { boughtBefore: -1, avgRating: -1, totalSold: -1, createdAt: -1 } },
-      { $project: { ratings: 0, orders: 0 } },
+      // An aggregation returns every field, including the farmer's own
+      // expense per kilo - which is theirs alone, so it is dropped here.
+      { $project: { ratings: 0, orders: 0, expensePerKg: 0 } },
     ]);
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
@@ -315,6 +327,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
         },
       },
       { $sort: { discountPct: -1, createdAt: -1 } },
+      // The farmer's own expense per kilo isn't for buyers (see above).
+      { $project: { expensePerKg: 0 } },
     ]);
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
@@ -334,6 +348,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
+    .select("+expensePerKg")
     .populate("farmer", FARMER_FIELDS)
     // So the edit form can show which catalogue product the listing is of,
     // rather than having to look it up again by name.
@@ -367,16 +382,23 @@ const getProductById = asyncHandler(async (req, res) => {
   // returning to a page the buyer already opened, not opening it again.
   if (req.query.opened === "true") recordView(product, req);
 
+  // What the listing cost to produce is the farmer's own business: its owner
+  // gets it back (their editor fills the box from here), nobody else does.
+  const { expensePerKg, ...listing } = product.toObject();
+  const isOwner = Boolean(req.user && product.farmer?._id?.equals(req.user._id));
+
   res.json({
-    ...product.toObject(),
+    ...listing,
+    ...(isOwner ? { expensePerKg } : {}),
     sold: sales[0]?.totalSold || 0,
     rating: ratingStats[0]?.avg || 0,
     ratingCount: ratingStats[0]?.count || 0,
   });
 });
 
+// Only ever the owner's, so their expense per kilo comes with it.
 const findOwnedProduct = async (id, farmerId) => {
-  const product = await Product.findById(id);
+  const product = await Product.findById(id).select("+expensePerKg");
   if (!product) return { error: { status: 404, message: "Product not found" } };
   if (product.farmer.toString() !== farmerId.toString()) {
     return { error: { status: 403, message: "You do not own this product" } };
@@ -432,6 +454,7 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
   if (numbers.stock !== undefined) product.stock = numbers.stock;
   if (numbers.price !== undefined) product.price = numbers.price;
+  if (numbers.expensePerKg !== undefined) product.expensePerKg = numbers.expensePerKg;
   if (description !== undefined) product.description = description;
   if (productType !== undefined) product.productType = productType;
   // A blank field from the form means "clear the sale", not "leave it alone" -
@@ -539,6 +562,47 @@ const deleteProduct = asyncHandler(async (req, res) => {
   res.json({ message: "Product deleted" });
 });
 
+// Each listing's expense, income and profit (see utils/profit.js), from its
+// crop's recommended price and its orders - looked up together for all of
+// them, rather than a trip to the database per listing.
+async function profitRowsFor(farmer, products) {
+  if (products.length === 0) return [];
+  const [recommendations, sales] = await Promise.all([
+    recommendationsFor(farmer, products.map((p) => p.crop).filter(Boolean)),
+    Order.aggregate(salesByProduct(farmer._id, products.map((p) => p._id))),
+  ]);
+  const salesOf = new Map(sales.map((s) => [s._id.toString(), s]));
+  return products.map((p) =>
+    productProfit(p, p.crop ? recommendations.get(p.crop.toString()) : null, salesOf.get(p._id.toString()))
+  );
+}
+
+// @desc    Expense, income and profit on each of the farmer's listings, and
+//          the totals across them, for the Profit page
+// @route   GET /api/products/mine/profit
+// @access  Private (farmer)
+const getMyProfit = asyncHandler(async (req, res) => {
+  const products = await Product.find({ farmer: req.user._id })
+    .select("+expensePerKg")
+    .sort({ createdAt: -1 })
+    .lean();
+  const rows = await profitRowsFor(req.user, products);
+  res.json({ products: rows, totals: profitTotals(rows) });
+});
+
+// @desc    The same for one listing, for its Product Details page
+// @route   GET /api/products/:id/profit
+// @access  Private (farmer, owner only)
+const getProductProfit = asyncHandler(async (req, res) => {
+  const { product, error } = await findOwnedProduct(req.params.id, req.user._id);
+  if (error) {
+    res.status(error.status);
+    throw new Error(error.message);
+  }
+  const [row] = await profitRowsFor(req.user, [product.toObject()]);
+  res.json(row);
+});
+
 // @desc    What buyers are looking for most: the crops searched for and opened
 //          the most across the marketplace, by name. Nothing here comes from
 //          sales - a crop everyone searches for and nobody has bought yet is
@@ -575,6 +639,8 @@ module.exports = {
   getAllProducts,
   getProductById,
   getTopSearched,
+  getMyProfit,
+  getProductProfit,
   updateProduct,
   restockProduct,
   deleteProduct,

@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import Dashboard from "./pages/Dashboard";
 import FarmerDashboard from "./pages/farmer/FarmerDashboard";
+import FarmerProfit from "./pages/farmer/FarmerProfit";
 import FarmerProducts from "./pages/farmer/FarmerProducts";
 import FarmerProductForm from "./pages/farmer/FarmerProductForm";
 import FarmerProductDetail from "./pages/farmer/FarmerProductDetail";
@@ -67,6 +68,16 @@ export default function App() {
                 element={
                   <ProtectedRoute role="farmer">
                     <FarmerDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              {/* Under the dashboard, whose Profit card opens it - so the
+                  sidebar keeps Dashboard highlighted here too. */}
+              <Route
+                path="/farmer/dashboard/profit"
+                element={
+                  <ProtectedRoute role="farmer">
+                    <FarmerProfit />
                   </ProtectedRoute>
                 }
               />

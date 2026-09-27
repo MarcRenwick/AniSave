@@ -81,6 +81,22 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // What one kilo cost the farmer to produce - seeds, fertilizer, labor,
+    // transport - as they reckon it. The expense, income and profit figures
+    // are all worked out from this and the listing's other fields (see
+    // utils/profit.js), so nothing else about them is stored.
+    //
+    // It is the farmer's own business, so it is left out of every query
+    // unless one asks for it by name ("+expensePerKg"), and the marketplace's
+    // aggregations drop it explicitly. New listings must have one (the
+    // controller checks); listings from before it existed have none and are
+    // asked for it when next edited.
+    expensePerKg: {
+      type: Number,
+      min: [0, "Expense per kg cannot be negative"],
+      default: null,
+      select: false,
+    },
   },
   { timestamps: true }
 );

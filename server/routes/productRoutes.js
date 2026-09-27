@@ -5,6 +5,8 @@ const {
   getAllProducts,
   getProductById,
   getTopSearched,
+  getMyProfit,
+  getProductProfit,
   updateProduct,
   restockProduct,
   deleteProduct,
@@ -22,12 +24,17 @@ router.get("/", optionalProtect, getAllProducts);
 // below, since Express would otherwise match GET /products/mine against
 // "/:id" first and try to look up a product literally named "mine".
 router.get("/mine", protect, authorize("farmer"), getMyProducts);
+// Expense, income and profit on every listing, for the Profit page - before
+// "/:id/profit" below, which would otherwise read "mine" as a product id.
+router.get("/mine/profit", protect, authorize("farmer"), getMyProfit);
 // What buyers are searching for and opening, for the farmer's dashboard -
 // registered before "/:id" for the same reason as "/mine" above.
 router.get("/top-searched", protect, authorize("farmer"), getTopSearched);
 router.post("/", protect, authorize("farmer"), upload.array("images", 5), createProduct);
 router.put("/:id", protect, authorize("farmer"), upload.array("images", 5), updateProduct);
 router.patch("/:id/restock", protect, authorize("farmer"), restockProduct);
+// The same figures for one listing - its owner's only.
+router.get("/:id/profit", protect, authorize("farmer"), getProductProfit);
 router.delete("/:id", protect, authorize("farmer"), deleteProduct);
 
 // Public - single product detail. The viewer is read where there is one, so a

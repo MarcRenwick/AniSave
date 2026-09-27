@@ -14,6 +14,7 @@ import CropSelect from "../../components/products/CropSelect";
 import PriceTag from "../../components/products/PriceTag";
 import Avatar from "../../components/Avatar";
 import { categoryLabel as categoryLabelFor } from "../../utils/categories";
+import { estimate, money, profitTone } from "../../utils/profit";
 
 const MAX_PHOTOS = 5;
 // The same limit the server holds a description to.
@@ -32,7 +33,7 @@ const priceOnly = (value) => {
   return rest.length > 0 ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
 };
 
-const CLEAN = { stock: digitsOnly, price: priceOnly, salePrice: priceOnly };
+const CLEAN = { stock: digitsOnly, price: priceOnly, salePrice: priceOnly, expensePerKg: priceOnly };
 
 // Only whole pesos are ever shown elsewhere in the app, so a recommendation
 // reads the same way.
@@ -169,11 +170,55 @@ function RecommendedPrice({ crop, quantity, recommendation, checking, onUse }) {
   );
 }
 
+// What the listing would cost and bring in, worked out as the farmer types:
+// the expense on the kilos they are listing and - when their municipality has
+// a market price for the product - what those kilos would fetch at it. Only
+// ever an estimate, and only ever at the recommended price: the farmer's own
+// selling price is theirs to set and is not used here.
+function ProfitEstimate({ crop, quantity, expensePerKg, recommendation, checking }) {
+  if (quantity === "" || expensePerKg === "") return null;
+
+  const kilos = Number(quantity);
+  const perKg = Number(expensePerKg);
+  const marketPrice = recommendation?.available ? recommendation.pricePerKilo : null;
+  const { expense, income, profit } = estimate({ quantity: kilos, expensePerKg: perKg, marketPrice });
+
+  return (
+    <div className="mt-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm" data-testid="profit-estimate">
+      <div className="space-y-0.5">
+        <Line label={`Total Expense (${kilos} kg × ${money(perKg)})`}>{money(expense)}</Line>
+        {marketPrice !== null ? (
+          <>
+            <Line label={`Estimated Income (${kilos} kg × ${money(marketPrice)})`}>{money(income)}</Line>
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-gray-200 pt-1">
+              <span className="font-semibold text-gray-900">Estimated Profit</span>
+              <span className={`font-semibold ${profitTone(profit)}`}>{money(profit)}</span>
+            </div>
+            <p className="pt-1 text-xs text-gray-500">
+              Estimated at the recommended price for {recommendation.municipality}, not your selling
+              price.
+            </p>
+          </>
+        ) : (
+          <p className="pt-1 text-xs text-gray-500">
+            {!crop
+              ? "Choose a product to estimate its income and profit at the recommended price."
+              : checking
+                ? "Checking the market price for your municipality..."
+                : "There's no recommended price for this product in your municipality, so income and profit can't be estimated yet."}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // The plain text fields. The product itself isn't one of them - it is a
 // catalogue row, held separately, and only its id is ever sent.
 const emptyForm = {
   stock: "",
   price: "",
+  expensePerKg: "",
   salePrice: "",
   productType: "sale",
   description: "",
@@ -361,6 +406,9 @@ export default function FarmerProductForm() {
           // The form works in text, so the boxes show exactly what will be sent.
           stock: String(data.stock ?? ""),
           price: String(data.price ?? ""),
+          // Listings from before expenses were asked for have none, so the
+          // box starts empty and has to be filled in to save.
+          expensePerKg: data.expensePerKg == null ? "" : String(data.expensePerKg),
           salePrice: data.salePrice == null ? "" : String(data.salePrice),
           productType: data.productType || "sale",
           description: data.description || "",
@@ -671,6 +719,35 @@ export default function FarmerProductForm() {
                     onUse={(amount) =>
                       setForm((prev) => ({ ...prev, price: String(Math.round(amount)) }))
                     }
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="expensePerKg" className="font-medium text-gray-900">
+                    Expense per kg (₱)
+                    <Required />
+                  </label>
+                  <input
+                    id="expensePerKg"
+                    name="expensePerKg"
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    value={form.expensePerKg}
+                    onChange={handleChange}
+                    placeholder="What one kilo cost you to produce"
+                    className={inputClass}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Seeds, fertilizer, labor, transport - what a kilo cost you. Only you can see
+                    this; buyers never do.
+                  </p>
+                  <ProfitEstimate
+                    crop={crop}
+                    quantity={form.stock}
+                    expensePerKg={form.expensePerKg}
+                    recommendation={priceHint}
+                    checking={checkingPrice}
                   />
                 </div>
 

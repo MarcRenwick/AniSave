@@ -3,9 +3,22 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Package, Star } from "lucide-react";
 import ProductGallery from "../../components/products/ProductGallery";
 import PriceTag from "../../components/products/PriceTag";
-import { getProduct } from "../../services/api";
+import ProfitPanels from "../../components/farmer/profit/ProfitPanels";
+import { getProduct, getProductProfit } from "../../services/api";
 import useScrollReveal from "../../hooks/useScrollReveal";
 import { categoryLabel } from "../../utils/categories";
+import { money } from "../../utils/profit";
+
+// One of the three prices the profit figures come from.
+function Price({ label, value, note }) {
+  return (
+    <div className="rounded-lg bg-gray-50 px-3 py-2.5">
+      <dt className="text-xs text-gray-500">{label}</dt>
+      <dd className="font-semibold text-gray-900">{value}</dd>
+      {note && <dd className="text-xs text-gray-400">{note}</dd>}
+    </div>
+  );
+}
 
 function Row({ label, children }) {
   return (
@@ -23,6 +36,10 @@ export default function FarmerProductDetail() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Expense, income and profit - the owner's alone, fetched on their own so
+  // the listing still shows if they can't be worked out.
+  const [profit, setProfit] = useState(null);
+  const [profitError, setProfitError] = useState("");
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
 
@@ -31,6 +48,12 @@ export default function FarmerProductDetail() {
       .then(({ data }) => setProduct(data))
       .catch(() => setError("Could not load this product."))
       .finally(() => setLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    getProductProfit(id)
+      .then(({ data }) => setProfit(data))
+      .catch(() => setProfitError("Could not work out this product's expense and profit."));
   }, [id]);
 
   const isPreOrder = product?.productType === "preorder";
@@ -125,6 +148,65 @@ export default function FarmerProductDetail() {
                 {product.description || "No description provided yet."}
               </p>
             </div>
+
+            <section className="rounded-2xl bg-white p-6 shadow-sm" data-testid="product-profit">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+                <h2 className="font-semibold text-gray-900">Expense, Income &amp; Profit</h2>
+                <p className="text-xs text-gray-500">Only you can see this.</p>
+              </div>
+
+              {profitError && <p className="mt-3 text-sm text-red-600">{profitError}</p>}
+              {!profit && !profitError && <p className="mt-3 text-sm text-gray-500">Working it out...</p>}
+
+              {profit && (
+                <>
+                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+                    <Price
+                      label="Expense per kg"
+                      value={profit.expensePerKg === null ? "Not set" : money(profit.expensePerKg)}
+                    />
+                    <Price
+                      label="Selling price per kg"
+                      value={money(profit.sellingPrice)}
+                      note={profit.sellingPrice !== profit.price ? `Flash Sale - usually ${money(profit.price)}` : null}
+                    />
+                    <Price
+                      label="Recommended price per kg"
+                      value={profit.recommendation.available ? money(profit.recommendation.pricePerKilo) : "None"}
+                      note={
+                        profit.recommendation.available
+                          ? `${profit.recommendation.municipality} market price`
+                          : "No market price recorded"
+                      }
+                    />
+                  </dl>
+
+                  {profit.expensePerKg === null && (
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      <p>This listing has no expense per kg yet, so its profit can&apos;t be worked out.</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/farmer/products/${product._id}/edit`)}
+                        className="rounded-md border border-[#2f8f66] bg-white px-3 py-1.5 text-xs font-semibold text-[#2f8f66] hover:bg-green-50"
+                      >
+                        Add expense
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="mt-4">
+                    <ProfitPanels row={profit} />
+                  </div>
+
+                  {profit.pendingKg > 0 && (
+                    <p className="mt-3 text-xs text-gray-500">
+                      {profit.pendingKg} kg {profit.pendingKg === 1 ? "is" : "are"} in orders not picked up
+                      yet - counted as sold once they are completed.
+                    </p>
+                  )}
+                </>
+              )}
+            </section>
           </>
         )}
       </div>

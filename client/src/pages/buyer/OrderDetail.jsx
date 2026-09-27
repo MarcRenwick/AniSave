@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
-  ArrowLeft,
   Archive,
   ArchiveRestore,
   CalendarClock,
@@ -16,13 +15,12 @@ import {
   XCircle,
 } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
-import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import RateProductModal from "../../components/buyer/RateProductModal";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getOrder, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
-import { BUYER_STEPS, formatDateTime, orderNumber } from "../../utils/orderStatus";
+import { BUYER_STEPS } from "../../utils/orderStatus";
 
 // What the banner at the top says for each status, in the buyer's words.
 const BANNERS = {
@@ -128,22 +126,6 @@ export default function OrderDetail() {
 
   return (
     <BuyerLayout>
-      <BuyerTopBar>
-        <Link
-          to="/buyer/orders"
-          className="inline-flex items-center gap-1 text-sm font-medium text-[#2f8f66] hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          My Orders
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-gray-900">My Order</h1>
-        {order && (
-          <p className="text-sm text-gray-500">
-            Order {orderNumber(order)} · Placed {formatDateTime(order.createdAt)}
-          </p>
-        )}
-      </BuyerTopBar>
-
       <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-8">
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}

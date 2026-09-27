@@ -119,6 +119,11 @@ export const updateProduct = (id, formData) =>
   api.put(`/products/${id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
 export const restockProduct = (id, amount) => api.patch(`/products/${id}/restock`, { amount });
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
+// The farmer's own expense, income and profit figures - for every listing
+// (the dashboard's Profit card and the Profit page), or for one listing (its
+// Product Details). Worked out by the server from what is stored.
+export const getMyProfit = () => sharedGet("/products/mine/profit");
+export const getProductProfit = (id) => api.get(`/products/${id}/profit`);
 
 // What buyers are searching for and opening across the marketplace, for the
 // farmer's dashboard. Nothing here is counted from sales.
