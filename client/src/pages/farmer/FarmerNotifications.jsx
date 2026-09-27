@@ -27,7 +27,7 @@ export default function FarmerNotifications() {
         </p>
       </FarmerTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex flex-wrap gap-3">
           {tabs.map(({ key, label }) => (
             <button
@@ -52,7 +52,7 @@ export default function FarmerNotifications() {
             {loading && <p className="text-sm text-gray-500">Loading notifications...</p>}
 
             {!loading && visible.length > 0 && (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visible.map((note) => (
                   <div key={note.id} className="overflow-hidden rounded-lg border border-gray-200">
                     <div className={`px-3 py-1.5 text-sm font-semibold text-white ${note.color}`}>

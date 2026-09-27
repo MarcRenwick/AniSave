@@ -34,9 +34,9 @@ const FEATURED_SLIDES = 3;
 // one-cell grid so the card still fills it in both directions.
 function ProductGrid({ products, onOpen }) {
   return (
-    <div className="grid grid-cols-4 gap-5" data-reveal-children>
+    <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4" data-reveal-children>
       {products.map((product) => (
-        <div key={product._id} className="grid">
+        <div key={product._id} className="grid min-w-0">
           <ProductCard product={product} onOpen={() => onOpen(product._id)} />
         </div>
       ))}
@@ -166,7 +166,7 @@ export default function BuyerHome() {
 
   return (
     <BuyerLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="mb-8" data-reveal>
           <HomeBanner
             featured={featured}
@@ -246,7 +246,7 @@ export default function BuyerHome() {
               {nearestFarmers.length === 0 ? (
                 <p className="text-sm text-gray-500">No farmers yet.</p>
               ) : (
-                <div className="grid grid-cols-4 gap-4" data-reveal-children>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" data-reveal-children>
                   {nearestFarmers.map((farmer) => (
                     // Wrapped for the same reason as a listing card: the tile
                     // is a button, and its own transition would outrun the

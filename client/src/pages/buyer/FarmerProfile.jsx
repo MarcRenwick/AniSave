@@ -218,7 +218,7 @@ export default function FarmerProfile() {
 
   return (
     <BuyerLayout>
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {loading && <p className="text-sm text-gray-500">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 

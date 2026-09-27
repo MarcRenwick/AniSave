@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { Users, Flag, MessageSquareWarning, Tag, LogOut } from "lucide-react";
+import { Users, Flag, MessageSquareWarning, Tag, LogOut, Menu, X } from "lucide-react";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext";
 import LogoutConfirmModal from "../LogoutConfirmModal";
 import { withPageTransition } from "../../utils/pageTransition";
+import useMediaQuery, { PHONE } from "../../hooks/useMediaQuery";
 
 const navItems = [
   { to: "/admin/users", label: "Users", icon: Users },
@@ -17,6 +18,20 @@ export default function AdminSidebar() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  // On a phone the sidebar is a drawer that slides over the page from a menu
+  // button (the same as the farmer's). A drawer left open doesn't follow onto
+  // a wider screen.
+  const phone = useMediaQuery(PHONE);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const open = phone && drawerOpen;
+  const closeDrawer = () => setDrawerOpen(false);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => e.key === "Escape" && setDrawerOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   const handleLogout = () =>
     withPageTransition(() => {
@@ -25,49 +40,88 @@ export default function AdminSidebar() {
     });
 
   return (
-    // h-screen, not min-h-screen + self-stretch: stretched to the whole page
-    // the nav was already as tall as everything it could scroll past, so there
-    // was nothing for sticky to do and it scrolled away with the content. Held
-    // to one screen it stays put, and overflow-y-auto keeps Log out reachable
-    // if the window is ever shorter than the menu. (Same as the farmer's.)
-    <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[#2f8f66] px-4 py-6 text-white">
-      <div className="flex items-center gap-3 px-2">
-        <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
-        <div className="leading-tight">
-          <p className="font-semibold">AniSave</p>
-          <p className="text-xs text-white/80">Admin Portal</p>
+    <>
+      {/* Phones: the portal's name across the top, and the menu button. */}
+      <div className="sticky top-0 z-30 flex items-center justify-between bg-[#2f8f66] px-4 py-3 text-white md:hidden">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="AniSave" className="h-9 w-9 shrink-0 rounded-full" />
+          <div className="leading-tight">
+            <p className="font-semibold">AniSave</p>
+            <p className="text-xs text-white/80">Admin Portal</p>
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          aria-label="Open menu"
+          aria-expanded={open}
+          className="rounded-md p-2 hover:bg-white/10"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
       </div>
+      {open && <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={closeDrawer} aria-hidden="true" />}
 
-      <nav className="mt-8 flex flex-col gap-2">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
-                isActive ? "bg-[#8ee6b0] text-[#1f5c42]" : "text-white/90 hover:bg-white/10"
-              }`
-            }
-          >
-            <Icon className="h-5 w-5" />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <button
-        type="button"
-        onClick={() => setConfirmingLogout(true)}
-        className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
+      {/* h-screen, not min-h-screen + self-stretch: stretched to the whole
+          page the nav was already as tall as everything it could scroll past,
+          so there was nothing for sticky to do and it scrolled away with the
+          content. Held to one screen it stays put, and overflow-y-auto keeps
+          Log out reachable if the window is ever shorter than the menu. (Same
+          as the farmer's.) */}
+      <aside
+        className={`sticky top-0 flex h-screen w-64 shrink-0 flex-col overflow-y-auto bg-[#2f8f66] px-4 py-6 text-white max-md:fixed max-md:left-0 max-md:z-50 max-md:transition-transform max-md:duration-200 ${
+          open ? "" : "max-md:invisible max-md:-translate-x-full"
+        }`}
       >
-        <LogOut className="h-5 w-5" />
-        Log out
-      </button>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-1 items-center gap-3 px-2">
+            <img src={logo} alt="AniSave" className="h-10 w-10 rounded-full" />
+            <div className="leading-tight">
+              <p className="font-semibold">AniSave</p>
+              <p className="text-xs text-white/80">Admin Portal</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={closeDrawer}
+            aria-label="Close menu"
+            className="rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white md:hidden"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
-      {confirmingLogout && (
-        <LogoutConfirmModal onClose={() => setConfirmingLogout(false)} onConfirm={handleLogout} />
-      )}
-    </aside>
+        <nav className="mt-8 flex flex-col gap-2">
+          {navItems.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={closeDrawer}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
+                  isActive ? "bg-[#8ee6b0] text-[#1f5c42]" : "text-white/90 hover:bg-white/10"
+                }`
+              }
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+
+        <button
+          type="button"
+          onClick={() => setConfirmingLogout(true)}
+          className="mt-auto flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-white/90 transition hover:bg-white/10"
+        >
+          <LogOut className="h-5 w-5" />
+          Log out
+        </button>
+
+        {confirmingLogout && (
+          <LogoutConfirmModal onClose={() => setConfirmingLogout(false)} onConfirm={handleLogout} />
+        )}
+      </aside>
+    </>
   );
 }

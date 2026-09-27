@@ -289,13 +289,14 @@ export default function AdminMarketPrices() {
         </p>
       </AdminTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {/* The controls stay on screen while the table scrolls under them -
             there is no use in a municipality filter you have to scroll back up
             to reach. The negative margins let the bar span the full width and
             sit flush at the top once stuck, while leaving everything exactly
-            where it was before anyone scrolls. */}
-        <div className="sticky top-0 z-20 -mx-8 -mb-4 -mt-8 bg-gray-100 px-8 pb-4 pt-8">
+            where it was before anyone scrolls. On a phone it scrolls with the
+            page instead: the portal's menu bar holds the top there. */}
+        <div className="sticky top-0 z-20 -mx-4 -mb-4 -mt-4 bg-gray-100 px-4 pb-4 pt-4 max-md:static sm:-mx-8 sm:-mt-8 sm:px-8 sm:pt-8">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -324,7 +325,7 @@ export default function AdminMarketPrices() {
               aria-label="Filter by municipality"
               value={cityFilter}
               onChange={(e) => setCityFilter(e.target.value)}
-              className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700"
+              className="max-w-full rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700"
             >
               <option value="">All municipalities{province ? ` in ${province}` : ""}</option>
               {cities.map((city) => (
@@ -349,7 +350,7 @@ export default function AdminMarketPrices() {
         )}
         {error && <div className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
 
-        <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
+        <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
           {loading ? (
             <p className="p-6 text-sm text-gray-600">Loading...</p>
           ) : shown.length === 0 ? (
@@ -365,7 +366,7 @@ export default function AdminMarketPrices() {
               )}
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[40rem] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Product</th>

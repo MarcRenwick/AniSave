@@ -118,6 +118,16 @@ How sign-up, login and sessions are protected. Everything here is enforced on th
 - **Errors and headers** — errors never include stack traces or internal text (details go to the server log), `helmet` sets security headers, and CORS only allows `CLIENT_URL`.
 - **Tests** — with `NODE_ENV=test` no email is ever sent (messages are written to a file in the temp folder); add `RATE_LIMIT=off` to run bulk tests. Set `NODE_ENV=production` when deployed.
 
+## Phones, tablets and desktop
+
+The desktop layout is the design; smaller screens adapt it with Tailwind's breakpoints (`sm` 640px, `md` 768px, `lg` 1024px), so from 1024px up every page renders exactly as it did before this was added.
+
+- **Navigation.** Below 768px the buyer's top bar keeps the logo, search and cart, and the page links move into a menu that drops down from a menu button (with a red dot for unread messages). The farmer and admin portals turn their sidebar into a green bar across the top with a menu button; the sidebar slides in over a dimmed page as a drawer and closes on a link, the close button, Escape or a tap outside. On a phone the drawer is always full width - the farmer's collapse button is a wider-screen feature (`hooks/useMediaQuery.js` tells the two apart).
+- **Grids** drop columns as the screen narrows: products 4 → 3 → 2 across, the farmer's dashboard and notifications to one column, product detail's photo and details one under the other. Page padding goes from 32px to 16px on phones.
+- **Tables.** My Orders and the cart become a list of cards on phones (every action still there - Cancel, Archive, the quantity stepper, the bin that asks first). The admin tables keep their columns and scroll sideways inside their card instead of being cut off.
+- **Messages** shows the list and the conversation side by side from 1024px; below that, one at a time, with a back arrow.
+- Nothing scrolls sideways on any page at 360px or wider.
+
 ## The buyer's marketplace
 
 The top of the marketplace is a carousel (`components/buyer/HomeBanner.jsx`, `h-80`) of two fixed slides plus up to three real listings - Flash Sale items first, topped up with the newest, and only ones with a photo to show. It advances itself every four seconds, holds while the pointer or the keyboard is on it, and does not advance at all where the system asks for less motion. The Flash Sale and Nearest to You tiles sit beside it and grow with it. The filter row underneath reaches the same places - All Products, Recommended for You, Nearest to You, Newest Products and Flash Sale - so neither a tile nor the row is the only way to anything.

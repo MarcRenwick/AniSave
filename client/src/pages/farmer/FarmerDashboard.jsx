@@ -126,16 +126,16 @@ export default function FarmerDashboard() {
         <h1 className="text-xl font-semibold text-gray-900">Hello, {user?.name}!</h1>
       </FarmerTopBar>
 
-      <div className="px-8 pt-6">
+      <div className="px-4 pt-6 sm:px-8">
         <VerificationBanner />
       </div>
 
-      <div className="grid grid-cols-3 gap-6 p-8 pt-6">
-        <div className="col-span-2 space-y-6">
+      <div className="grid gap-6 p-4 pt-6 sm:p-8 sm:pt-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <DemandChart orders={orders} loading={loading} />
 
           {/* Stat cards */}
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid gap-4 sm:grid-cols-3 sm:gap-6">
             <div className="overflow-hidden rounded-xl bg-white shadow-sm">
               <CardHeader>Today&apos;s Sales</CardHeader>
               <div className="p-4">
@@ -175,7 +175,7 @@ export default function FarmerDashboard() {
             {notifications.length === 0 ? (
               <p className="p-4 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
             ) : (
-              <div className="grid grid-cols-3 gap-4 p-4">
+              <div className="grid gap-4 p-4 sm:grid-cols-3">
                 {notifications.slice(0, 3).map((note) => (
                   <div key={note.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
                     <p className="mb-2 text-sm font-semibold text-gray-800">{note.title}</p>

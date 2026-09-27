@@ -7,7 +7,9 @@ export default function AdminLayout({ children }) {
   useScrollReveal(mainRef);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    // On a phone the sidebar becomes a bar across the top (with a drawer), so
+    // the page stacks under it instead of sitting beside it.
+    <div className="flex min-h-screen bg-gray-100 max-md:flex-col">
       <AdminSidebar />
       <main ref={mainRef} className="min-w-0 flex-1 overflow-x-clip">
         {children}

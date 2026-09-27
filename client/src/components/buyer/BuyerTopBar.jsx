@@ -5,7 +5,8 @@ import { Search } from "lucide-react";
 // shop"). Site-wide search, the cart and Profile all live in the green nav.
 export default function BuyerTopBar({ children, search, onSearchChange, searchPlaceholder = "Search" }) {
   return (
-    <div className="flex items-center gap-4 border-b border-gray-200 px-8 py-6">
+    // On a narrow screen the page's own search drops under the heading.
+    <div className="flex flex-wrap items-center gap-4 border-b border-gray-200 px-4 py-5 sm:px-8 sm:py-6">
       <div className="min-w-0 flex-1">{children}</div>
 
       {search !== undefined && (

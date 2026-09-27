@@ -43,7 +43,7 @@ export default function FarmerOrders() {
         <p className="text-sm text-gray-500">Manage and track your customer orders</p>
       </FarmerTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="overflow-hidden rounded-2xl bg-[#2f8f66] p-5">
           <div className="flex flex-wrap gap-2">
             {tabs.map(({ key, label }) => (

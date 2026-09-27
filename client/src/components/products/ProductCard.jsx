@@ -25,7 +25,7 @@ export default function ProductCard({ product, onOpen }) {
     <button
       type="button"
       onClick={onOpen}
-      className="flex flex-col rounded-2xl border border-gray-200 bg-white p-3 text-left shadow-sm transition duration-150 hover:border-gray-300 hover:shadow-md active:scale-[0.98]"
+      className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-3 text-left shadow-sm transition duration-150 hover:border-gray-300 hover:shadow-md active:scale-[0.98]"
     >
       <div className="relative flex h-44 items-center justify-center px-2 pt-2">
         {product.image ? (

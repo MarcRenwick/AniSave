@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import useMediaQuery, { PHONE } from "../../hooks/useMediaQuery";
 
 // Completed orders only - a buyer placing one doesn't count until the farmer
 // has actually fulfilled it - over a period the farmer picks. One series, so
@@ -39,6 +40,7 @@ const PERIODS = [
 const PLOT_HEIGHT = 208;
 const Y_TICKS = 4;
 const MAX_X_LABELS = 7;
+const MAX_X_LABELS_PHONE = 4;
 const BRAND = "#2f8f66";
 
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -233,6 +235,7 @@ export default function DemandChart({ orders, loading }) {
     return { from: toInputDate(addDays(today, -29)), to: toInputDate(today) };
   });
   const [hovered, setHovered] = useState(null);
+  const phone = useMediaQuery(PHONE);
 
   const chart = useMemo(() => {
     const now = new Date();
@@ -262,11 +265,13 @@ export default function DemandChart({ orders, loading }) {
     const change = previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null;
 
     // Label at most a handful of x positions, always including both ends, so
-    // the dates never collide.
-    const step = Math.max(1, Math.ceil(buckets.length / MAX_X_LABELS));
+    // the dates never collide. A phone's narrow chart gets fewer, and skips one
+    // that would sit right against the last.
+    const step = Math.max(1, Math.ceil(buckets.length / (phone ? MAX_X_LABELS_PHONE : MAX_X_LABELS)));
+    const last = buckets.length - 1;
     const ticks = buckets
       .map((b, i) => ({ ...b, i }))
-      .filter(({ i }) => i % step === 0 || i === buckets.length - 1);
+      .filter(({ i }) => i === last || (i % step === 0 && (!phone || last - i >= step / 2)));
 
     return {
       buckets,
@@ -279,7 +284,7 @@ export default function DemandChart({ orders, loading }) {
       comparedTo,
       max: axisTop(Math.max(...buckets.map((b) => b.value), 0)),
     };
-  }, [orders, period, custom, metric]);
+  }, [orders, period, custom, metric, phone]);
 
   const { buckets, max } = chart;
   const count = buckets.length;

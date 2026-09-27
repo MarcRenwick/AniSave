@@ -21,6 +21,9 @@ const filters = [
   { key: "archived", label: "Archived" },
 ];
 
+const orderDate = (o) =>
+  new Date(o.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+
 export default function BuyerOrders() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
@@ -75,6 +78,39 @@ export default function BuyerOrders() {
     }
   };
 
+  // What can be done with an order from the list - the same on a row and on a card.
+  const actionsFor = (o) => (
+    <>
+      {(o.status === "new" || o.status === "preorder") && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setCancelError("");
+            setTarget(o);
+          }}
+          className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+        >
+          Cancel
+        </button>
+      )}
+      {o.status === "done" && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleArchiveToggle(o, !o.archived);
+          }}
+          disabled={archivingId === o._id}
+          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {o.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+          {o.archived ? "Unarchive" : "Archive"}
+        </button>
+      )}
+    </>
+  );
+
   return (
     <BuyerLayout>
       <BuyerTopBar>
@@ -82,7 +118,7 @@ export default function BuyerOrders() {
         <p className="text-sm text-gray-500">Track your orders and cancel before the farmer accepts</p>
       </BuyerTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex flex-wrap gap-3">
           {filters.map(({ key, label }) => (
             <button
@@ -106,7 +142,43 @@ export default function BuyerOrders() {
 
         {!loading && !error && (
           <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
+            {/* Phones: each order is a card rather than a row seven columns wide. */}
+            <ul className="divide-y divide-gray-100 md:hidden" data-testid="order-cards">
+              {visibleOrders.map((o) => {
+                const meta = statusMeta[o.status];
+                const Icon = meta.icon;
+                return (
+                  <li
+                    key={o._id}
+                    onClick={() => navigate(`/buyer/orders/${o._id}`)}
+                    className="cursor-pointer px-4 py-3 hover:bg-gray-50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-gray-900">{o.productTitle}</p>
+                        <p className="truncate text-xs text-gray-500">
+                          {o.farmer?.farmName || o.farmer?.name || "—"}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.color}`}
+                      >
+                        <Icon className="h-3.5 w-3.5" /> {meta.label}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                      <p className="text-gray-600">
+                        {o.quantity}kg · <span className="font-semibold text-gray-900">₱{o.total}</span> ·{" "}
+                        <span className="text-xs text-gray-500">{orderDate(o)}</span>
+                      </p>
+                      {actionsFor(o)}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <table className="w-full text-left text-sm max-md:hidden">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Product</th>
@@ -134,13 +206,7 @@ export default function BuyerOrders() {
                       </td>
                       <td className="px-4 py-3 text-gray-600">{o.quantity}kg</td>
                       <td className="px-4 py-3 font-semibold text-gray-900">₱{o.total}</td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {new Date(o.createdAt).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </td>
+                      <td className="px-4 py-3 text-gray-500">{orderDate(o)}</td>
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.color}`}
@@ -148,39 +214,7 @@ export default function BuyerOrders() {
                           <Icon className="h-3.5 w-3.5" /> {meta.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        {(o.status === "new" || o.status === "preorder") && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCancelError("");
-                              setTarget(o);
-                            }}
-                            className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
-                          >
-                            Cancel
-                          </button>
-                        )}
-                        {o.status === "done" && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleArchiveToggle(o, !o.archived);
-                            }}
-                            disabled={archivingId === o._id}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                          >
-                            {o.archived ? (
-                              <ArchiveRestore className="h-3.5 w-3.5" />
-                            ) : (
-                              <Archive className="h-3.5 w-3.5" />
-                            )}
-                            {o.archived ? "Unarchive" : "Archive"}
-                          </button>
-                        )}
-                      </td>
+                      <td className="px-4 py-3 text-right">{actionsFor(o)}</td>
                     </tr>
                   );
                 })}

@@ -132,7 +132,7 @@ export default function CartPage() {
 
   return (
     <div ref={rootRef} className="min-h-screen bg-gray-50">
-      <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white">
+      <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white max-sm:gap-3 max-sm:px-4">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-6 w-6" />
         </button>
@@ -157,7 +157,7 @@ export default function CartPage() {
           </Link>
         </div>
       ) : (
-        <div className="mx-auto max-w-5xl px-6 py-8">
+        <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
           <h2 className="text-2xl font-bold text-[#2f8f66]" data-reveal>
             Cart
           </h2>
@@ -166,7 +166,7 @@ export default function CartPage() {
             className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
             data-reveal
           >
-            <table className="w-full">
+            <table className="w-full max-md:hidden">
               <thead className="bg-gray-200">
                 <tr>
                   <th scope="col" className="w-14 px-4 py-4">
@@ -272,6 +272,79 @@ export default function CartPage() {
                 ))}
               </tbody>
             </table>
+
+            {/* Phones: each item is a card - the table's six columns don't fit. */}
+            <div className="md:hidden" data-testid="cart-cards">
+              <label className="flex items-center gap-3 bg-gray-200 px-4 py-3 text-base font-bold text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={items.length > 0 && selected.size === items.length}
+                  onChange={toggleSelectAll}
+                  aria-label="Select every item in the cart"
+                  className="h-5 w-5 accent-[#2f8f66]"
+                />
+                Select all
+              </label>
+              <ul className="divide-y divide-gray-100">
+                {items.map((item) => (
+                  <li key={item.productId} className="flex gap-3 px-4 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(item.productId)}
+                      onChange={() => toggleSelected(item.productId)}
+                      aria-label={`Include ${item.title} in the checkout`}
+                      className="mt-5 h-5 w-5 shrink-0 accent-[#2f8f66]"
+                    />
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center">
+                      {item.image ? (
+                        <ProductImage
+                          src={`${SERVER_URL}${item.image}`}
+                          alt={item.title}
+                          className="h-full w-full rounded-md object-contain"
+                        />
+                      ) : (
+                        <ImageOff className="h-6 w-6 text-gray-300" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <Link
+                            to={`/buyer/products/${item.productId}`}
+                            className="block truncate text-base font-medium text-gray-900 hover:underline"
+                          >
+                            {item.title}
+                          </Link>
+                          <p className="text-xs text-gray-500">{item.stock} kg in stock</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setRemoving(item)}
+                          aria-label={`Remove ${item.title} from the cart`}
+                          className="shrink-0 p-1 text-orange-500 transition hover:text-red-600"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                      <p className="mt-1 text-sm">
+                        <span className="font-semibold text-gray-900">{peso(item.price)}</span>
+                        {item.originalPrice > item.price && (
+                          <span className="ml-2 text-xs text-gray-400 line-through">{peso(item.originalPrice)}</span>
+                        )}
+                        <span className="text-gray-500"> / kg</span>
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <QuantityBox
+                          item={item}
+                          onChange={(quantity) => updateQuantity(item.productId, quantity)}
+                        />
+                        <p className="text-base font-semibold text-gray-900">{peso(item.price * item.quantity)}</p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <div

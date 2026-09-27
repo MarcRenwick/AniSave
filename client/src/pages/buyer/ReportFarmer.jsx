@@ -88,7 +88,7 @@ export default function ReportFarmer() {
 
   return (
     <BuyerLayout>
-      <div className="mx-auto max-w-2xl p-8">
+      <div className="mx-auto max-w-2xl p-4 sm:p-8">
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="relative flex items-center justify-center bg-[#2f8f66] px-4 py-3.5 text-white">
             <button

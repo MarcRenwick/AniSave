@@ -8,7 +8,9 @@ export default function FarmerLayout({ children, mainClassName = "" }) {
   useScrollReveal(mainRef);
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    // On a phone the sidebar becomes a bar across the top (with a drawer), so
+    // the page stacks under it instead of sitting beside it.
+    <div className="flex min-h-screen bg-gray-100 max-md:flex-col">
       <FarmerSidebar />
       {/* overflow-x-clip keeps a hover-scaled card from poking out sideways
           without making this a second scroll container. */}

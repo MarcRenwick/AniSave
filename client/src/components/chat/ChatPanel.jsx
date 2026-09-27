@@ -507,12 +507,12 @@ export default function ChatPanel({ basePath, heightClass }) {
 
   return (
     <div
-      className={`grid overflow-hidden rounded-2xl bg-white shadow-sm md:grid-cols-[20rem_1fr] ${heightClass}`}
+      className={`grid overflow-hidden rounded-2xl bg-white shadow-sm lg:grid-cols-[20rem_1fr] ${heightClass}`}
       data-testid="chat-panel"
     >
       {/* min-w-0 on both columns: without it a long line (an order, a name)
           widens the column past a phone's screen and the edge is cut off. */}
-      <aside className={`${id ? "hidden md:flex" : "flex"} min-h-0 min-w-0 flex-col border-r border-gray-200`}>
+      <aside className={`${id ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 flex-col border-r border-gray-200`}>
         <p className="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900">Conversations</p>
         <ul className="min-h-0 flex-1 overflow-y-auto">
           {listLoading && <li className="px-5 py-4 text-sm text-gray-500">Loading...</li>}
@@ -591,7 +591,7 @@ export default function ChatPanel({ basePath, heightClass }) {
         </ul>
       </aside>
 
-      <section className={`${id ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-col`}>
+      <section className={`${id ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col`}>
         {!id && (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-gray-500">
             <MessageCircle className="h-10 w-10 text-gray-300" />
@@ -605,7 +605,7 @@ export default function ChatPanel({ basePath, heightClass }) {
         {id && !threadLoading && active && (
           <>
             <div className="flex items-center gap-3 border-b border-gray-200 px-5 py-3">
-              <Link to={basePath} className="text-gray-500 hover:text-gray-900 md:hidden" aria-label="Back to conversations">
+              <Link to={basePath} className="text-gray-500 hover:text-gray-900 lg:hidden" aria-label="Back to conversations">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <span className="relative shrink-0">

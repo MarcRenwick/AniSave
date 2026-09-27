@@ -29,8 +29,8 @@ export default function FarmerTopBar({ children, showActions = true }) {
   };
 
   return (
-    <div className="relative flex items-center justify-between border-b border-gray-200 px-8 py-5">
-      <div>{children}</div>
+    <div className="relative flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 sm:px-8 sm:py-5">
+      <div className="min-w-0">{children}</div>
 
       {showActions && (
         <div ref={panelRef} className="relative">

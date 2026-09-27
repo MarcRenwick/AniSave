@@ -160,7 +160,7 @@ export default function BuyerSettings() {
         </div>
       </BuyerTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="grid items-start gap-6 lg:grid-cols-[21rem_minmax(0,1fr)]">
           {/* ------------------------------------------------ who you are */}
           <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm" data-reveal>

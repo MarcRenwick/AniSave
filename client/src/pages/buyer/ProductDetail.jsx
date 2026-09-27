@@ -111,12 +111,12 @@ export default function ProductDetail() {
         </button>
       </BuyerTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && product && (
-          <div className="grid grid-cols-2 gap-8 rounded-2xl bg-white p-6 shadow-sm">
+          <div className="grid gap-6 rounded-2xl bg-white p-4 shadow-sm sm:p-6 md:grid-cols-2 md:gap-8">
             <div>
               <ProductGallery key={product._id} product={product} />
 
@@ -239,7 +239,7 @@ export default function ProductDetail() {
         )}
 
         {!loading && !error && product && farmerStats && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-8 rounded-2xl bg-white p-7 shadow-sm">
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-white p-5 shadow-sm sm:gap-8 sm:p-7">
             <div className="flex items-center gap-5">
               <Avatar
                 src={farmerStats.avatar}
@@ -269,7 +269,7 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-12 gap-y-3 text-sm">
+            <div className="grid w-full grid-cols-1 gap-y-3 text-sm sm:w-auto sm:grid-cols-2 sm:gap-x-12">
               <Stat label="Ratings" value={farmerStats.ratingCount} />
               <Stat label="Joined" value={timeAgo(farmerStats.createdAt)} />
               <Stat label="Products" value={farmerStats.productCount} />

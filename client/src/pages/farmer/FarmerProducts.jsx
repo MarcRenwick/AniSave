@@ -58,7 +58,7 @@ export default function FarmerProducts() {
         <p className="text-sm text-gray-500">Manage your fresh fruits and vegetables</p>
       </FarmerTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="mb-6 empty:mb-0">
           <VerificationBanner />
         </div>

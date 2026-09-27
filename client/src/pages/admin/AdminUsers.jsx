@@ -56,7 +56,7 @@ export default function AdminUsers() {
         <p className="text-sm text-gray-500">Manage farmer and buyer accounts</p>
       </AdminTopBar>
 
-      <div className="p-8">
+      <div className="p-4 sm:p-8">
         <div className="flex flex-wrap items-center gap-3">
           {filters.map(({ key, label }) => (
             <button
@@ -84,8 +84,8 @@ export default function AdminUsers() {
         {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
 
         {!loading && !error && (
-          <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
-            <table className="w-full text-left text-sm">
+          <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
+            <table className="w-full min-w-[40rem] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Name</th>

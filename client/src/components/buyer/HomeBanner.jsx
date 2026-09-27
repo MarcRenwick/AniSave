@@ -11,7 +11,8 @@ const ctaClass =
   "mt-5 w-fit rounded-full bg-white px-5 py-2 text-sm font-semibold text-[#2f8f66] hover:bg-green-50";
 
 // px-16 keeps slide text clear of the prev/next arrows.
-const contentClass = "relative flex h-full max-w-md flex-col justify-center px-16 text-white";
+// A little less on a phone, where every pixel of width counts.
+const contentClass = "relative flex h-full max-w-md flex-col justify-center px-12 text-white sm:px-16";
 
 function PhotoSlide({ photo, children }) {
   return (
@@ -31,7 +32,7 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
 
   const slides = [
     <PhotoSlide key="fresh" photo={fieldPhoto}>
-      <h2 className="text-3xl font-bold leading-tight">
+      <h2 className="text-2xl font-bold leading-tight sm:text-3xl">
         Fresh Crops.
         <br />
         Direct Access.
@@ -48,7 +49,7 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
 
     <PhotoSlide key="preorder" photo={farmPhoto}>
       <p className="text-xs font-semibold uppercase tracking-wider text-yellow-300">Pre-Order</p>
-      <h2 className="mt-1 text-3xl font-bold leading-tight">Reserve the next harvest</h2>
+      <h2 className="mt-1 text-2xl font-bold leading-tight sm:text-3xl">Reserve the next harvest</h2>
       <p className="mt-3 text-sm text-white/90">
         Look for the Pre-Order tag to order produce before it&apos;s picked, then collect it once
         the farmer has it ready.
@@ -72,7 +73,7 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
           <span className="w-fit rounded-full bg-yellow-300 px-2.5 py-0.5 text-xs font-semibold text-[#1f5c42]">
             {tag}
           </span>
-          <h2 className="mt-3 line-clamp-2 text-3xl font-bold leading-tight">{product.title}</h2>
+          <h2 className="mt-3 line-clamp-2 text-2xl font-bold leading-tight sm:text-3xl">{product.title}</h2>
           <p className="mt-1">
             <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
           </p>
