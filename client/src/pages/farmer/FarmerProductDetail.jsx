@@ -121,7 +121,7 @@ export default function FarmerProductDetail() {
 
             <div className="rounded-2xl bg-white p-6 shadow-sm">
               <p className="font-semibold text-gray-900">Product Description</p>
-              <p className="mt-3 whitespace-pre-line rounded-md border border-gray-300 p-4 text-sm leading-relaxed text-gray-700">
+              <p className="mt-3 whitespace-pre-line break-words rounded-md border border-gray-300 p-4 text-sm leading-relaxed text-gray-700">
                 {product.description || "No description provided yet."}
               </p>
             </div>

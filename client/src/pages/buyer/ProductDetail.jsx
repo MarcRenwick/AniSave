@@ -232,7 +232,7 @@ export default function ProductDetail() {
             <div className="bg-[#2f8f66] px-6 py-3 font-semibold text-white">
               Product Description
             </div>
-            <p className="whitespace-pre-line p-6 text-sm leading-relaxed text-gray-700">
+            <p className="whitespace-pre-line break-words p-6 text-sm leading-relaxed text-gray-700">
               {product.description || "No description provided yet."}
             </p>
           </div>

@@ -17,7 +17,7 @@ import { categoryLabel as categoryLabelFor } from "../../utils/categories";
 
 const MAX_PHOTOS = 5;
 // The same limit the server holds a description to.
-const DESCRIPTION_MAX = 500;
+const DESCRIPTION_MAX = 100;
 
 // A browser's own number box still accepts "100e+", "1e5" or a stray "-", and
 // then hands back an empty string - so the field looks filled while the form
@@ -299,7 +299,7 @@ function Preview({ crop, form, photos, cover, onPickPhoto, seller, town }) {
 
         <div>
           <p className="font-semibold text-gray-900">Details</p>
-          <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-gray-600">
+          <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed text-gray-600">
             {form.description || (
               <span className="text-gray-300">Description will appear here.</span>
             )}

@@ -29,7 +29,7 @@ const MAX_IMAGES = 5;
 const PRODUCT_TYPES = ["sale", "preorder"];
 // A listing's description is kept short enough to read at a glance; the form
 // counts down to the limit.
-const DESCRIPTION_MAX = 500;
+const DESCRIPTION_MAX = 100;
 const checkDescription = (description) => {
   if (description === undefined) return null;
   if (typeof description !== "string") return "Product description must be text";

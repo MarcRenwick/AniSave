@@ -137,7 +137,7 @@ export default function FarmerSettings() {
               </div>
             </div>
 
-            <div ref={menuRef} className="relative shrink-0">
+            <div ref={menuRef} className="relative ml-auto shrink-0">
               <button
                 type="button"
                 onClick={() => setMenuOpen((v) => !v)}
