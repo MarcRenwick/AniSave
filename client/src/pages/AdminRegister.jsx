@@ -163,6 +163,9 @@ export default function AdminRegister() {
             <input
               id="username"
               name="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               type="text"
               required
               minLength={7}

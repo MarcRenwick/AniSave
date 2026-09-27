@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CalendarDays,
+  Check,
+  Clock,
+  Package,
+  PackageX,
+  ShoppingBag,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
@@ -13,6 +24,11 @@ import { money } from "../../utils/profit";
 // "Old stock nobody bought" - long enough that a normal slow week doesn't
 // get flagged as needing a discount.
 const STALE_PRODUCT_DAYS = 14;
+const PROFIT_PAGE = "/farmer/dashboard/profit";
+
+// Every card has one look: white, a hairline border, a dark title - no
+// coloured header bars, so green is kept for what can be clicked or chosen.
+const CARD = "rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm";
 
 // Shared by the all-time and this-month leaderboards below - only the set of
 // orders considered differs between them.
@@ -33,12 +49,6 @@ function rankByQuantitySold(orders) {
   return [...salesByProduct.values()].sort((a, b) => b.qty - a.qty).slice(0, 6);
 }
 
-function CardHeader({ children }) {
-  return (
-    <div className="rounded-t-xl bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white">{children}</div>
-  );
-}
-
 function isToday(dateString) {
   const d = new Date(dateString);
   const now = new Date();
@@ -48,6 +58,108 @@ function isToday(dateString) {
     d.getDate() === now.getDate()
   );
 }
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+// One of the four figures across the top: an icon, what it is, the number, and
+// a line saying what the number means. A card with somewhere to go says so in
+// its corner.
+function StatCard({ icon: Icon, label, link, onClick, testId, children }) {
+  return (
+    <div
+      data-testid={testId}
+      onClick={
+        onClick &&
+        ((e) => {
+          // A link inside the card goes where it says, without the card
+          // navigating a second time.
+          if (!e.target.closest("a")) onClick();
+        })
+      }
+      className={`flex flex-col ${CARD} ${onClick ? "cursor-pointer transition hover:shadow-md" : ""}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-50 text-[#2f8f66] ring-1 ring-green-100">
+            <Icon className="h-4 w-4" />
+          </span>
+          <span className="truncate text-sm font-semibold text-gray-800">{label}</span>
+        </div>
+        {link && (
+          <Link
+            to={link.to}
+            className="shrink-0 text-xs font-semibold text-[#2f8f66] underline underline-offset-2 hover:text-[#1f5c42]"
+          >
+            {link.label} →
+          </Link>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+const Figure = ({ children, tone = "text-gray-900" }) => (
+  <p className={`mt-4 text-3xl font-bold tracking-tight ${tone}`}>{children}</p>
+);
+const Caption = ({ children, tone = "text-gray-500" }) => <p className={`mt-1 text-xs ${tone}`}>{children}</p>;
+
+// Something that needs doing, as a box with the way to do it - not just
+// orange text that reads like any other line.
+function Warning({ to, action, children }) {
+  return (
+    <Link
+      to={to}
+      className="mt-3 flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 ring-1 ring-amber-100 transition hover:bg-amber-100"
+    >
+      <span className="flex items-center gap-1.5">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+        {children}
+      </span>
+      <span className="shrink-0 font-semibold">{action} →</span>
+    </Link>
+  );
+}
+
+// A titled list, each line with a bar showing how it compares to the first.
+function RankedList({ title, subtitle, items, barClass, loading, empty, testId }) {
+  const top = Math.max(...items.map((item) => item.value), 1);
+  return (
+    <section className={CARD} data-testid={testId}>
+      <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+      <p className="text-xs text-gray-500">{subtitle}</p>
+      {loading ? (
+        <p className="mt-4 text-sm text-gray-400">Loading...</p>
+      ) : items.length === 0 ? (
+        <p className="mt-4 text-sm text-gray-400">{empty}</p>
+      ) : (
+        <ol className="mt-4 space-y-3">
+          {items.map((item, i) => (
+            <li key={item.key} title={item.hint}>
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate text-gray-800">
+                  <span className="mr-0.5 font-semibold text-gray-400">{i + 1}</span> {item.name}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-gray-900">{item.label}</span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                <div className={`h-full rounded-full ${barClass}`} style={{ width: `${(item.value / top) * 100}%` }} />
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+// How each kind of notification looks in the dashboard's list.
+const NOTE_LOOK = {
+  order: { icon: ShoppingBag, tone: "bg-green-50 text-[#2f8f66]" },
+  "low-stock": { icon: AlertTriangle, tone: "bg-amber-50 text-amber-600" },
+  "out-of-stock": { icon: PackageX, tone: "bg-red-50 text-red-600" },
+};
+const sentenceCase = (text) => text.charAt(0) + text.slice(1).toLowerCase();
 
 export default function FarmerDashboard() {
   const { user } = useAuth();
@@ -101,6 +213,21 @@ export default function FarmerDashboard() {
     return rankByQuantitySold(thisMonth);
   }, [completedOrders]);
 
+  // This month's revenue, and last month's to set it against.
+  const monthRevenue = useMemo(() => {
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    let current = 0;
+    let previous = 0;
+    completedOrders.forEach((order) => {
+      const d = new Date(order.doneAt || order.createdAt);
+      if (d >= thisMonth) current += order.total;
+      else if (d >= lastMonth) previous += order.total;
+    });
+    return { current, change: previous > 0 ? ((current - previous) / previous) * 100 : null };
+  }, [completedOrders]);
+
   // Flash Sale candidates: still in stock, no buyer interest at all (this is
   // about whether it's ever been ordered, not whether that order finished -
   // one still in progress means it isn't sitting idle), not already
@@ -129,177 +256,211 @@ export default function FarmerDashboard() {
   );
 
   const notifications = useMemo(() => deriveNotifications(products, orders), [products, orders]);
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
   return (
     <FarmerLayout>
-      <FarmerTopBar>
-        <h1 className="text-xl font-semibold text-gray-900">Hello, {user?.name}!</h1>
+      <FarmerTopBar variant="dashboard">
+        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Hello, {user?.name}!</h1>
+        <p className="text-sm text-gray-500">Here&apos;s how your farm store is doing · {today}</p>
       </FarmerTopBar>
 
-      <div className="px-4 pt-6 sm:px-8">
+      <div className="space-y-6 p-4 sm:p-8">
         <VerificationBanner />
-      </div>
 
-      <div className="grid gap-6 p-4 pt-6 sm:p-8 sm:pt-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <DemandChart orders={orders} loading={loading} />
+        {/* The four figures a farmer checks first, side by side */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard icon={Clock} label="Today's sales" testId="stat-today">
+            <Figure>{money(todaysSales)}</Figure>
+            <Caption>Earned so far today</Caption>
+          </StatCard>
 
-          {/* Stat cards */}
-          <div className="grid gap-4 sm:grid-cols-3 sm:gap-6">
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <CardHeader>Today&apos;s Sales</CardHeader>
-              <div className="p-4">
-                <span className="text-2xl font-bold text-gray-900">₱{todaysSales}</span>
-              </div>
-            </div>
-            {/* Profit made so far on completed sales; the whole card opens the
-                Profit page, with every product's figures and the estimates. */}
-            <Link
-              to="/farmer/dashboard/profit"
-              data-testid="profit-card"
-              className="group block overflow-hidden rounded-xl bg-white shadow-sm transition hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f8f66]"
-            >
-              <CardHeader>
-                <span className="flex items-center justify-between gap-2">
-                  Profit
-                  <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                </span>
-              </CardHeader>
-              <div className="p-4 text-sm text-gray-700">
-                {profit ? (
-                  <>
-                    <p className={`text-2xl font-bold ${profit.actual.profit < 0 ? "text-red-600" : "text-gray-900"}`}>
-                      {money(profit.actual.profit)}
-                    </p>
-                    <p>
-                      {profit.actual.soldKg > 0 ? `from ${profit.actual.soldKg} kg sold` : "No completed sales yet"}
-                    </p>
-                    {profit.estimated.products > 0 && (
-                      <p className="text-gray-500">Est. {money(profit.estimated.profit)} on stock</p>
-                    )}
-                    {profit.missingExpense > 0 && (
-                      <p className="text-amber-600">{profit.missingExpense} product(s) need an expense</p>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-lg font-bold text-gray-400">{profitFailed ? "N/A" : "..."}</span>
-                )}
-              </div>
-            </Link>
-            <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-              <CardHeader>Stock</CardHeader>
-              <div className="p-4 text-sm text-gray-700">
-                <p className="text-lg font-bold text-gray-900">{totalStockKg} kg</p>
-                <p>{products.length} products</p>
-                {lowStock.length > 0 && (
-                  <p className="text-amber-600">{lowStock.length} product(s) low in stock</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Notifications preview - real, derived from your products/orders */}
-          <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-            <div className="flex items-center justify-between rounded-t-xl bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white">
-              <span>Notifications</span>
-              <button
-                type="button"
-                onClick={() => navigate("/farmer/notifications")}
-                className="text-xs font-medium underline-offset-2 hover:underline"
-              >
-                See All
-              </button>
-            </div>
-            {notifications.length === 0 ? (
-              <p className="p-4 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
+          <StatCard icon={CalendarDays} label="Revenue this month" testId="stat-revenue">
+            <Figure>{money(monthRevenue.current)}</Figure>
+            {monthRevenue.change === null ? (
+              <Caption>No sales last month to compare</Caption>
             ) : (
-              <div className="grid gap-4 p-4 sm:grid-cols-3">
-                {notifications.slice(0, 3).map((note) => (
-                  <div key={note.id} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="mb-2 text-sm font-semibold text-gray-800">{note.title}</p>
-                    <p className="text-xs text-gray-600">{note.description}</p>
-                  </div>
-                ))}
-              </div>
+              <Caption tone={monthRevenue.change >= 0 ? "font-medium text-emerald-600" : "font-medium text-red-600"}>
+                <span className="inline-flex items-center gap-1">
+                  {monthRevenue.change >= 0 ? (
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <TrendingDown className="h-3.5 w-3.5" />
+                  )}
+                  {monthRevenue.change >= 0 ? "+" : ""}
+                  {Math.round(monthRevenue.change)}% vs last month
+                </span>
+              </Caption>
             )}
-          </div>
+          </StatCard>
+
+          {/* The profit made so far on completed sales, with the estimate on
+              stock beside it; the card opens the Profit page, with every
+              product's figures. */}
+          <StatCard
+            icon={TrendingUp}
+            label="Profit"
+            link={{ to: PROFIT_PAGE, label: "Details" }}
+            onClick={() => navigate(PROFIT_PAGE)}
+            testId="profit-card"
+          >
+            <Figure tone={profit && profit.actual.profit < 0 ? "text-red-600" : "text-gray-900"}>
+              {profit ? money(profit.actual.profit) : profitFailed ? "N/A" : "..."}
+            </Figure>
+            {profit && (
+              <Caption>
+                {profit.actual.soldKg > 0 ? `From ${profit.actual.soldKg} kg sold` : "No completed sales yet"}
+                {profit.estimated.products > 0 && ` · Est. ${money(profit.estimated.profit)} on stock`}
+              </Caption>
+            )}
+            {profit?.missingExpense > 0 && (
+              <Warning to={PROFIT_PAGE} action="Add">
+                {plural(profit.missingExpense, "product")} need{profit.missingExpense === 1 ? "s" : ""} an expense
+              </Warning>
+            )}
+          </StatCard>
+
+          <StatCard icon={Package} label="Stock" link={{ to: "/farmer/products", label: "Manage" }} testId="stat-stock">
+            <Figure>{totalStockKg.toLocaleString()} kg</Figure>
+            <Caption>Across {plural(products.length, "product")}</Caption>
+            {lowStock.length > 0 && (
+              <Warning to="/farmer/products" action="View">
+                {plural(lowStock.length, "product")} low in stock
+              </Warning>
+            )}
+          </StatCard>
         </div>
 
-        <div className="space-y-6">
-          {/* Demand as buyers show it - what they look for and open - rather
-              than what has already been sold. The sales leaderboard below is
-              the other half of the picture. */}
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Top Searched Products</p>
-            <p className="mt-1 font-bold text-amber-600">What Buyers Look For</p>
-            <div className="mt-3 flex items-start justify-between gap-2">
-              {loading ? (
-                <p className="text-sm text-gray-400">Loading...</p>
-              ) : topSearched.length === 0 ? (
-                <p className="text-sm text-gray-400">No searches yet</p>
+        <div className="grid items-start gap-6 lg:grid-cols-3">
+          <div className="min-w-0 space-y-6 lg:col-span-2">
+            <DemandChart orders={orders} loading={loading} />
+
+            {/* Notifications preview - real, derived from your products and
+                orders - each with the one thing to do about it. */}
+            <section className={CARD} data-testid="recent-notifications">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-gray-900">Recent notifications</h2>
+                <Link
+                  to="/farmer/notifications"
+                  className="text-xs font-semibold text-[#2f8f66] underline underline-offset-2 hover:text-[#1f5c42]"
+                >
+                  See all →
+                </Link>
+              </div>
+              {notifications.length === 0 ? (
+                <p className="mt-4 text-sm text-gray-400">You&apos;re all caught up!</p>
               ) : (
-                <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-700">
-                  {topSearched.map((crop) => (
-                    <li key={crop.title}>
-                      {crop.title}{" "}
-                      <span
-                        className="text-gray-400"
-                        title={`${crop.searches} search${crop.searches === 1 ? "" : "es"}, ${crop.views} view${crop.views === 1 ? "" : "s"}`}
-                      >
-                        ({crop.count} searches/views)
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                <ul className="mt-2 divide-y divide-gray-100">
+                  {notifications.slice(0, 3).map((note) => {
+                    const look = NOTE_LOOK[note.kind] || NOTE_LOOK.order;
+                    return (
+                      <li key={note.id} className="flex items-center gap-3 py-3">
+                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${look.tone}`}>
+                          <look.icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900">{sentenceCase(note.title)}</p>
+                          <p className="text-xs text-gray-600">
+                            {note.emphasis ? (
+                              <>
+                                {note.lead} <span className="font-semibold text-gray-800">{note.emphasis}</span>
+                              </>
+                            ) : (
+                              note.description
+                            )}
+                          </p>
+                        </div>
+                        {note.to && (
+                          <Link
+                            to={note.to}
+                            className="shrink-0 rounded-md border border-[#2f8f66] px-3 py-2 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                          >
+                            {note.action}
+                          </Link>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </div>
+            </section>
           </div>
 
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Top Purchase this Month</p>
-            <p className="mt-1 font-bold text-amber-600">This Month</p>
-            <div className="mt-3 flex items-start justify-between gap-2">
-              {loading ? (
-                <p className="text-sm text-gray-400">Loading...</p>
-              ) : topProductsThisMonth.length === 0 ? (
-                <p className="text-sm text-gray-400">No orders yet this month</p>
-              ) : (
-                <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-700">
-                  {topProductsThisMonth.map((p) => (
-                    <li key={p.title}>
-                      {p.title} <span className="text-gray-400">({p.qty}kg sold)</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-            </div>
-          </div>
+          <div className="min-w-0 space-y-6">
+            {/* Demand as buyers show it - what they look for and open - rather
+                than what has already been sold. The sales leaderboard below is
+                the other half of the picture. */}
+            <RankedList
+              testId="top-searched"
+              title="What buyers look for"
+              subtitle="Top searched products · searches/views"
+              loading={loading}
+              empty="No searches yet"
+              barClass="bg-[#2f8f66]"
+              items={topSearched.map((crop) => ({
+                key: crop.title,
+                name: crop.title,
+                value: crop.count,
+                label: crop.count.toLocaleString(),
+                hint: `${crop.searches} search${crop.searches === 1 ? "" : "es"}, ${plural(crop.views, "view")}`,
+              }))}
+            />
 
-          <div className="rounded-xl bg-white p-4 shadow-sm">
-            <p className="text-sm text-gray-500">Recommended Flash Sales</p>
-            <p className="mt-1 font-bold text-amber-600">Old Stock</p>
-            <div className="mt-3 flex items-start justify-between gap-2">
+            <RankedList
+              testId="best-sellers"
+              title="Best sellers this month"
+              subtitle="Top purchases · kg sold"
+              loading={loading}
+              empty="No orders yet this month"
+              barClass="bg-orange-500"
+              items={topProductsThisMonth.map((p) => ({
+                key: p.title,
+                name: p.title,
+                value: p.qty,
+                label: `${p.qty.toLocaleString()} kg`,
+              }))}
+            />
+
+            <section className={CARD} data-testid="flash-sale">
+              <h2 className="text-base font-semibold text-gray-900">Flash sale suggestions</h2>
+              <p className="text-xs text-gray-500">Old stock that could use a discount</p>
               {loading ? (
-                <p className="text-sm text-gray-400">Loading...</p>
+                <p className="mt-4 text-sm text-gray-400">Loading...</p>
               ) : staleStock.length === 0 ? (
-                <p className="text-sm text-gray-400">Nothing sitting idle - nice!</p>
+                <div className="mt-4 flex items-start gap-3 rounded-lg bg-green-50 p-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+                    <Check className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Nothing sitting idle — nice!</p>
+                    <p className="text-xs text-gray-600">Products that stay unsold too long will show up here.</p>
+                  </div>
+                </div>
               ) : (
-                <ul className="w-full space-y-1.5 text-sm text-gray-700">
+                <ul className="mt-3 divide-y divide-gray-100">
                   {staleStock.map((p) => (
-                    <li key={p._id}>
+                    <li key={p._id} className="flex items-center justify-between gap-3 py-2.5">
+                      <div className="min-w-0 text-sm">
+                        <p className="truncate font-medium text-gray-800">{p.title}</p>
+                        <p className="text-xs text-gray-500">{p.stock} kg left, no orders yet</p>
+                      </div>
                       <button
                         type="button"
                         onClick={() => navigate(`/farmer/products/${p._id}/edit`)}
-                        className="flex w-full items-center justify-between gap-2 text-left hover:text-[#2f8f66] hover:underline"
+                        className="shrink-0 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
                       >
-                        <span className="truncate">{p.title}</span>
-                        <span className="shrink-0 text-xs text-gray-400">{p.stock}kg left</span>
+                        Discount
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-            </div>
+            </section>
           </div>
         </div>
       </div>

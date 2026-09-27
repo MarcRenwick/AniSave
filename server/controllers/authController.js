@@ -239,7 +239,10 @@ const registerUser = asyncHandler(async (req, res) => {
       throw new Error("At least one farm-related document is required");
     }
 
-    const [usernameTaken, emailTaken] = await Promise.all([User.findOne({ username }), User.findOne({ email })]);
+    const [usernameTaken, emailTaken] = await Promise.all([
+      User.findByUsernameIgnoringCase(username),
+      User.findOne({ email }),
+    ]);
     if (usernameTaken && !isUnverified(usernameTaken)) {
       res.status(400);
       throw new Error("Username is already exist");
@@ -327,7 +330,8 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new Error("Invalid username or password");
   }
 
-  const user = await User.findOne({ username: body.username.trim().toLowerCase() }).select(
+  // Exactly as it was registered, capitals included.
+  const user = await User.findOne({ username: body.username.trim() }).select(
     `+password +failedLoginAttempts +lockUntil ${selectCode(MFA_CODE)} ${selectCode(VERIFY_EMAIL_CODE)}`
   );
 
@@ -450,7 +454,7 @@ const resendLoginMfa = asyncHandler(async (req, res) => {
 // The unverified account a verification request names, with its code fields.
 const unverifiedByUsername = (username) =>
   typeof username === "string" && username.trim() && username.length <= 254
-    ? User.findOne({ username: username.trim().toLowerCase(), emailVerified: false }).select(selectCode(VERIFY_EMAIL_CODE))
+    ? User.findOne({ username: username.trim(), emailVerified: false }).select(selectCode(VERIFY_EMAIL_CODE))
     : null;
 
 // @desc    Verify a new account's email with the code sent to it, and sign in

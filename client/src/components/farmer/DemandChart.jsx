@@ -1,52 +1,63 @@
-import { useMemo, useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { CalendarDays, TrendingDown, TrendingUp, X } from "lucide-react";
 import useMediaQuery, { PHONE } from "../../hooks/useMediaQuery";
 
 // Completed orders only - a buyer placing one doesn't count until the farmer
 // has actually fulfilled it - over a period the farmer picks. One series, so
-// no legend: the heading says what is plotted. Individual products are
-// deliberately not broken out here, since the farmer already has per-product
-// leaderboards beside this chart, and naming products made the chart's shape
-// change every time the mix changed.
+// the legend only names it. Individual products are deliberately not broken
+// out here, since the farmer already has per-product leaderboards beside this
+// chart, and naming products made the chart's shape change every time the mix
+// changed.
 //
 // The same orders can be read two ways: what they were worth, and how much
 // produce actually left the farm. A farmer selling a cheap crop in bulk and
-// one selling an expensive crop by the kilo are looking for different lines.
+// one selling an expensive crop by the kilo are looking for different bars.
+//
+// Bars rather than a line: a line drawn from one day to the next suggests
+// sales in between that never happened. Each bar is one day (or hour, or
+// month), and tapping it lists the orders behind it.
 const METRICS = [
   {
     key: "revenue",
     label: "Revenue (₱)",
-    title: "Revenue",
+    noun: "revenue",
+    legend: "Revenue",
     valueOf: (order) => order.total,
     format: (n) => `₱${Math.round(n).toLocaleString()}`,
   },
   {
     key: "quantity",
-    label: "Quantity Sold (KG)",
-    title: "Quantity Sold",
+    label: "Quantity sold (kg)",
+    noun: "kilos sold",
+    legend: "Kilos sold",
     valueOf: (order) => order.quantity,
     format: (n) => `${Math.round(n).toLocaleString()} kg`,
   },
 ];
 
 const PERIODS = [
-  { key: "today", label: "Today" },
-  { key: "week", label: "This Week" },
-  { key: "month", label: "This Month" },
-  { key: "year", label: "This Year" },
-  { key: "custom", label: "Custom" },
+  { key: "today", label: "Today", total: "total today" },
+  { key: "week", label: "This week", total: "total this week" },
+  { key: "month", label: "This month", total: "total this month" },
+  { key: "year", label: "This year", total: "total this year" },
+  { key: "custom", label: "Custom", icon: CalendarDays, total: "total in this range" },
 ];
+
+// "Daily revenue", "Hourly kilos sold"...
+const EVERY = { hour: "Hourly", day: "Daily", month: "Monthly" };
 
 const PLOT_HEIGHT = 208;
 const Y_TICKS = 4;
 const MAX_X_LABELS = 7;
 const MAX_X_LABELS_PHONE = 4;
-const BRAND = "#2f8f66";
+// The orders listed under a tapped bar before the rest are left to the Orders page.
+const MAX_LISTED = 5;
 
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 const startOfMonth = (d) => new Date(d.getFullYear(), d.getMonth(), 1);
-// Weeks start on Monday, so "This Week" doesn't reset mid-weekend.
+// Weeks start on Monday, so "This week" doesn't reset mid-weekend.
 const startOfWeek = (d) => addDays(startOfDay(d), -((d.getDay() + 6) % 7));
 
 const fmtDay = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -54,9 +65,8 @@ const fmtHour = (d) => d.toLocaleTimeString(undefined, { hour: "numeric" });
 const fmtMonth = (d) => d.toLocaleDateString(undefined, { month: "short" });
 const toInputDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-// The top gridline sits a little ABOVE the busiest point, never on it: with the
-// peak flush against the top edge its line looked sliced flat and its label had
-// nowhere to go but up into the heading. The axis is Y_TICKS equal steps, each
+// The top gridline sits a little ABOVE the busiest bar, never on it, so the
+// bar's label has room above it. The axis is Y_TICKS equal steps, each
 // 1 / 1.2 / 1.5 / 2 / 2.5 / 3 / 4 / 5 / 6 / 8 x 10^n, so every gridline label
 // stays a round number.
 const AXIS_HEADROOM = 1.15;
@@ -68,65 +78,6 @@ function axisTop(peak) {
     if (needed <= step * base) return step * base * Y_TICKS;
   }
   return 10 * base * Y_TICKS;
-}
-
-// A smooth curve through every point, without ever overshooting past a
-// point's real value between it and its neighbors - unlike a plain spline,
-// it can't invent a bump or dip the data doesn't have. Standard monotone
-// cubic Hermite interpolation (Fritsch-Carlson), converted to the cubic
-// bezier segments an SVG path draws.
-function smoothPath(points) {
-  const n = points.length;
-  if (n === 0) return "";
-  if (n === 1) return `M ${points[0].x} ${points[0].y}`;
-
-  const dx = [];
-  const slopes = [];
-  for (let i = 0; i < n - 1; i += 1) {
-    dx[i] = points[i + 1].x - points[i].x;
-    const dy = points[i + 1].y - points[i].y;
-    slopes[i] = dx[i] === 0 ? 0 : dy / dx[i];
-  }
-
-  const tangents = new Array(n);
-  tangents[0] = slopes[0];
-  tangents[n - 1] = slopes[n - 2];
-  for (let i = 1; i < n - 1; i += 1) {
-    tangents[i] =
-      slopes[i - 1] === 0 || slopes[i] === 0 || slopes[i - 1] > 0 !== slopes[i] > 0
-        ? 0
-        : (slopes[i - 1] + slopes[i]) / 2;
-  }
-
-  // Clamp each segment's tangents so the curve can't swing past either
-  // endpoint's value - the guarantee that keeps this "monotone".
-  for (let i = 0; i < n - 1; i += 1) {
-    if (slopes[i] === 0) {
-      tangents[i] = 0;
-      tangents[i + 1] = 0;
-      continue;
-    }
-    const a = tangents[i] / slopes[i];
-    const b = tangents[i + 1] / slopes[i];
-    const h = Math.hypot(a, b);
-    if (h > 3) {
-      const t = 3 / h;
-      tangents[i] *= t;
-      tangents[i + 1] *= t;
-    }
-  }
-
-  let d = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 0; i < n - 1; i += 1) {
-    const p0 = points[i];
-    const p1 = points[i + 1];
-    const cp1x = p0.x + dx[i] / 3;
-    const cp1y = p0.y + (tangents[i] * dx[i]) / 3;
-    const cp2x = p1.x - dx[i] / 3;
-    const cp2y = p1.y - (tangents[i + 1] * dx[i]) / 3;
-    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-  }
-  return d;
 }
 
 function buildRange(period, custom, now) {
@@ -195,25 +146,42 @@ function buildRange(period, custom, now) {
   };
 }
 
-function buildBuckets(from, to, granularity) {
+// Each bar: what its axis label says (short, and "Today" or "Now" for the one
+// happening right now), what its readout says (in full), and the orders in it.
+function buildBuckets(from, to, granularity, period) {
   const buckets = [];
   if (granularity === "hour") {
     for (let h = 0; h < 24; h += 1) {
       const start = new Date(from.getFullYear(), from.getMonth(), from.getDate(), h);
-      buckets.push({ label: fmtHour(start), value: 0 });
+      const end = new Date(from.getFullYear(), from.getMonth(), from.getDate(), h + 1);
+      buckets.push({ start, end, label: fmtHour(start), full: `${fmtHour(start)} - ${fmtHour(end)}` });
     }
-    return buckets;
-  }
-  if (granularity === "day") {
+  } else if (granularity === "day") {
     for (let d = new Date(from); d < to; d = addDays(d, 1)) {
-      buckets.push({ label: fmtDay(d), value: 0 });
+      const label =
+        period === "month"
+          ? String(d.getDate())
+          : period === "week"
+            ? d.toLocaleDateString(undefined, { weekday: "short" })
+            : fmtDay(d);
+      buckets.push({
+        start: d,
+        end: addDays(d, 1),
+        label,
+        full: d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }),
+      });
     }
-    return buckets;
+  } else {
+    for (let m = new Date(from.getFullYear(), from.getMonth(), 1); m < to; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
+      buckets.push({
+        start: m,
+        end: new Date(m.getFullYear(), m.getMonth() + 1, 1),
+        label: fmtMonth(m),
+        full: m.toLocaleDateString(undefined, { month: "long", year: "numeric" }),
+      });
+    }
   }
-  for (let m = new Date(from.getFullYear(), from.getMonth(), 1); m < to; m = new Date(m.getFullYear(), m.getMonth() + 1, 1)) {
-    buckets.push({ label: fmtMonth(m), value: 0 });
-  }
-  return buckets;
+  return buckets.map((b) => ({ ...b, value: 0, orders: [] }));
 }
 
 // Which bucket a date falls in, by counting from the range start rather than
@@ -221,9 +189,35 @@ function buildBuckets(from, to, granularity) {
 function bucketIndex(date, from, granularity) {
   if (granularity === "hour") return date.getHours();
   if (granularity === "day") {
-    return Math.floor((startOfDay(date) - startOfDay(from)) / 86400000);
+    return Math.round((startOfDay(date) - startOfDay(from)) / 86400000);
   }
   return (date.getFullYear() - from.getFullYear()) * 12 + (date.getMonth() - from.getMonth());
+}
+
+// A segmented control: the chosen option filled in AniSave green, so which one
+// is on is never in doubt.
+function Segmented({ label, options, value, onChange }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-medium text-gray-500">{label}</span>
+      <div role="group" aria-label={label} className="inline-flex flex-wrap gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5">
+        {options.map(({ key, label: text, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            aria-pressed={value === key}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+              value === key ? "bg-[#2f8f66] text-white shadow-sm" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            }`}
+          >
+            {Icon && <Icon className="h-3.5 w-3.5" />}
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function DemandChart({ orders, loading }) {
@@ -234,13 +228,17 @@ export default function DemandChart({ orders, loading }) {
     const today = new Date();
     return { from: toInputDate(addDays(today, -29)), to: toInputDate(today) };
   });
+  // The bar under the pointer (or keyboard focus), and the bar tapped open.
   const [hovered, setHovered] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const barRefs = useRef([]);
   const phone = useMediaQuery(PHONE);
 
   const chart = useMemo(() => {
     const now = new Date();
-    const { from, to, prevFrom, granularity, rangeLabel, comparedTo } = buildRange(period, custom, now);
-    const buckets = buildBuckets(from, to, granularity);
+    const range = buildRange(period, custom, now);
+    const { from, to, prevFrom, granularity } = range;
+    const buckets = buildBuckets(from, to, granularity, period);
 
     let total = 0;
     let previousTotal = 0;
@@ -251,323 +249,312 @@ export default function DemandChart({ orders, loading }) {
       if (order.status !== "done") return;
       const completed = new Date(order.doneAt || order.createdAt);
       if (completed >= from && completed < to) {
-        const i = bucketIndex(completed, from, granularity);
-        if (buckets[i]) {
-          buckets[i].value += metric.valueOf(order);
+        const bucket = buckets[bucketIndex(completed, from, granularity)];
+        if (bucket) {
+          bucket.value += metric.valueOf(order);
+          bucket.orders.push(order);
           total += metric.valueOf(order);
         }
       } else if (completed >= prevFrom && completed < from) {
         previousTotal += metric.valueOf(order);
       }
     });
+    buckets.forEach((b) => b.orders.sort((x, y) => new Date(y.doneAt || y.createdAt) - new Date(x.doneAt || x.createdAt)));
 
-    const peak = buckets.reduce((best, b, i) => (b.value > buckets[best]?.value ? i : best), 0);
-    const change = previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null;
+    const count = buckets.length;
+    const current = buckets.findIndex((b) => now >= b.start && now < b.end);
+    if (current !== -1 && granularity !== "month") buckets[current].label = granularity === "hour" ? "Now" : "Today";
+    const peak = buckets.reduce((best, b, i) => (b.value > buckets[best].value ? i : best), 0);
+    const hasOrders = total > 0;
 
-    // Label at most a handful of x positions, always including both ends, so
-    // the dates never collide. A phone's narrow chart gets fewer, and skips one
-    // that would sit right against the last.
-    const step = Math.max(1, Math.ceil(buckets.length / (phone ? MAX_X_LABELS_PHONE : MAX_X_LABELS)));
-    const last = buckets.length - 1;
-    const ticks = buckets
-      .map((b, i) => ({ ...b, i }))
-      .filter(({ i }) => i === last || (i % step === 0 && (!phone || last - i >= step / 2)));
+    // Label a handful of bars, never so close together that they collide:
+    // the one happening now first, then the last, then the busiest, then an
+    // even spread. A phone's narrow chart gets fewer.
+    const step = Math.max(1, Math.ceil(count / (phone ? MAX_X_LABELS_PHONE : MAX_X_LABELS)));
+    const minGap = step === 1 ? 1 : phone ? step : Math.max(2, Math.floor(step / 2));
+    const wanted = [current, count - 1, hasOrders ? peak : -1];
+    for (let i = 0; i < count; i += step) wanted.push(i);
+    const ticks = [];
+    wanted.forEach((i) => {
+      if (i >= 0 && !ticks.includes(i) && ticks.every((t) => Math.abs(t - i) >= minGap)) ticks.push(i);
+    });
 
     return {
+      ...range,
       buckets,
       total,
-      previousTotal,
-      change,
+      change: previousTotal > 0 ? ((total - previousTotal) / previousTotal) * 100 : null,
+      current,
       peak,
+      hasOrders,
       ticks,
-      rangeLabel,
-      comparedTo,
       max: axisTop(Math.max(...buckets.map((b) => b.value), 0)),
     };
   }, [orders, period, custom, metric, phone]);
 
-  const { buckets, max } = chart;
+  const { buckets, max, granularity } = chart;
   const count = buckets.length;
-  const xAt = (i) => (count > 1 ? (i / (count - 1)) * 100 : 50);
-  const yAt = (value) => 100 - (value / max) * 100;
+  const heightOf = (value) => (value > 0 ? (value / max) * 100 : 0);
+  const centerOf = (i) => ((i + 0.5) / count) * 100;
+  // A readout near either edge opens inwards, so it never hangs off the card.
+  const shiftOf = (i) => (i < count * 0.15 ? "0%" : i > count * 0.85 ? "-100%" : "-50%");
+  const periodInfo = PERIODS.find((p) => p.key === period);
+  const open = selected !== null ? buckets[selected] : null;
+  const focusable = selected ?? (chart.current !== -1 ? chart.current : count - 1);
 
-  const points = buckets.map((b, i) => ({ x: xAt(i), y: yAt(b.value) }));
-  const linePath = smoothPath(points);
-  const areaPath = `${linePath} L ${xAt(count - 1)} 100 L ${xAt(0)} 100 Z`;
-  const hasOrders = chart.total > 0;
-
-  const moveHover = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    setHovered(Math.min(count - 1, Math.max(0, Math.round(ratio * (count - 1)))));
+  // A new period or range is a different set of bars.
+  const choosePeriod = (key) => {
+    setPeriod(key);
+    setSelected(null);
+    setHovered(null);
+  };
+  const changeCustom = (patch) => {
+    setCustom((c) => ({ ...c, ...patch }));
+    setSelected(null);
   };
 
-  // Arrow keys walk the same readout the pointer gets.
-  const handleKeyDown = (e) => {
-    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  // Arrow keys walk the bars; Enter or Space opens one, as a tap does.
+  const handleKeyDown = (e, i) => {
+    const next = { ArrowLeft: i - 1, ArrowRight: i + 1, Home: 0, End: count - 1 }[e.key];
+    if (next === undefined) return;
     e.preventDefault();
-    const current = hovered ?? count - 1;
-    if (e.key === "ArrowLeft") setHovered(Math.max(0, current - 1));
-    if (e.key === "ArrowRight") setHovered(Math.min(count - 1, current + 1));
-    if (e.key === "Home") setHovered(0);
-    if (e.key === "End") setHovered(count - 1);
+    const target = Math.min(count - 1, Math.max(0, next));
+    barRefs.current[target]?.focus();
   };
-
-  const active = hovered !== null ? buckets[hovered] : null;
 
   return (
-    <div className="overflow-hidden rounded-xl bg-white shadow-sm">
-      <div className="rounded-t-xl bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white">
-        Analytical Demands
-      </div>
-
-      <div className="flex flex-wrap items-start justify-between gap-4 px-6 pb-2 pt-5">
+    <section className="rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm sm:p-6" data-testid="demand-chart">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs text-gray-500">{metric.title} · {chart.rangeLabel}</p>
-          <p className="mt-0.5 text-3xl font-semibold text-gray-900">
+          <h2 className="text-base font-semibold text-gray-900">Analytical Demands</h2>
+          <p className="text-sm font-medium text-[#2f8f66]" data-testid="chart-subtitle">
+            {EVERY[granularity]} {metric.noun} · {chart.rangeLabel}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold tracking-tight text-gray-900" data-testid="chart-total">
             {loading ? "—" : metric.format(chart.total)}
           </p>
+          <p className="text-xs text-gray-500">{periodInfo.total}</p>
           {chart.change !== null && !loading && (
             <p
-              className={`mt-1 flex items-center gap-1 text-xs font-medium ${
+              className={`mt-0.5 flex items-center justify-end gap-1 text-xs font-medium ${
                 chart.change >= 0 ? "text-emerald-600" : "text-red-600"
               }`}
             >
-              {chart.change >= 0 ? (
-                <TrendingUp className="h-3.5 w-3.5" />
-              ) : (
-                <TrendingDown className="h-3.5 w-3.5" />
-              )}
+              {chart.change >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
               {chart.change >= 0 ? "+" : ""}
               {Math.round(chart.change)}% vs {chart.comparedTo}
             </p>
           )}
-          {chart.change === null && !loading && (
-            <p className="mt-1 text-xs text-gray-400">Nothing sold {chart.comparedTo} to compare with</p>
-          )}
-        </div>
-
-        {/* What is plotted, then over what - same pills, so the two rows read
-            as one control rather than two different things. */}
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <div className="flex flex-wrap gap-1 rounded-full bg-gray-100 p-1">
-            {METRICS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setMetricKey(key)}
-                aria-pressed={metricKey === key}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  metricKey === key
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-1 rounded-full bg-gray-100 p-1">
-            {PERIODS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setPeriod(key)}
-                aria-pressed={period === key}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  period === key
-                    ? "bg-white text-gray-900 shadow-sm"
-                    : "text-gray-500 hover:text-gray-900"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 
-      {period === "custom" && (
-        <div className="flex flex-wrap items-center gap-3 px-6 pb-1 pt-2 text-xs text-gray-600">
-          <label className="flex items-center gap-2">
-            From
-            <input
-              type="date"
-              value={custom.from}
-              max={custom.to}
-              onChange={(e) => setCustom((c) => ({ ...c, from: e.target.value }))}
-              className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
-            />
-          </label>
-          <label className="flex items-center gap-2">
-            To
-            <input
-              type="date"
-              value={custom.to}
-              min={custom.from}
-              onChange={(e) => setCustom((c) => ({ ...c, to: e.target.value }))}
-              className="rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
-            />
-          </label>
-        </div>
-      )}
+      {/* What is plotted, then over what - one bar, labelled, so the two
+          groups can't be mistaken for each other. */}
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl bg-gray-50 p-3" data-testid="chart-filters">
+        <Segmented label="Show" options={METRICS} value={metricKey} onChange={setMetricKey} />
+        <span className="hidden h-6 w-px bg-gray-200 sm:block" aria-hidden="true" />
+        <Segmented label="Period" options={PERIODS} value={period} onChange={choosePeriod} />
+        {period === "custom" && (
+          <div className="flex w-full flex-wrap items-center gap-3 text-xs text-gray-600">
+            <label className="flex items-center gap-2">
+              From
+              <input
+                type="date"
+                value={custom.from}
+                max={custom.to}
+                onChange={(e) => changeCustom({ from: e.target.value })}
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              To
+              <input
+                type="date"
+                value={custom.to}
+                min={custom.from}
+                onChange={(e) => changeCustom({ to: e.target.value })}
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+              />
+            </label>
+          </div>
+        )}
+      </div>
 
-      <div className="px-6 pb-6 pt-3">
+      <div className="mt-6">
         <div className="flex">
-          {/* Gridline values, in their own gutter so the plot stays full width */}
-          <div
-            className="relative w-10 shrink-0 text-right text-[10px] tabular-nums text-gray-400"
-            style={{ height: PLOT_HEIGHT }}
-          >
+          {/* Gridline values, in their own gutter so the bars keep the width */}
+          <div className="relative w-12 shrink-0 text-right text-[10px] tabular-nums text-gray-400" style={{ height: PLOT_HEIGHT }}>
             {Array.from({ length: Y_TICKS + 1 }, (_, i) => (
-              <span
-                key={i}
-                className="absolute right-2 -translate-y-1/2"
-                style={{ top: `${(i / Y_TICKS) * 100}%` }}
-              >
+              <span key={i} className="absolute right-2 -translate-y-1/2" style={{ top: `${(i / Y_TICKS) * 100}%` }}>
                 {metric.format((max * (Y_TICKS - i)) / Y_TICKS)}
               </span>
             ))}
           </div>
 
-          <div
-            role="img"
-            tabIndex={0}
-            aria-label={`${metric.title}, ${chart.rangeLabel}. Total ${metric.format(chart.total)}.`}
-            onMouseMove={moveHover}
-            onMouseLeave={() => setHovered(null)}
-            onFocus={() => setHovered(count - 1)}
-            onBlur={() => setHovered(null)}
-            onKeyDown={handleKeyDown}
-            className="relative flex-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2f8f66]"
-            style={{ height: PLOT_HEIGHT }}
-          >
+          <div className="relative flex-1" style={{ height: PLOT_HEIGHT }}>
             {Array.from({ length: Y_TICKS + 1 }, (_, i) => (
               <div
                 key={i}
-                className="absolute inset-x-0 border-t border-gray-100"
+                className={`absolute inset-x-0 border-t ${i === Y_TICKS ? "border-gray-300" : "border-gray-100"}`}
                 style={{ top: `${(i / Y_TICKS) * 100}%` }}
               />
             ))}
 
-            <svg
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              className="absolute inset-0 h-full w-full overflow-visible"
-              aria-hidden="true"
-            >
-              <defs>
-                <linearGradient id="demand-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={BRAND} stopOpacity="0.16" />
-                  <stop offset="100%" stopColor={BRAND} stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {hasOrders && (
-                <>
-                  <path d={areaPath} fill="url(#demand-fill)" />
-                  <path
-                    d={linePath}
-                    fill="none"
-                    stroke={BRAND}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </>
-              )}
-            </svg>
-
-            {!hasOrders && !loading && (
+            {!chart.hasOrders && !loading && (
               <p className="absolute inset-0 flex items-center justify-center text-sm text-gray-400">
                 Nothing completed in this period yet
               </p>
             )}
 
-            {/* The busiest point is labelled outright, so the headline number
-                isn't the only value readable without hovering. */}
-            {hasOrders && hovered === null && (
-              <span
-                className="pointer-events-none absolute -translate-x-1/2 -translate-y-full whitespace-nowrap rounded bg-white/90 px-1.5 text-[10px] font-semibold tabular-nums text-gray-700"
-                style={{ left: `${xAt(chart.peak)}%`, top: `calc(${yAt(buckets[chart.peak].value)}% - 8px)` }}
-              >
-                {metric.format(buckets[chart.peak].value)}
-              </span>
-            )}
+            <div
+              role="group"
+              aria-label={`${metric.legend} per ${granularity}, ${chart.rangeLabel}. Total ${metric.format(chart.total)}.`}
+              className="absolute inset-0 flex items-end"
+              onMouseLeave={() => setHovered(null)}
+            >
+              {buckets.map((b, i) => {
+                const height = heightOf(b.value);
+                const isCurrent = i === chart.current;
+                const isOpen = i === selected;
+                // The busiest bar and the one happening now carry their value,
+                // so the headline isn't the only number readable at a glance.
+                const labelled = b.value > 0 && hovered !== i && (i === chart.peak || isCurrent);
+                return (
+                  <button
+                    key={i}
+                    ref={(el) => {
+                      barRefs.current[i] = el;
+                    }}
+                    type="button"
+                    data-index={i}
+                    tabIndex={i === focusable ? 0 : -1}
+                    aria-pressed={isOpen}
+                    aria-label={`${b.full}: ${metric.format(b.value)}, ${b.orders.length} order${b.orders.length === 1 ? "" : "s"}`}
+                    onClick={() => setSelected(isOpen ? null : i)}
+                    onMouseEnter={() => setHovered(i)}
+                    onFocus={() => setHovered(i)}
+                    onBlur={() => setHovered(null)}
+                    onKeyDown={(e) => handleKeyDown(e, i)}
+                    className="group relative flex h-full min-w-0 flex-1 items-end justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2f8f66]"
+                  >
+                    <span
+                      className={`block w-[70%] max-w-10 rounded-t-[3px] transition-colors ${
+                        isOpen
+                          ? "bg-[#1f5c42]"
+                          : isCurrent
+                            ? "bg-[#2f8f66]/30 ring-2 ring-inset ring-[#2f8f66]"
+                            : "bg-[#2f8f66] group-hover:bg-[#267a56]"
+                      }`}
+                      style={{ height: height > 0 ? `max(${height}%, 3px)` : 0 }}
+                    />
+                    {labelled && (
+                      <span
+                        className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-semibold tabular-nums text-gray-700"
+                        style={{ bottom: `calc(${height}% + 4px)` }}
+                      >
+                        {metric.format(b.value)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-            {hasOrders && active && (
-              <>
-                <div
-                  className="pointer-events-none absolute top-0 h-full w-px bg-gray-300"
-                  style={{ left: `${xAt(hovered)}%` }}
-                />
-                <span
-                  className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
-                  style={{
-                    left: `${xAt(hovered)}%`,
-                    top: `${yAt(active.value)}%`,
-                    backgroundColor: BRAND,
-                  }}
-                />
-                <div
-                  className="pointer-events-none absolute z-10 -translate-y-full rounded-lg bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-gray-100"
-                  style={{
-                    left: `${xAt(hovered)}%`,
-                    top: `calc(${yAt(active.value)}% - 14px)`,
-                    transform: `translate(${hovered < count * 0.15 ? "0" : hovered > count * 0.85 ? "-100%" : "-50%"}, -100%)`,
-                  }}
-                >
-                  <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900">
-                    {metric.format(active.value)}
-                  </p>
-                  <p className="whitespace-nowrap text-[10px] text-gray-500">{active.label}</p>
-                </div>
-              </>
+            {hovered !== null && buckets[hovered] && (
+              <div
+                className="pointer-events-none absolute z-10 rounded-lg bg-white px-2.5 py-1.5 shadow-lg ring-1 ring-gray-100"
+                style={{
+                  left: `${centerOf(hovered)}%`,
+                  bottom: `min(calc(${heightOf(buckets[hovered].value)}% + 8px), calc(100% - 48px))`,
+                  transform: `translateX(${shiftOf(hovered)})`,
+                }}
+                data-testid="chart-readout"
+              >
+                <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-gray-900">
+                  {metric.format(buckets[hovered].value)}
+                </p>
+                <p className="whitespace-nowrap text-[10px] text-gray-500">
+                  {buckets[hovered].full} · {buckets[hovered].orders.length} order
+                  {buckets[hovered].orders.length === 1 ? "" : "s"}
+                </p>
+              </div>
             )}
           </div>
         </div>
 
-        <div className="relative ml-10 mt-2 h-4">
-          {chart.ticks.map(({ i, label }) => (
+        <div className="relative ml-12 mt-2 h-4" data-testid="chart-axis">
+          {chart.ticks.map((i) => (
             <span
               key={i}
-              className="absolute whitespace-nowrap text-[10px] text-gray-400"
-              style={{
-                left: `${xAt(i)}%`,
-                transform: `translateX(${i === 0 ? "0" : i === count - 1 ? "-100%" : "-50%"})`,
-              }}
+              className={`absolute -translate-x-1/2 whitespace-nowrap text-[10px] ${
+                i === chart.current ? "font-semibold text-gray-800" : "text-gray-400"
+              }`}
+              style={{ left: `${centerOf(i)}%` }}
             >
-              {label}
+              {buckets[i].label}
             </span>
           ))}
         </div>
 
-        {/* The same numbers without hovering, for screen readers. A <table>
-            won't actually shrink to sr-only's 1px box on its own - CSS never
-            compresses a table below its rows' natural height - so the sr-only
-            wrapper has to be a plain div; without it, this ends up rendered at
-            full size and inflates the page's scrollable height. */}
-        <div className="sr-only">
-          <table>
-            <caption>{metric.title}, {chart.rangeLabel}</caption>
-            <thead>
-              <tr>
-                <th scope="col">Period</th>
-                <th scope="col">{metric.title}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buckets.map((b, i) => (
-                <tr key={i}>
-                  <th scope="row">{b.label}</th>
-                  <td>{metric.format(b.value)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-[#2f8f66]" aria-hidden="true" />
+            {metric.legend} per {granularity}
+          </span>
+          <span>Tip: tap a bar to see that {granularity}&apos;s orders</span>
         </div>
+
+        {open && (
+          <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4" data-testid="chart-orders">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{open.full}</p>
+                <p className="text-xs text-gray-500">
+                  {open.orders.length} completed order{open.orders.length === 1 ? "" : "s"} ·{" "}
+                  {metric.format(open.value)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                aria-label="Close"
+                className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {open.orders.length === 0 ? (
+              <p className="mt-3 text-sm text-gray-500">No orders were completed in this {granularity}.</p>
+            ) : (
+              <ul className="mt-2 divide-y divide-gray-200">
+                {open.orders.slice(0, MAX_LISTED).map((order) => (
+                  <li key={order._id} className="flex items-center justify-between gap-3 py-2">
+                    <div className="min-w-0 text-sm">
+                      <p className="truncate font-medium text-gray-900">{order.buyer?.name || "A buyer"}</p>
+                      <p className="truncate text-xs text-gray-500">
+                        {order.quantity} kg of {order.productTitle} · ₱{Number(order.total).toLocaleString()}
+                      </p>
+                    </div>
+                    <Link
+                      to={`/farmer/orders/${order._id}`}
+                      className="shrink-0 rounded-md border border-[#2f8f66] bg-white px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                    >
+                      View order
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {open.orders.length > MAX_LISTED && (
+              <Link to="/farmer/orders" className="mt-2 inline-block text-xs font-semibold text-[#2f8f66] hover:underline">
+                +{open.orders.length - MAX_LISTED} more in Orders
+              </Link>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </section>
   );
 }

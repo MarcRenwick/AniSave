@@ -11,6 +11,9 @@ export const categoryLabels = {
 
 export const LOW_STOCK_THRESHOLD = 10;
 
+// Each notification also says where it leads and what to call that - the
+// dashboard's list puts a button on every one - and, for an order, the part of
+// the sentence worth emphasising ("2 kg of Tomato").
 export function deriveNotifications(products, orders) {
   const list = [];
 
@@ -19,11 +22,16 @@ export function deriveNotifications(products, orders) {
     .forEach((order) => {
       list.push({
         id: `order-${order._id}`,
+        kind: "order",
         category: "orders",
         icon: FileText,
         color: "bg-blue-500",
         title: "New Order",
         description: `${order.buyer?.name || "A buyer"} ordered ${order.quantity}kg of ${order.productTitle}`,
+        lead: `${order.buyer?.name || "A buyer"} ordered`,
+        emphasis: `${order.quantity} kg of ${order.productTitle}`,
+        to: `/farmer/orders/${order._id}`,
+        action: "View order",
       });
     });
 
@@ -31,7 +39,10 @@ export function deriveNotifications(products, orders) {
   if (outOfStock.length > 0) {
     list.push({
       id: "out-of-stock",
+      kind: "out-of-stock",
       category: "system",
+      to: "/farmer/products",
+      action: "Restock",
       icon: TrendingDown,
       color: "bg-red-500",
       title: "Out of Stock",
@@ -45,7 +56,10 @@ export function deriveNotifications(products, orders) {
   if (lowStock.length > 0) {
     list.push({
       id: "low-stock",
+      kind: "low-stock",
       category: "system",
+      to: "/farmer/products",
+      action: "Restock",
       icon: AlertTriangle,
       color: "bg-yellow-500",
       title: "Low Stock",

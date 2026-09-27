@@ -291,6 +291,9 @@ export default function Login() {
             <input
               id="username"
               name="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               type="text"
               required
               value={form.username}

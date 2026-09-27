@@ -2,11 +2,15 @@ const asyncHandler = require("express-async-handler");
 const User = require("../models/User");
 const validate = require("../utils/validate");
 const { effectiveVerificationStatus } = require("../utils/verification");
-const { disconnectUser } = require("../utils/realtime");
+const { disconnectUser, isOnline } = require("../utils/realtime");
 
+// An account as the Users page shows it: with its verification status, and
+// whether the person has AniSave open right now - the same live connection
+// that says "Active now" in chat. When they last were is `lastActiveAt`.
 const withStatus = (user) => ({
   ...user.toObject(),
   verificationStatus: effectiveVerificationStatus(user),
+  online: isOnline(user._id),
 });
 
 // @desc    List farmer/buyer accounts for moderation

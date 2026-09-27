@@ -89,7 +89,7 @@ const registerAdmin = asyncHandler(async (req, res) => {
     throw new Error("That OTP is invalid or has expired");
   }
 
-  const usernameTaken = await User.findOne({ username });
+  const usernameTaken = await User.findByUsernameIgnoringCase(username);
   if (usernameTaken) {
     res.status(400);
     throw new Error("Username is already taken");

@@ -6,6 +6,7 @@ import BanConfirmModal from "../../components/admin/BanConfirmModal";
 import VerificationReviewModal from "../../components/admin/VerificationReviewModal";
 import { getAdminUsers, banUser, unbanUser } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import { activeAgo } from "../../utils/activity";
 import {
   VERIFICATION_META,
   hasDocuments,
@@ -19,6 +20,10 @@ const filters = [
   { key: "buyer", label: "Buyers" },
 ];
 
+// Who is around changes by the minute, so the list is quietly fetched again
+// this often while the page is open.
+const REFRESH_MS = 30 * 1000;
+
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +31,8 @@ export default function AdminUsers() {
   const [role, setRole] = useState("");
   const [target, setTarget] = useState(null);
   const [reviewing, setReviewing] = useState(null);
+  // Only the people who have AniSave open right now.
+  const [activeOnly, setActiveOnly] = useState(false);
   usePreserveScroll(role);
 
   useEffect(() => {
@@ -34,6 +41,14 @@ export default function AdminUsers() {
       .then(({ data }) => setUsers(data))
       .catch(() => setError("Could not load users. Is the server running?"))
       .finally(() => setLoading(false));
+
+    // Nothing on screen changes while this happens unless someone came or went.
+    const timer = setInterval(() => {
+      getAdminUsers(role)
+        .then(({ data }) => setUsers(data))
+        .catch(() => {});
+    }, REFRESH_MS);
+    return () => clearInterval(timer);
   }, [role]);
 
   const replaceUser = (updated) =>
@@ -48,6 +63,8 @@ export default function AdminUsers() {
   const pendingCount = users.filter(
     (u) => u.role === "farmer" && verificationKey(u) === "pending"
   ).length;
+  const activeCount = users.filter((u) => u.online).length;
+  const shown = activeOnly ? users.filter((u) => u.online) : users;
 
   return (
     <AdminLayout>
@@ -73,6 +90,20 @@ export default function AdminUsers() {
             </button>
           ))}
 
+          <button
+            type="button"
+            onClick={() => setActiveOnly((on) => !on)}
+            aria-pressed={activeOnly}
+            className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition ${
+              activeOnly
+                ? "bg-[#2f8f66] text-white"
+                : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <span className={`h-2 w-2 rounded-full ${activeOnly ? "bg-white" : "bg-green-500"}`} aria-hidden="true" />
+            Active now ({activeCount})
+          </button>
+
           {pendingCount > 0 && (
             <span className="rounded-full bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-800">
               {pendingCount} farmer{pendingCount === 1 ? "" : "s"} awaiting verification
@@ -85,7 +116,7 @@ export default function AdminUsers() {
 
         {!loading && !error && (
           <div className="mt-6 overflow-x-auto rounded-xl bg-white shadow-sm">
-            <table className="w-full min-w-[40rem] text-left text-sm">
+            <table className="w-full min-w-[46rem] text-left text-sm">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-3">Name</th>
@@ -94,11 +125,12 @@ export default function AdminUsers() {
                   <th className="px-4 py-3">Location</th>
                   <th className="px-4 py-3">Verification</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Activity</th>
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {users.map((u) => {
+                {shown.map((u) => {
                   const meta = VERIFICATION_META[verificationKey(u)];
                   const decided = isVerificationDecided(u);
                   return (
@@ -131,6 +163,18 @@ export default function AdminUsers() {
                           <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700">
                             Active
                           </span>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3" data-testid="user-activity">
+                        {u.online ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+                            <span className="h-2 w-2 rounded-full bg-green-500 ring-2 ring-green-100" aria-hidden="true" />
+                            Active now
+                          </span>
+                        ) : u.lastActiveAt ? (
+                          <span className="text-xs text-gray-500">{activeAgo(u.lastActiveAt)}</span>
+                        ) : (
+                          <span className="text-xs text-gray-400">No activity yet</span>
                         )}
                       </td>
                       <td className="px-4 py-3">
@@ -177,8 +221,10 @@ export default function AdminUsers() {
               </tbody>
             </table>
 
-            {users.length === 0 && (
-              <p className="p-6 text-center text-sm text-gray-400">No users found.</p>
+            {shown.length === 0 && (
+              <p className="p-6 text-center text-sm text-gray-400">
+                {activeOnly && users.length > 0 ? "Nobody is on AniSave right now." : "No users found."}
+              </p>
             )}
           </div>
         )}

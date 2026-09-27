@@ -73,9 +73,9 @@ mongoose
     const { host, port, name: dbName } = mongoose.connection;
     console.log(`Connected to ${host}${port ? `:${port}` : ""}, database "${dbName}".`);
 
-    const existing = await User.findOne({
-      $or: [{ username: clean.username }, { email: clean.email }],
-    });
+    // A username is taken whatever its capitals (see the User model).
+    const existing =
+      (await User.findByUsernameIgnoringCase(clean.username)) || (await User.findOne({ email: clean.email }));
 
     if (existing && !reset) {
       console.error(

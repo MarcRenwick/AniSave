@@ -12,11 +12,14 @@ const userSchema = new mongoose.Schema(
       maxlength: [80, "Name must be 80 characters or fewer"],
       match: [/^[^<>]*$/, "Name can't contain < or >"],
     },
+    // Kept with the capitals it was chosen with, and signing in has to match
+    // them. Accounts made before that was so were saved in lowercase, which is
+    // the spelling they sign in with. No two accounts may differ only in
+    // capitals - see the index below.
     username: {
       type: String,
       required: [true, "Username is required"],
       unique: true,
-      lowercase: true,
       trim: true,
       minlength: [3, "Username must be at least 3 characters"],
       maxlength: [30, "Username must be 30 characters or fewer"],
@@ -289,6 +292,15 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true, validateModifiedOnly: true }
 );
+
+// "Wikcute" and "wikcute" would read as one account to anyone, so a username
+// is unique whatever its capitals: the database refuses a second one that
+// differs only in case, and this is how "is it taken?" is asked.
+const USERNAME_IGNORING_CASE = { locale: "en", strength: 2 };
+userSchema.index({ username: 1 }, { unique: true, name: "username_ignoring_case", collation: USERNAME_IGNORING_CASE });
+userSchema.statics.findByUsernameIgnoringCase = function (username) {
+  return this.findOne({ username }).collation(USERNAME_IGNORING_CASE);
+};
 
 // Whatever ends up in a response, these never do - even if a query selected them.
 const PRIVATE_FIELDS = [

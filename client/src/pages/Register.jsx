@@ -374,6 +374,9 @@ export default function Register() {
               <input
                 id="username"
                 name="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
                 value={form.username}
                 onChange={handleChange}
