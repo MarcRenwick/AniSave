@@ -7,32 +7,28 @@ import { BUYER_ORDER_STATUS } from "../../utils/orderStatus";
 const orderDate = (date) =>
   new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
+// One order on one line: the product, then what and when, then its status.
 function OrderRow({ order, caption }) {
   const meta = BUYER_ORDER_STATUS[order.status] || BUYER_ORDER_STATUS.new;
-  const Icon = meta.icon;
   return (
     <Link
       to={`/buyer/orders/${order._id}`}
       data-order={order._id}
       className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-1.5 transition hover:bg-green-50"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white text-gray-300 ring-1 ring-gray-200">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white text-gray-300 ring-1 ring-gray-200">
         {order.image ? (
           <img src={`${SERVER_URL}${order.image}`} alt="" className="h-full w-full object-cover" />
         ) : (
-          <Package className="h-5 w-5" />
+          <Package className="h-4 w-4" />
         )}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-gray-900">{order.productTitle}</span>
-        <span className="block truncate text-xs text-gray-500">
-          {caption && `${caption} · `}
-          {order.quantity}kg · ₱{order.total} · {orderDate(order.createdAt)}
-        </span>
+      <span className="min-w-0 flex-1 truncate text-xs text-gray-500">
+        <span className="text-sm font-semibold text-gray-900">{order.productTitle}</span>
+        {caption && ` · ${caption}`} · {order.quantity} kg · ₱{Number(order.total).toLocaleString()} ·{" "}
+        {orderDate(order.createdAt)}
       </span>
-      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${meta.color}`}>
-        <Icon className="h-3.5 w-3.5" /> {meta.label}
-      </span>
+      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.color}`}>{meta.label}</span>
     </Link>
   );
 }

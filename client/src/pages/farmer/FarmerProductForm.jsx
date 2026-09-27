@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Camera, ImageOff, Info, MapPin, Tag, X } from "lucide-react";
+import { ArrowLeft, Camera, Check, ImageOff, Info, Lock, MapPin, Tag, TrendingUp, X } from "lucide-react";
 import {
   createProduct,
   getPriceRecommendation,
@@ -39,7 +39,8 @@ const CLEAN = { stock: digitsOnly, price: priceOnly, salePrice: priceOnly, expen
 // reads the same way.
 const peso = (amount) => `₱${Math.round(amount).toLocaleString()}`;
 const recordedOn = (date) =>
-  new Date(date).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+  new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // The category buyers filter by follows from the catalogue product rather than
 // being asked for again - so a mango can't be filed under vegetables.
@@ -49,13 +50,131 @@ const categoryLabel = (crop) => categoryLabelFor(crop?.listingCategory);
 // picked, still only in this browser.
 const photoSrc = (photo) =>
   photo.kind === "new" ? photo.preview : `${SERVER_URL}${photo.path}`;
+// What a photo is known by while it is moved about: its place in the list
+// changes, this doesn't.
+const photoKey = (photo) => (photo.kind === "new" ? photo.preview : photo.path);
 
-// One labelled line of the summary above the price box.
-function Line({ label, children }) {
+// The list with one photo taken out and put down where another one is.
+function moveTo(list, fromKey, toKey) {
+  const from = list.findIndex((photo) => photoKey(photo) === fromKey);
+  const to = list.findIndex((photo) => photoKey(photo) === toKey);
+  if (from < 0 || to < 0 || from === to) return list;
+  const next = [...list];
+  const [photo] = next.splice(from, 1);
+  next.splice(to, 0, photo);
+  return next;
+}
+
+function Required() {
+  return <span className="ml-0.5 text-red-600">*</span>;
+}
+
+function Pill({ children }) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
-      <span className="text-gray-600">{label}</span>
-      <span className="font-medium text-gray-900">{children}</span>
+    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+      {children}
+    </span>
+  );
+}
+
+// The circle beside each step: a tick once it is filled in, its number until
+// then - green for what has to be done, grey for what is optional.
+function StepMark({ step, done, optional }) {
+  if (done) {
+    return (
+      <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+        <Check className="h-3.5 w-3.5" strokeWidth={3} />
+      </span>
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+        optional ? "bg-gray-200 text-gray-600" : "bg-[#2f8f66] text-white"
+      }`}
+    >
+      {step}
+    </span>
+  );
+}
+
+// One numbered step of the form, so a long page reads as six short ones.
+function FormSection({ step, title, done = false, required = false, optional = false, aside, note, testId, children }) {
+  return (
+    <section className="border-t border-gray-100 px-5 py-6 sm:px-6" data-testid={testId} data-done={done}>
+      <div className="flex items-center gap-3">
+        <StepMark step={step} done={done} optional={optional} />
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h2 className="flex flex-wrap items-center gap-2 text-base font-semibold text-gray-900">
+            <span>
+              {title}
+              {required && <Required />}
+            </span>
+            {optional && <Pill>Optional</Pill>}
+            {done && <span className="sr-only">(done)</span>}
+          </h2>
+          {aside}
+        </div>
+      </div>
+      <div className="sm:pl-9">
+        {note && <p className="mt-1 text-xs text-gray-500">{note}</p>}
+        <div className="mt-4 space-y-4">{children}</div>
+      </div>
+    </section>
+  );
+}
+
+function Label({ htmlFor, required = false, extra, children }) {
+  return (
+    <label htmlFor={htmlFor} className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
+      <span>
+        {children}
+        {required && <Required />}
+      </span>
+      {extra}
+    </label>
+  );
+}
+
+// A text box with what it is measured in beside it - "₱" in front, "kg" or
+// "/ kg" behind - so nobody has to guess whether a price is per kilo.
+function AddonInput({ prefix, suffix, ...input }) {
+  return (
+    <div className="mt-1.5 flex overflow-hidden rounded-lg border border-gray-300 bg-white transition focus-within:border-[#2f8f66] focus-within:ring-1 focus-within:ring-[#2f8f66]">
+      {prefix && (
+        <span aria-hidden="true" className="flex items-center pl-3 text-sm text-gray-500">
+          {prefix}
+        </span>
+      )}
+      <input
+        {...input}
+        className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+      />
+      {suffix && (
+        <span aria-hidden="true" className="flex items-center border-l border-gray-200 bg-gray-50 px-3 text-sm text-gray-500">
+          {suffix}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const inputClass =
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+
+// A plain statement in place of the price guide, when there isn't one to show.
+function Notice({ tone = "gray", children }) {
+  const amber = tone === "amber";
+  return (
+    <div
+      data-testid="price-notice"
+      className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm ring-1 ${
+        amber ? "bg-amber-50 text-amber-900 ring-amber-100" : "bg-gray-50 text-gray-600 ring-gray-100"
+      }`}
+    >
+      <Info className={`mt-0.5 h-4 w-4 shrink-0 ${amber ? "text-amber-600" : "text-gray-400"}`} />
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }
@@ -65,36 +184,33 @@ function Line({ label, children }) {
 // estimated, adjusted or borrowed from a neighbouring town: with no record for
 // this product in this municipality, the farmer is told so and prices the
 // listing themselves.
-function RecommendedPrice({ crop, quantity, recommendation, checking, onUse }) {
-  if (!crop) return null;
-
-  const heading = (
-    <p className="font-semibold text-gray-900">Recommended Price Unavailable</p>
-  );
-
+//
+// Beside the price: what the kilos being listed would cost and bring in -
+// the expense on them and, at the recommended price, the income and profit.
+// Only ever an estimate, and only ever at the recommended price: the farmer's
+// own selling price is theirs to set and is not used here.
+function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, onUse }) {
+  if (!crop) {
+    return <Notice>Choose your product above to see its price guide for your municipality.</Notice>;
+  }
   if (checking && !recommendation) {
-    return (
-      <div className="mt-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm text-gray-500">
-        Checking the market price for your municipality...
-      </div>
-    );
+    return <Notice>Checking the market price for your municipality...</Notice>;
   }
   if (!recommendation) return null;
+
+  const heading = <p className="font-semibold text-gray-900">Recommended Price Unavailable</p>;
 
   // No address on the account, so there is no municipality to look a price up
   // in. Nothing is assumed about where they are.
   if (recommendation.reason === "no-municipality") {
     return (
-      <div className="mt-2 flex items-start gap-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-        <div>
-          {heading}
-          <p className="mt-0.5 text-xs text-gray-600">
-            Add your municipality in Edit Profile to see the market price for your area. You can
-            still set your own selling price below.
-          </p>
-        </div>
-      </div>
+      <Notice>
+        {heading}
+        <p className="mt-0.5 text-xs">
+          Add your municipality in Edit Profile to see the market price for your area. You can still
+          set your own selling price below.
+        </p>
+      </Notice>
     );
   }
 
@@ -102,112 +218,277 @@ function RecommendedPrice({ crop, quantity, recommendation, checking, onUse }) {
   // produce simply has no market price recorded for it.
   if (recommendation.reason === "not-supported") {
     return (
-      <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <div>
-          {heading}
-          <p className="mt-0.5 text-xs text-amber-900">
-            Market prices aren&apos;t recorded for {recommendation.product} yet. Set your own
-            selling price below.
-          </p>
-        </div>
-      </div>
+      <Notice tone="amber">
+        {heading}
+        <p className="mt-0.5 text-xs">
+          Market prices aren&apos;t recorded for {recommendation.product} yet. Set your own selling
+          price below.
+        </p>
+      </Notice>
     );
   }
 
   if (!recommendation.available) {
     return (
-      <div className="mt-2 flex items-start gap-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-        <div className="min-w-0">
-          {heading}
-          <p className="mt-0.5 text-xs text-amber-900">
-            No current market-price data is available for this product in your municipality.
-          </p>
-          <p className="mt-1 text-xs text-amber-800">
-            Your municipality: <span className="font-medium">{recommendation.municipality}</span>.
-            Set your own selling price below.
-          </p>
-        </div>
-      </div>
+      <Notice tone="amber">
+        {heading}
+        <p className="mt-0.5 text-xs">
+          No current market-price data is available for this product in your municipality.
+        </p>
+        <p className="mt-1 text-xs text-amber-800">
+          Your municipality: <span className="font-medium">{recommendation.municipality}</span>. Set
+          your own selling price below.
+        </p>
+      </Notice>
     );
   }
 
+  const price = recommendation.pricePerKilo;
+  const kilos = quantity === "" ? null : Number(quantity);
+  const figures =
+    kilos === null
+      ? null
+      : estimate({ quantity: kilos, expensePerKg: Number(expensePerKg || 0), marketPrice: price });
+
   return (
-    <div className="mt-2 rounded-md bg-green-50 px-3 py-2.5 text-sm">
-      <div className="flex items-start gap-2">
-        <Tag className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8f66]" />
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <Line label="Product">{recommendation.product}</Line>
-          {quantity !== "" && <Line label="Quantity">{quantity} KG</Line>}
-          <Line label="Municipality">{recommendation.municipality}</Line>
-          {/* A variety is priced as the crop it is a variety of, and says so
-              rather than passing the figure off as its own. */}
-          <Line label={recommendation.pricedAs ? `Latest Market Price (${recommendation.pricedAs})` : "Latest Market Price"}>
-            {peso(recommendation.pricePerKilo)}/kg
-          </Line>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-green-200 pt-1">
-            <span className="font-semibold text-[#2f8f66]">Recommended Selling Price</span>
-            <span className="font-semibold text-[#2f8f66]">
-              {peso(recommendation.pricePerKilo)}/kg
-            </span>
-          </div>
-          <p className="pt-1 text-xs text-gray-500">
-            Recommended price is based on the latest available market-price data for your
-            municipality (recorded {recordedOn(recommendation.recordedAt)}). It is only a
-            suggestion - you can set any price you like.
+    <div className="overflow-hidden rounded-xl border border-green-200 bg-white" data-testid="price-guide">
+      <div className="flex items-center gap-3 bg-green-50 px-4 py-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2f8f66] text-white">
+          <TrendingUp className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900">Price guide for {recommendation.product}</p>
+          <p className="text-xs text-gray-500">
+            {recommendation.municipality} market data · recorded {recordedOn(recommendation.recordedAt)}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => onUse(recommendation.pricePerKilo)}
-          className="shrink-0 rounded-md border border-[#2f8f66] px-2.5 py-1 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-100"
-        >
-          Use this price
-        </button>
       </div>
+
+      <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="flex flex-col justify-between rounded-xl bg-[#1f5c42] p-4 text-white">
+          <div>
+            <p className="text-xs font-medium text-green-100">Recommended selling price</p>
+            <p className="mt-1 text-3xl font-bold tracking-tight" data-testid="recommended-price">
+              {peso(price)} <span className="text-base font-semibold text-green-100">/ kg</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => onUse(price)}
+            className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-[#1f5c42] transition hover:bg-green-50"
+          >
+            <Check className="h-4 w-4" />
+            Use {peso(price)} / kg
+          </button>
+        </div>
+
+        <div className="grid gap-3">
+          <div className="rounded-xl bg-gray-50 px-4 py-3">
+            {/* A variety is priced as the crop it is a variety of, and says so
+                rather than passing the figure off as its own. */}
+            <p className="text-xs text-gray-500">
+              {recommendation.pricedAs ? `Latest market price (${recommendation.pricedAs})` : "Latest market price"}
+            </p>
+            <p className="mt-0.5 text-lg font-bold text-gray-900">{peso(price)} / kg</p>
+          </div>
+
+          <div className="rounded-xl bg-gray-50 px-4 py-3" data-testid="profit-estimate">
+            {figures === null ? (
+              <p className="text-xs text-gray-500">
+                Enter your kilos above to see what they would bring in at this price.
+              </p>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500">
+                  If you <span className="font-semibold text-[#2f8f66]">sell all</span> {kilos} kg at {peso(price)}
+                </p>
+                <p className="mt-0.5 text-lg font-bold text-gray-900">
+                  {money(figures.income)} <span className="text-xs font-medium text-gray-500">estimated income</span>
+                </p>
+                {expensePerKg !== "" && (
+                  <div className="mt-2 space-y-0.5 border-t border-gray-200 pt-2 text-xs">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-gray-500">Total expense</span>
+                      <span className="font-medium text-gray-800">{money(figures.expense)}</span>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="font-semibold text-gray-700">Estimated profit</span>
+                      <span className={`font-semibold ${profitTone(figures.profit)}`}>{money(figures.profit)}</span>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <p className="flex items-center gap-1.5 border-t border-green-100 px-4 py-2.5 text-xs text-gray-500">
+        <Info className="h-3.5 w-3.5 shrink-0" />
+        Just a suggestion - you can set any price you like.
+      </p>
     </div>
   );
 }
 
-// What the listing would cost and bring in, worked out as the farmer types:
-// the expense on the kilos they are listing and - when their municipality has
-// a market price for the product - what those kilos would fetch at it. Only
-// ever an estimate, and only ever at the recommended price: the farmer's own
-// selling price is theirs to set and is not used here.
-function ProfitEstimate({ crop, quantity, expensePerKg, recommendation, checking }) {
-  if (quantity === "" || expensePerKg === "") return null;
+// Under the selling price: what each kilo leaves the farmer once their own
+// cost is taken off - at their price, not the recommended one.
+function MarginHint({ price, expensePerKg }) {
+  const hint = (text, tone = "text-gray-500") => (
+    <p className={`mt-1.5 text-xs ${tone}`} data-testid="price-margin">
+      {text}
+    </p>
+  );
+  if (expensePerKg === "") return hint("Add your cost per kg above to see your profit per kilo here.");
+  if (price === "" || Number(price) === 0) return hint("Type your price to see your profit per kilo.");
 
-  const kilos = Number(quantity);
-  const perKg = Number(expensePerKg);
-  const marketPrice = recommendation?.available ? recommendation.pricePerKilo : null;
-  const { expense, income, profit } = estimate({ quantity: kilos, expensePerKg: perKg, marketPrice });
+  const margin = Math.round((Number(price) - Number(expensePerKg)) * 100) / 100;
+  if (margin === 0) return hint("You break even at this price - it only covers your cost.");
+  if (margin < 0) {
+    return hint(`You lose ${money(-margin)} per kilo at this price - it's below your cost.`, "font-medium text-red-600");
+  }
+  return hint(`You make ${money(margin)} per kilo at this price, after your cost.`, "font-medium text-[#2f8f66]");
+}
+
+// The six things a listing needs, ticked off as they are filled in.
+function Checklist({ items, isEdit }) {
+  const done = items.filter((item) => item.done).length;
+  return (
+    <section className="rounded-2xl border border-gray-200/70 bg-white p-5 shadow-sm" data-testid="publish-checklist">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-sm font-semibold text-gray-900">{isEdit ? "Before you save" : "Before you publish"}</h2>
+        <span className="text-xs font-medium text-gray-500" data-testid="checklist-count">
+          {done} of {items.length} done
+        </span>
+      </div>
+      <div
+        role="progressbar"
+        aria-label="Listing progress"
+        aria-valuemin={0}
+        aria-valuemax={items.length}
+        aria-valuenow={done}
+        className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100"
+      >
+        <div
+          className="h-full rounded-full bg-[#2f8f66] transition-all duration-300"
+          style={{ width: `${(done / items.length) * 100}%` }}
+        />
+      </div>
+      <ul className="mt-4 space-y-2.5">
+        {items.map((item) => (
+          <li key={item.key} className="flex items-center gap-2.5 text-sm" data-done={item.done}>
+            {item.done ? (
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+                <Check className="h-3 w-3" strokeWidth={3} />
+              </span>
+            ) : (
+              <span className="h-5 w-5 shrink-0 rounded-full border-2 border-gray-300" />
+            )}
+            <span className={`min-w-0 truncate ${item.done ? "text-gray-800" : "text-gray-500"}`}>{item.text}</span>
+            <span className="sr-only">{item.done ? "(done)" : "(to do)"}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Chip({ tone = "green", children }) {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
+        tone === "amber" ? "bg-amber-50 text-amber-800 ring-amber-100" : "bg-green-50 text-[#1f5c42] ring-green-100"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
+
+// The listing as a buyer will meet it, built from whatever is filled in so
+// far. Nothing here is saved or sent - it reads the same state the form does,
+// so a photo, a price or a description shows up the moment it is entered.
+function Preview({ crop, form, photos, shown, onPickPhoto, seller, town }) {
+  const isPreOrder = form.productType === "preorder";
+  const priced = form.price !== "" && Number(form.price) > 0;
+  const asProduct = {
+    price: Number(form.price),
+    salePrice: form.salePrice === "" ? null : Number(form.salePrice),
+  };
 
   return (
-    <div className="mt-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm" data-testid="profit-estimate">
-      <div className="space-y-0.5">
-        <Line label={`Total Expense (${kilos} kg × ${money(perKg)})`}>{money(expense)}</Line>
-        {marketPrice !== null ? (
-          <>
-            <Line label={`Estimated Income (${kilos} kg × ${money(marketPrice)})`}>{money(income)}</Line>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 border-t border-gray-200 pt-1">
-              <span className="font-semibold text-gray-900">Estimated Profit</span>
-              <span className={`font-semibold ${profitTone(profit)}`}>{money(profit)}</span>
-            </div>
-            <p className="pt-1 text-xs text-gray-500">
-              Estimated at the recommended price for {recommendation.municipality}, not your selling
-              price.
-            </p>
-          </>
+    <div className="overflow-hidden rounded-2xl border border-gray-200/70 bg-white shadow-sm" data-testid="buyer-preview">
+      <div className="flex h-60 items-center justify-center bg-gray-50 sm:h-72 lg:h-60">
+        {shown ? (
+          <img src={photoSrc(shown)} alt="Listing cover" className="h-full w-full object-contain" />
         ) : (
-          <p className="pt-1 text-xs text-gray-500">
-            {!crop
-              ? "Choose a product to estimate its income and profit at the recommended price."
-              : checking
-                ? "Checking the market price for your municipality..."
-                : "There's no recommended price for this product in your municipality, so income and profit can't be estimated yet."}
-          </p>
+          <div className="flex flex-col items-center gap-2 text-gray-300">
+            <ImageOff className="h-12 w-12" />
+            <span className="text-xs">Photos you add appear here</span>
+          </div>
         )}
+      </div>
+
+      {photos.length > 1 && (
+        <div className="flex justify-center gap-2 border-b border-gray-100 p-3">
+          {photos.map((photo, i) => (
+            <button
+              key={photoKey(photo)}
+              type="button"
+              onClick={() => onPickPhoto(photoKey(photo))}
+              aria-label={`Show photo ${i + 1}`}
+              aria-current={photo === shown}
+              className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 ${
+                photo === shown ? "border-[#2f8f66]" : "border-transparent"
+              }`}
+            >
+              <img src={photoSrc(photo)} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-4 p-5">
+        <div>
+          <div className="flex flex-wrap gap-1.5">
+            {crop && <Chip>{categoryLabel(crop)}</Chip>}
+            {isPreOrder ? <Chip tone="amber">Pre-Order</Chip> : <Chip>For Sale</Chip>}
+          </div>
+          <h3 className="mt-2 text-2xl font-bold text-gray-900">
+            {crop ? crop.name : <span className="text-gray-300">Your product</span>}
+          </h3>
+          <div className="mt-0.5">
+            {priced ? (
+              <PriceTag product={asProduct} size="lg" suffix=" / kg" />
+            ) : (
+              <span className="text-lg font-semibold text-gray-300">₱ — / kg</span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            Listed just now · {town}
+            {form.stock !== "" && ` · ${form.stock} kg available`}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Details</p>
+          <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed text-gray-600">
+            {form.description || <span className="text-gray-300">Your description shows here.</span>}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 border-t border-gray-100 pt-4">
+          <Avatar
+            src={seller?.avatar}
+            alt={seller?.name || "You"}
+            className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+            iconClass="h-5 w-5"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900">{seller?.name || "You"}</p>
+            <p className="truncate text-xs text-gray-500">{seller?.location || "Address not set"}</p>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -224,152 +505,10 @@ const emptyForm = {
   description: "",
 };
 
-const inputClass =
-  "mt-1 w-full rounded-md border border-gray-400 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
-
-function Required() {
-  return <span className="text-red-600">*</span>;
-}
-
-// A heading that divides the form into what must be filled in and what is
-// worth adding, so a long single column reads as a few short ones.
-function Step({ title, note, children }) {
-  return (
-    <section className="border-t border-gray-200 pt-5">
-      <p className="font-semibold text-gray-900">{title}</p>
-      {note && <p className="text-xs text-gray-500">{note}</p>}
-      <div className="mt-3 space-y-4">{children}</div>
-    </section>
-  );
-}
-
-function RadioGroup({ legend, name, value, options, onChange }) {
-  return (
-    <fieldset>
-      <legend className="font-medium text-gray-900">
-        {legend}
-        <Required />
-      </legend>
-      <div className="mt-2 flex flex-wrap gap-x-10 gap-y-2">
-        {options.map(([optionValue, label]) => (
-          <label key={optionValue} className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="radio"
-              name={name}
-              value={optionValue}
-              checked={value === optionValue}
-              onChange={onChange}
-              className="h-4 w-4 accent-[#2f8f66]"
-            />
-            {label}
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-// The listing as a buyer will meet it, built from whatever is filled in so
-// far. Nothing here is saved or sent - it reads the same state the form does,
-// so a photo, a price or a description shows up the moment it is entered.
-function Preview({ crop, form, photos, cover, onPickPhoto, seller, town }) {
-  const isPreOrder = form.productType === "preorder";
-  const priced = form.price !== "" && Number(form.price) > 0;
-  const asProduct = {
-    price: Number(form.price),
-    salePrice: form.salePrice === "" ? null : Number(form.salePrice),
-  };
-
-  return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-      <div className="flex h-64 items-center justify-center bg-gray-50 sm:h-80">
-        {cover ? (
-          <img
-            src={photoSrc(cover)}
-            alt="Listing cover"
-            className="h-full w-full object-contain"
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-2 text-gray-300">
-            <ImageOff className="h-14 w-14" />
-            <span className="text-xs">Photos you add appear here</span>
-          </div>
-        )}
-      </div>
-
-      {photos.length > 1 && (
-        <div className="flex justify-center gap-2 border-b border-gray-100 p-3">
-          {photos.map((photo, i) => (
-            <button
-              key={photo.kind === "new" ? photo.preview : photo.path}
-              type="button"
-              onClick={() => onPickPhoto(i)}
-              aria-label={`Show photo ${i + 1}`}
-              aria-current={photo === cover}
-              className={`h-12 w-12 shrink-0 overflow-hidden rounded-md border-2 ${
-                photo === cover ? "border-[#2f8f66]" : "border-transparent"
-              }`}
-            >
-              <img src={photoSrc(photo)} alt="" className="h-full w-full object-cover" />
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="space-y-5 p-6">
-        <div>
-          <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-900">
-            {crop ? crop.name : <span className="text-gray-300">Your product</span>}
-            {isPreOrder && (
-              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                Pre-Order
-              </span>
-            )}
-          </h2>
-
-          <div className="mt-1">
-            {priced ? (
-              <PriceTag product={asProduct} size="lg" suffix=" per kilo" />
-            ) : (
-              <span className="text-lg font-semibold text-gray-300">₱0 per kilo</span>
-            )}
-          </div>
-
-          <p className="mt-1 text-xs text-gray-500">
-            Listed just now in {town}
-            {form.stock !== "" && ` · ${form.stock} kilos available`}
-            {crop && ` · ${categoryLabel(crop)}`}
-          </p>
-        </div>
-
-        <div>
-          <p className="font-semibold text-gray-900">Details</p>
-          <p className="mt-1 whitespace-pre-line break-words text-sm leading-relaxed text-gray-600">
-            {form.description || (
-              <span className="text-gray-300">Description will appear here.</span>
-            )}
-          </p>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <p className="font-semibold text-gray-900">Seller information</p>
-          <div className="mt-2 flex items-center gap-3">
-            <Avatar
-              src={seller?.avatar}
-              alt={seller?.name || "You"}
-              className="h-11 w-11 rounded-full bg-green-100 text-[#2f8f66]"
-              iconClass="h-5 w-5"
-            />
-            <div className="min-w-0">
-              <p className="truncate font-medium text-gray-900">{seller?.name || "You"}</p>
-              <p className="truncate text-xs text-gray-500">{seller?.location || "Address not set"}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const PRODUCT_TYPES = [
+  ["sale", "For Sale", "Ready now"],
+  ["preorder", "For Pre-Order", "Buyers reserve ahead"],
+];
 
 export default function FarmerProductForm() {
   const { id } = useParams();
@@ -384,16 +523,22 @@ export default function FarmerProductForm() {
   // Photos in display order - either ones the product already has, or files
   // just picked. The first is the cover.
   const [photos, setPhotos] = useState([]);
-  // Which photo the preview is showing. Clamped at render rather than reset in
-  // an effect, so removing the last one can't leave it pointing at nothing.
-  const [showingPhoto, setShowingPhoto] = useState(0);
+  // Which photo the preview is showing, by key rather than by place, so
+  // moving the photos about doesn't change it. None that exists means the cover.
+  const [showing, setShowing] = useState(null);
+  // The photo being dragged to a new place, if one is.
+  const [dragging, setDragging] = useState(null);
   const [loading, setLoading] = useState(isEdit);
   const [error, setError] = useState("");
+  const [photoError, setPhotoError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // The suggested price for the chosen product, from the farmer's own
   // municipal market.
   const [recommendation, setRecommendation] = useState(null);
   const fileRef = useRef(null);
+  const gridRef = useRef(null);
+  const drag = useRef(null);
+  const justDragged = useRef(false);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -460,7 +605,9 @@ export default function FarmerProductForm() {
     if (files.length === 0) return;
 
     const room = MAX_PHOTOS - photos.length;
-    setError(
+    // Whatever Publish last complained about is out of date once photos change.
+    setError("");
+    setPhotoError(
       files.length > room
         ? `Only ${room} more photo${room === 1 ? "" : "s"} could be added - ${MAX_PHOTOS} is the maximum.`
         : ""
@@ -474,8 +621,53 @@ export default function FarmerProductForm() {
   const removePhoto = (index) => {
     const photo = photos[index];
     if (photo?.kind === "new") URL.revokeObjectURL(photo.preview);
+    setPhotoError("");
     setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
+
+  // Moving a photo: pressed and dragged onto another one's place, with a
+  // mouse, a finger or a pen alike. The grid only lets the page scroll up and
+  // down under a finger (touch-pan-y), so dragging sideways moves a photo
+  // while swiping up the page still scrolls it.
+  const startDrag = (e, key) => {
+    justDragged.current = false;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag.current = { key, pointerId: e.pointerId, x: e.clientX, y: e.clientY, moving: false };
+  };
+  const moveDrag = (e) => {
+    const current = drag.current;
+    if (!current || current.pointerId !== e.pointerId) return;
+    if (!current.moving) {
+      // A press that barely moves is a click, which shows the photo.
+      if (Math.abs(e.clientX - current.x) + Math.abs(e.clientY - current.y) < 8) return;
+      current.moving = true;
+      setDragging(current.key);
+      try {
+        gridRef.current?.setPointerCapture(e.pointerId);
+      } catch {
+        // The pointer has already gone; the drag simply ends with it.
+      }
+    }
+    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-photo]");
+    const overKey = over?.getAttribute("data-photo");
+    if (overKey && overKey !== current.key) setPhotos((prev) => moveTo(prev, current.key, overKey));
+  };
+  const endDrag = (e) => {
+    const current = drag.current;
+    if (!current || current.pointerId !== e.pointerId) return;
+    drag.current = null;
+    if (current.moving) {
+      justDragged.current = true;
+      setDragging(null);
+    }
+  };
+  // The same from the keyboard: the arrow keys move the photo in focus.
+  const nudgePhoto = (key, step) =>
+    setPhotos((prev) => {
+      const at = prev.findIndex((photo) => photoKey(photo) === key);
+      const to = at + step;
+      return to < 0 || to >= prev.length ? prev : moveTo(prev, key, photoKey(prev[to]));
+    });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -524,9 +716,25 @@ export default function FarmerProductForm() {
     }
   };
 
-  const cover = photos.length === 0 ? null : photos[Math.min(showingPhoto, photos.length - 1)];
+  const shown = photos.find((photo) => photoKey(photo) === showing) || photos[0] || null;
   const sellerName = user?.farmName || user?.name || "Your farm";
   const town = user?.address?.city || user?.location || "your municipality";
+  const priced = form.price !== "" && Number(form.price) > 0;
+  const described = form.description.trim() !== "";
+  const kilosAndCost = form.stock !== "" && form.expensePerKg !== "";
+
+  const checklist = [
+    { key: "photos", done: photos.length > 0, text: photos.length > 0 ? `${plural(photos.length, "photo")} added` : "At least one photo" },
+    { key: "product", done: Boolean(crop), text: crop ? `Product: ${crop.name}` : "Product" },
+    { key: "stock", done: form.stock !== "", text: form.stock !== "" ? `${form.stock} kg available` : "Kilos available" },
+    {
+      key: "cost",
+      done: form.expensePerKg !== "",
+      text: form.expensePerKg !== "" ? `Your cost: ${money(Number(form.expensePerKg))} / kg` : "Your cost per kg",
+    },
+    { key: "price", done: priced, text: priced ? `Selling at ${money(Number(form.price))} / kg` : "Selling price" },
+    { key: "description", done: described, text: described ? "Description added" : "Description" },
+  ];
 
   return (
     <div className="min-h-screen bg-[#eaf6ec]">
@@ -545,82 +753,119 @@ export default function FarmerProductForm() {
         {loading ? (
           <p className="text-sm text-gray-600">Loading...</p>
         ) : (
-          // The form on the left, the listing it is building on the right. The
-          // preview is held in place so it stays in view while the form is
-          // filled in - items-start keeps it from being stretched, which is
-          // what a sticky box needs in order to stick.
-          <div className="grid items-start gap-6 lg:grid-cols-[28rem_minmax(0,1fr)]">
-            <form onSubmit={handleSubmit} className="space-y-5 rounded-2xl bg-white p-5 shadow-sm sm:p-6">
-              <div className="flex items-center gap-3">
-                <Avatar
-                  src={user?.avatar}
-                  alt={sellerName}
-                  className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
-                  iconClass="h-5 w-5"
-                />
-                <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-900">{sellerName}</p>
-                  <p className="text-xs text-gray-500">Listing to AniSave · Public</p>
+          // The form on the left; on the right what is still to do and the
+          // listing it is building. That column is held in place so it stays
+          // in view while the form is filled in - items-start keeps it from
+          // being stretched, which is what a sticky box needs in order to stick.
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
+            <form onSubmit={handleSubmit} className="rounded-2xl border border-gray-200/70 bg-white shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-2xl bg-[#f6faf7] px-5 py-4 sm:px-6">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar
+                    src={user?.avatar}
+                    alt={sellerName}
+                    className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                    iconClass="h-5 w-5"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-900">{sellerName}</p>
+                    <p className="text-xs text-gray-500">Listing to AniSave · Public</p>
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500">
+                  Fields with <span className="text-red-600">*</span> are required
+                </p>
               </div>
 
-              {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
-
-              <section className="border-t border-gray-200 pt-5">
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                  <p className="font-semibold text-gray-900">
-                    Photos · {photos.length}/{MAX_PHOTOS}
-                    <Required />
-                  </p>
-                  <p className="text-xs text-gray-500">The first one is the cover.</p>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-3">
-                  {photos.map((photo, i) => (
-                    <div key={photo.kind === "new" ? photo.preview : photo.path} className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setShowingPhoto(i)}
-                        aria-label={`Preview photo ${i + 1}`}
-                        className={`block h-24 w-24 overflow-hidden rounded-md border-2 bg-gray-50 ${
-                          photo === cover ? "border-[#2f8f66]" : "border-gray-300"
-                        }`}
+              <FormSection
+                step={1}
+                title="Photos"
+                required
+                done={photos.length > 0}
+                testId="step-photos"
+                note="The first photo is the cover. Drag to reorder."
+                aside={
+                  <span className="text-sm font-semibold text-gray-500" data-testid="photo-count">
+                    {photos.length} / {MAX_PHOTOS}
+                  </span>
+                }
+              >
+                <div
+                  ref={gridRef}
+                  onPointerMove={moveDrag}
+                  onPointerUp={endDrag}
+                  onPointerCancel={endDrag}
+                  className="grid select-none grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3"
+                  data-testid="photo-grid"
+                >
+                  {photos.map((photo, i) => {
+                    const key = photoKey(photo);
+                    return (
+                      <div
+                        key={key}
+                        data-photo={key}
+                        className={`relative aspect-square transition-opacity ${dragging === key ? "opacity-50" : ""}`}
                       >
-                        <img
-                          src={photoSrc(photo)}
-                          alt={`Product photo ${i + 1}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </button>
+                        <button
+                          type="button"
+                          onPointerDown={(e) => startDrag(e, key)}
+                          onClick={() => {
+                            if (justDragged.current) {
+                              justDragged.current = false;
+                              return;
+                            }
+                            setShowing(key);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                              e.preventDefault();
+                              nudgePhoto(key, e.key === "ArrowLeft" ? -1 : 1);
+                            }
+                          }}
+                          aria-label={`Photo ${i + 1} of ${photos.length}${i === 0 ? ", the cover" : ""}. Press to preview it, or use the arrow keys to move it.`}
+                          className={`block h-full w-full cursor-grab touch-pan-y overflow-hidden rounded-xl border-2 bg-gray-50 active:cursor-grabbing ${
+                            i === 0 ? "border-[#2f8f66]" : "border-gray-200"
+                          }`}
+                        >
+                          <img
+                            src={photoSrc(photo)}
+                            alt={`Product photo ${i + 1}`}
+                            draggable={false}
+                            className="pointer-events-none h-full w-full object-cover"
+                          />
+                        </button>
 
-                      {i === 0 && (
-                        <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-[#2f8f66] px-1.5 text-[10px] font-semibold text-white">
-                          Cover
-                        </span>
-                      )}
+                        {i === 0 && (
+                          <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-[#1f5c42] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                            Cover
+                          </span>
+                        )}
 
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        aria-label={`Remove photo ${i + 1}`}
-                        className="absolute -right-2 -top-2 rounded-full bg-red-600 p-0.5 text-white shadow"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(i)}
+                          aria-label={`Remove photo ${i + 1}`}
+                          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-gray-900/70 text-white transition hover:bg-gray-900"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
 
                   {photos.length < MAX_PHOTOS && (
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-gray-400 bg-gray-50 text-gray-500 hover:border-[#2f8f66]"
+                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#2f8f66]/50 bg-green-50/60 text-[#2f8f66] transition hover:border-[#2f8f66] hover:bg-green-50"
                     >
-                      <Camera className="h-6 w-6" />
-                      <span className="text-[10px]">Add photos</span>
+                      <Camera className="h-5 w-5" />
+                      <span className="text-xs font-semibold">Add photo</span>
                     </button>
                   )}
                 </div>
+
+                {photoError && <p className="text-xs text-red-600">{photoError}</p>}
 
                 <input
                   ref={fileRef}
@@ -630,77 +875,130 @@ export default function FarmerProductForm() {
                   onChange={handleAddPhotos}
                   className="hidden"
                 />
-              </section>
+              </FormSection>
 
-              <Step title="Required" note="Be as descriptive as possible.">
-                <div>
-                  <label htmlFor="crop" className="font-medium text-gray-900">
-                    Product
-                    <Required />
-                  </label>
-                  <div className="mt-1">
-                    <CropSelect
-                      id="crop"
+              <FormSection step={2} title="What are you selling?" done={Boolean(crop)} testId="step-product">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="crop" required>
+                      Product
+                    </Label>
+                    <div className="mt-1.5">
+                      <CropSelect
+                        id="crop"
+                        required
+                        value={crop}
+                        onChange={setCrop}
+                        placeholder="Search: mango, ampalaya, camote..."
+                        inputClass={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Not asked for: the category follows from the product chosen
+                      beside it, so a mango can't be filed under vegetables. It is
+                      shown rather than hidden so there is no doubt where buyers
+                      will find the listing. */}
+                  <div>
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
+                      Category
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-[#1f5c42]">
+                        Automatic
+                      </span>
+                    </p>
+                    <div
+                      data-testid="category"
+                      className="mt-1.5 flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2.5 text-sm"
+                    >
+                      <Tag className="h-4 w-4 shrink-0 text-[#2f8f66]" />
+                      {crop ? (
+                        <span className="font-medium text-gray-900">{categoryLabel(crop)}</span>
+                      ) : (
+                        <span className="text-gray-400">Set by the product you choose</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {crop
+                    ? `Buyers filtering for ${categoryLabel(crop).toLowerCase()} will find it. Add the variety in the description.`
+                    : "Start typing and pick your product from the list - local names like ampalaya or camote work too."}
+                </p>
+              </FormSection>
+
+              <FormSection step={3} title="Stock & your cost" done={kilosAndCost} testId="step-stock">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label htmlFor="stock" required>
+                      Kilos available
+                    </Label>
+                    <AddonInput
+                      id="stock"
+                      name="stock"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      value={crop}
-                      onChange={setCrop}
-                      inputClass="w-full rounded-md border border-gray-400 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+                      value={form.stock}
+                      onChange={handleChange}
+                      placeholder="0"
+                      suffix="kg"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Start typing and pick your product from the list - local names like ampalaya or
-                    camote work too.
-                  </p>
-                </div>
-
-                {/* Not asked for: the category follows from the product chosen
-                    above, so a mango can't be filed under vegetables. It is
-                    shown rather than hidden so there is no doubt where buyers
-                    will find the listing. */}
-                <div>
-                  <span className="font-medium text-gray-900">Category</span>
-                  <div
-                    data-testid="category"
-                    className="mt-1 flex items-center gap-2 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm"
-                  >
-                    <Tag className="h-4 w-4 shrink-0 text-[#2f8f66]" />
-                    {crop ? (
-                      <span className="font-medium text-gray-900">{categoryLabel(crop)}</span>
-                    ) : (
-                      <span className="text-gray-400">Set by the product you choose</span>
-                    )}
+                  <div>
+                    <Label
+                      htmlFor="expensePerKg"
+                      required
+                      extra={
+                        <Pill>
+                          <Lock className="h-3 w-3" />
+                          Private
+                        </Pill>
+                      }
+                    >
+                      Your cost per kg
+                    </Label>
+                    <AddonInput
+                      id="expensePerKg"
+                      name="expensePerKg"
+                      type="text"
+                      inputMode="decimal"
+                      required
+                      value={form.expensePerKg}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      prefix="₱"
+                      suffix="/ kg"
+                    />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {crop
-                      ? `Buyers filtering for ${categoryLabel(crop).toLowerCase()} will find it. Add the variety and anything else in the description.`
-                      : "Chosen for you, so the listing always sits where buyers look for it."}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Your cost = seeds, fertilizer, labor, transport for one kilo. Only you see it; buyers
+                  never do.
+                </p>
+                {kilosAndCost && (
+                  <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600" data-testid="total-expense">
+                    Total expense: {form.stock} kg × {money(Number(form.expensePerKg))} ={" "}
+                    <span className="font-semibold text-gray-900">
+                      {money(estimate({ quantity: Number(form.stock), expensePerKg: Number(form.expensePerKg) }).expense)}
+                    </span>
                   </p>
-                </div>
+                )}
+              </FormSection>
 
+              <FormSection step={4} title="Set your price" done={priced} testId="step-price">
+                <PriceGuide
+                  crop={crop}
+                  recommendation={priceHint}
+                  checking={checkingPrice}
+                  quantity={form.stock}
+                  expensePerKg={form.expensePerKg}
+                  onUse={(amount) => setForm((prev) => ({ ...prev, price: String(Math.round(amount)) }))}
+                />
                 <div>
-                  <label htmlFor="stock" className="font-medium text-gray-900">
-                    Available Quantity/Kilos
-                    <Required />
-                  </label>
-                  <input
-                    id="stock"
-                    name="stock"
-                    type="text"
-                    inputMode="numeric"
-                    required
-                    value={form.stock}
-                    onChange={handleChange}
-                    placeholder="Kilos available"
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="price" className="font-medium text-gray-900">
-                    Your Selling Price
-                    <Required />
-                  </label>
-                  <input
+                  <Label htmlFor="price" required>
+                    Your selling price
+                  </Label>
+                  <AddonInput
                     id="price"
                     name="price"
                     type="text"
@@ -708,73 +1006,71 @@ export default function FarmerProductForm() {
                     required
                     value={form.price}
                     onChange={handleChange}
-                    placeholder="₱ per kilo"
-                    className={inputClass}
-                  />
-                  <RecommendedPrice
-                    crop={crop}
-                    quantity={form.stock}
-                    recommendation={priceHint}
-                    checking={checkingPrice}
-                    onUse={(amount) =>
-                      setForm((prev) => ({ ...prev, price: String(Math.round(amount)) }))
+                    placeholder={
+                      priceHint?.available
+                        ? `Type a price or tap "Use ${peso(priceHint.pricePerKilo)}"`
+                        : "Type your price per kilo"
                     }
+                    prefix="₱"
+                    suffix="/ kg"
                   />
+                  <MarginHint price={form.price} expensePerKg={form.expensePerKg} />
                 </div>
+              </FormSection>
 
-                <div>
-                  <label htmlFor="expensePerKg" className="font-medium text-gray-900">
-                    Expense per kg (₱)
+              <FormSection step={5} title="Listing details" done={described} testId="step-details">
+                <fieldset>
+                  <legend className="text-sm font-medium text-gray-900">
+                    Product type
                     <Required />
-                  </label>
-                  <input
-                    id="expensePerKg"
-                    name="expensePerKg"
-                    type="text"
-                    inputMode="decimal"
-                    required
-                    value={form.expensePerKg}
-                    onChange={handleChange}
-                    placeholder="What one kilo cost you to produce"
-                    className={inputClass}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Seeds, fertilizer, labor, transport - what a kilo cost you. Only you can see
-                    this; buyers never do.
-                  </p>
-                  <ProfitEstimate
-                    crop={crop}
-                    quantity={form.stock}
-                    expensePerKg={form.expensePerKg}
-                    recommendation={priceHint}
-                    checking={checkingPrice}
-                  />
-                </div>
-
-                <div>
-                  <RadioGroup
-                    legend="Product Type"
-                    name="productType"
-                    value={form.productType}
-                    options={[
-                      ["sale", "For Sale"],
-                      ["preorder", "For Pre-Order"],
-                    ]}
-                    onChange={handleChange}
-                  />
+                  </legend>
+                  <div className="mt-1.5 grid gap-3 sm:grid-cols-2">
+                    {PRODUCT_TYPES.map(([value, label, hint]) => {
+                      const chosen = form.productType === value;
+                      return (
+                        <label
+                          key={value}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
+                            chosen ? "border-[#2f8f66] bg-green-50 ring-1 ring-[#2f8f66]" : "border-gray-200 hover:border-gray-300"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="productType"
+                            value={value}
+                            checked={chosen}
+                            onChange={handleChange}
+                            className="h-4 w-4 shrink-0 accent-[#2f8f66]"
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-gray-900">{label}</span>
+                            <span className="block text-xs text-gray-500">{hint}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
                   {form.productType === "preorder" && (
-                    <p className="mt-1.5 text-xs text-amber-700">
-                      Buyers can order this ahead of time. Stock is taken as you accept each
-                      pre-order.
+                    <p className="mt-2 text-xs text-amber-700">
+                      Buyers can order this ahead of time. Stock is taken as you accept each pre-order.
                     </p>
                   )}
-                </div>
+                </fieldset>
 
                 <div>
-                  <label htmlFor="description" className="font-medium text-gray-900">
-                    Product Description
-                    <Required />
-                  </label>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <Label htmlFor="description" required>
+                      Description
+                    </Label>
+                    <span
+                      id="description-count"
+                      className={`text-xs ${
+                        form.description.length > DESCRIPTION_MAX ? "font-semibold text-red-600" : "text-gray-400"
+                      }`}
+                    >
+                      {form.description.length} / {DESCRIPTION_MAX}
+                    </span>
+                  </div>
                   <textarea
                     id="description"
                     name="description"
@@ -784,27 +1080,16 @@ export default function FarmerProductForm() {
                     aria-describedby="description-count"
                     value={form.description}
                     onChange={handleChange}
-                    placeholder="Describe your product - freshness, flavor, best uses, etc."
-                    className={inputClass}
+                    placeholder="Freshness, flavor, best uses..."
+                    className={`mt-1.5 ${inputClass}`}
                   />
-                  <p
-                    id="description-count"
-                    className={`mt-1 text-right text-xs ${
-                      form.description.length > DESCRIPTION_MAX ? "font-semibold text-red-600" : "text-gray-400"
-                    }`}
-                  >
-                    {form.description.length}/{DESCRIPTION_MAX} characters
-                  </p>
                 </div>
-              </Step>
+              </FormSection>
 
-              <Step title="More details" note="Worth adding, but the listing works without them.">
-                <div>
-                  <label htmlFor="salePrice" className="font-medium text-gray-900">
-                    Flash Sale Price{" "}
-                    <span className="text-xs font-normal text-gray-400">(optional)</span>
-                  </label>
-                  <input
+              <FormSection step={6} title="Extras" optional testId="step-extras">
+                <div className="sm:max-w-xs">
+                  <Label htmlFor="salePrice">Flash sale price</Label>
+                  <AddonInput
                     id="salePrice"
                     name="salePrice"
                     type="text"
@@ -812,81 +1097,89 @@ export default function FarmerProductForm() {
                     value={form.salePrice}
                     onChange={handleChange}
                     placeholder="Leave blank for no sale"
-                    className={inputClass}
+                    prefix="₱"
+                    suffix="/ kg"
                   />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Set a lower price to discount this listing - good for old stock that hasn&apos;t
-                    sold. It stays discounted until you clear this or edit it back up.
+                  <p className="mt-1.5 text-xs text-gray-500">
+                    A lower price for old stock. It stays on until you clear it.
                   </p>
                 </div>
 
-                <div className="flex items-start gap-2 rounded-md bg-gray-50 px-3 py-2.5 text-sm">
+                <div className="flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3 text-sm">
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8f66]" />
-                  <p className="text-gray-600">
-                    Pickup address:{" "}
-                    <span className="font-medium text-gray-900">
+                  <div className="min-w-0">
+                    <p className="text-gray-900">
+                      <span className="font-semibold">Pickup:</span>{" "}
                       {user?.location || "not set yet - add it in Edit Profile"}
-                    </span>
-                    <br />
-                    <span className="text-xs">
-                      Taken from your registered address, for every listing.
-                    </span>
-                  </p>
+                    </p>
+                    <p className="text-xs text-gray-500">From your registered address, used for every listing</p>
+                  </div>
                 </div>
-              </Step>
+              </FormSection>
 
               {/* What a farmer is agreeing to by publishing. The rules
                   themselves live on the Terms of Use page, which opens in its
                   own tab so a half-filled form isn't lost. */}
-              <p className="border-t border-gray-200 pt-4 text-xs leading-relaxed text-gray-500">
-                Listings on AniSave are public - anyone browsing the marketplace can see this one,
-                and buyers collect it from your registered address. Sell only produce you actually
-                have, and keep the price and stock honest and up to date. See our{" "}
-                <Link
-                  to="/terms"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="font-medium text-[#2f8f66] hover:underline"
-                >
-                  Terms of Use
-                </Link>
-                . The selling price must be accurate and not misleading.
-              </p>
+              <div className="space-y-4 rounded-b-2xl border-t border-gray-100 bg-[#fafcfb] px-5 py-5 sm:px-6">
+                <p className="text-xs leading-relaxed text-gray-500">
+                  Listings are public and buyers pick up from your registered address. Only list
+                  produce you actually have, and keep price and stock honest and up to date. The
+                  selling price must be accurate and not misleading. See our{" "}
+                  <Link
+                    to="/terms"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-[#2f8f66] underline hover:text-[#1f5c42]"
+                  >
+                    Terms of Use
+                  </Link>
+                  .
+                </p>
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="flex-1 rounded-md border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white hover:bg-[#267a56] disabled:opacity-60"
-                >
-                  {submitting ? "Saving..." : isEdit ? "Save" : "Publish"}
-                </button>
+                {error && (
+                  <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="rounded-xl border border-gray-300 bg-white py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="rounded-xl bg-[#2f8f66] py-3 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+                  >
+                    {submitting ? "Saving..." : isEdit ? "Save changes" : "Publish listing"}
+                  </button>
+                </div>
               </div>
             </form>
 
             {/* Parked just below the bar above, rather than at the very top,
-                so the listing stays visible without sliding under it. */}
-            <aside className="lg:sticky lg:top-[76px]">
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
-                <p className="font-semibold text-gray-900">Preview</p>
-                <p className="text-xs text-gray-500">How buyers will see this listing.</p>
+                so it stays visible without sliding under it. */}
+            <aside className="space-y-5 lg:sticky lg:top-[76px]">
+              <Checklist items={checklist} isEdit={isEdit} />
+              <div>
+                <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
+                  <h2 className="text-sm font-semibold text-gray-900">Buyer preview</h2>
+                  <p className="text-xs font-medium text-[#2f8f66]">How buyers will see it</p>
+                </div>
+                <Preview
+                  crop={crop}
+                  form={form}
+                  photos={photos}
+                  shown={shown}
+                  onPickPhoto={setShowing}
+                  seller={{ name: sellerName, avatar: user?.avatar, location: user?.location }}
+                  town={town}
+                />
               </div>
-              <Preview
-                crop={crop}
-                form={form}
-                photos={photos}
-                cover={cover}
-                onPickPhoto={setShowingPhoto}
-                seller={{ name: sellerName, avatar: user?.avatar, location: user?.location }}
-                town={town}
-              />
             </aside>
           </div>
         )}

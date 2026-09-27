@@ -1,16 +1,19 @@
 import BuyerLayout from "../../layouts/BuyerLayout";
-import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import ChatPanel from "../../components/chat/ChatPanel";
 
+// The chats fill the page under the green bar, with no heading of their own
+// above them - the panel's "Chats" says what it is. The height leaves room for
+// the bar (4.25rem on a phone, 5.25rem from md up) and the padding around the panel.
 export default function BuyerMessages() {
   return (
     <BuyerLayout>
-      <BuyerTopBar>
-        <h1 className="text-2xl font-semibold text-gray-900">Messages</h1>
-        <p className="text-sm text-gray-500">Chat with the farmers you buy from</p>
-      </BuyerTopBar>
-      <div className="p-4 sm:p-8">
-        <ChatPanel basePath="/buyer/messages" heightClass="h-[calc(100vh-16rem)] min-h-[26rem]" />
+      <h1 className="sr-only">Messages</h1>
+      <div className="p-4 sm:p-6">
+        <ChatPanel
+          basePath="/buyer/messages"
+          variant="chats"
+          heightClass="h-[calc(100dvh-6.25rem)] min-h-[26rem] sm:h-[calc(100dvh-7.25rem)] md:h-[calc(100dvh-8.25rem)]"
+        />
       </div>
     </BuyerLayout>
   );

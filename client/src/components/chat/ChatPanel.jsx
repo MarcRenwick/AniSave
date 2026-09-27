@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Ban, Check, CheckCheck, Image as ImageIcon, ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
+import { ArrowLeft, Ban, Check, CheckCheck, Image as ImageIcon, ImagePlus, MessageCircle, Send, Store, Trash2, X } from "lucide-react";
 import Avatar from "../Avatar";
 import Modal from "../Modal";
 import ChatOrders from "./ChatOrders";
@@ -42,6 +42,21 @@ const day = (date) => new Date(date).toLocaleDateString(undefined, { month: "sho
 const messageTime = (date) => (isToday(date) ? clock(date) : `${day(date)}, ${clock(date)}`);
 // In the list: just the time today, just the date before that.
 const listTime = (date) => (date ? (isToday(date) ? clock(date) : day(date)) : "");
+// Between messages from different days: Today, Yesterday, or the date - with
+// the year only when it isn't this one.
+const dayHeading = (date) => {
+  const d = new Date(date);
+  if (isToday(d)) return "Today";
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(d.getFullYear() === new Date().getFullYear() ? {} : { year: "numeric" }),
+  });
+};
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
 
 // The newest conversation first, without the same one twice.
 const upsert = (list, conversation) => [conversation, ...list.filter((c) => c._id !== conversation._id)];
@@ -134,8 +149,21 @@ function DeleteMessageButton({ onClick }) {
   );
 }
 
-function TypingBubble({ name }) {
+// The other person's own profile photo beside what they write (the generic
+// person icon for anyone who hasn't uploaded one).
+function SenderPhoto({ person }) {
   return (
+    <Avatar
+      src={person.avatar}
+      alt=""
+      className="h-7 w-7 rounded-full bg-green-100 text-[#2f8f66]"
+      iconClass="h-4 w-4"
+    />
+  );
+}
+
+function TypingBubble({ name, person }) {
+  const bubble = (
     <div className="flex flex-col items-start" data-testid="typing-indicator">
       <div
         role="status"
@@ -149,12 +177,25 @@ function TypingBubble({ name }) {
       <p className="mt-1 text-[11px] text-gray-400">{name} is typing...</p>
     </div>
   );
+  if (!person) return bubble;
+  return (
+    <div className="flex items-end gap-2">
+      <SenderPhoto person={person} />
+      {bubble}
+    </div>
+  );
 }
 
 // Conversations down the side, the open one beside them. New messages,
 // deleted ones, "Seen", "typing..." and who is active arrive over the live
 // connection (context/ChatContext.jsx) without a refresh.
-export default function ChatPanel({ basePath, heightClass }) {
+//
+// `variant="chats"` is the buyer's look: a "Chats" list of rounded rows, the
+// day written between messages from different days, the farmer's photo beside
+// what they write, and larger controls. The farmer's Messages page keeps the
+// original look.
+export default function ChatPanel({ basePath, heightClass, variant = "classic" }) {
+  const chats = variant === "chats";
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -507,14 +548,21 @@ export default function ChatPanel({ basePath, heightClass }) {
 
   return (
     <div
-      className={`grid overflow-hidden rounded-2xl bg-white shadow-sm lg:grid-cols-[20rem_1fr] ${heightClass}`}
+      className={`grid overflow-hidden rounded-2xl bg-white shadow-sm lg:grid-cols-[20rem_1fr] ${
+        chats ? "border border-gray-200/70" : ""
+      } ${heightClass}`}
       data-testid="chat-panel"
+      data-variant={variant}
     >
       {/* min-w-0 on both columns: without it a long line (an order, a name)
           widens the column past a phone's screen and the edge is cut off. */}
       <aside className={`${id ? "hidden lg:flex" : "flex"} min-h-0 min-w-0 flex-col border-r border-gray-200`}>
-        <p className="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900">Conversations</p>
-        <ul className="min-h-0 flex-1 overflow-y-auto">
+        {chats ? (
+          <h2 className="px-5 pb-2 pt-5 text-lg font-bold text-gray-900">Chats</h2>
+        ) : (
+          <p className="border-b border-gray-100 px-5 py-4 text-sm font-semibold text-gray-900">Conversations</p>
+        )}
+        <ul className={`min-h-0 flex-1 overflow-y-auto ${chats ? "space-y-0.5 px-2 pb-2" : ""}`}>
           {listLoading && <li className="px-5 py-4 text-sm text-gray-500">Loading...</li>}
           {!listLoading && conversations.length === 0 && (
             <li className="px-5 py-6 text-sm leading-relaxed text-gray-500">
@@ -534,15 +582,21 @@ export default function ChatPanel({ basePath, heightClass }) {
                   type="button"
                   onClick={() => navigate(`${basePath}/${c._id}`)}
                   data-conversation={c._id}
-                  className={`flex w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-gray-50 ${
-                    c._id === id ? "bg-green-50" : ""
-                  }`}
+                  className={
+                    chats
+                      ? `flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                          c._id === id ? "bg-green-50" : "hover:bg-gray-50"
+                        }`
+                      : `flex w-full items-center gap-3 px-5 py-3 text-left transition hover:bg-gray-50 ${
+                          c._id === id ? "bg-green-50" : ""
+                        }`
+                  }
                 >
                   <span className="relative shrink-0">
                     <Avatar
                       src={c.other.avatar}
                       alt={displayName(c.other)}
-                      className="h-11 w-11 rounded-full bg-green-100 text-[#2f8f66]"
+                      className={`${chats ? "h-12 w-12" : "h-11 w-11"} rounded-full bg-green-100 text-[#2f8f66]`}
                       iconClass="h-6 w-6"
                     />
                     <OnlineDot online={c.other.online} />
@@ -552,7 +606,13 @@ export default function ChatPanel({ basePath, heightClass }) {
                       <span className={`truncate text-sm ${unread ? "font-bold text-gray-900" : "font-semibold text-gray-900"}`}>
                         {displayName(c.other)}
                       </span>
-                      <span className="shrink-0 text-[11px] text-gray-400">{listTime(c.lastMessageAt)}</span>
+                      <span
+                        className={`shrink-0 text-[11px] ${
+                          chats && unread ? "font-semibold text-[#2f8f66]" : "text-gray-400"
+                        }`}
+                      >
+                        {listTime(c.lastMessageAt)}
+                      </span>
                     </span>
                     <span className="mt-0.5 flex items-center justify-between gap-2">
                       <span
@@ -576,7 +636,9 @@ export default function ChatPanel({ basePath, heightClass }) {
                       </span>
                       {unread && (
                         <span
-                          className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white"
+                          className={`flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-white ${
+                            chats ? "bg-[#2f8f66]" : "bg-red-500"
+                          }`}
                           aria-label={`${c.unread} unread`}
                         >
                           {c.unread}
@@ -604,7 +666,7 @@ export default function ChatPanel({ basePath, heightClass }) {
 
         {id && !threadLoading && active && (
           <>
-            <div className="flex items-center gap-3 border-b border-gray-200 px-5 py-3">
+            <div className={`flex items-center gap-3 border-b border-gray-200 px-5 ${chats ? "py-3.5 max-sm:px-4" : "py-3"}`}>
               <Link to={basePath} className="text-gray-500 hover:text-gray-900 lg:hidden" aria-label="Back to conversations">
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -612,7 +674,7 @@ export default function ChatPanel({ basePath, heightClass }) {
                 <Avatar
                   src={other.avatar}
                   alt={displayName(other)}
-                  className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                  className={`${chats ? "h-11 w-11" : "h-10 w-10"} rounded-full bg-green-100 text-[#2f8f66]`}
                   iconClass="h-5 w-5"
                 />
                 <OnlineDot online={other.online} />
@@ -626,9 +688,15 @@ export default function ChatPanel({ basePath, heightClass }) {
               {isBuyer && other._id && (
                 <Link
                   to={`/buyer/farmers/${other._id}`}
-                  className="shrink-0 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                  className={
+                    chats
+                      ? "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#2f8f66] px-3 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                      : "shrink-0 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                  }
                 >
-                  View Shop
+                  {chats && <Store className="h-4 w-4 shrink-0" />}
+                  {/* A phone keeps just the shop icon, so the farmer's name has room. */}
+                  <span className={chats ? "max-sm:sr-only" : ""}>View Shop</span>
                 </Link>
               )}
               <button
@@ -636,7 +704,11 @@ export default function ChatPanel({ basePath, heightClass }) {
                 onClick={() => askDelete({ conversation: true })}
                 aria-label="Delete conversation"
                 title="Delete conversation"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                className={
+                  chats
+                    ? "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+                    : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-600"
+                }
               >
                 <Trash2 className="h-5 w-5" />
               </button>
@@ -650,11 +722,16 @@ export default function ChatPanel({ basePath, heightClass }) {
                   {isBuyer ? `Say hello to ${displayName(other)}.` : "No messages yet."}
                 </p>
               )}
-              {thread.messages.map((m) => {
+              {thread.messages.map((m, i) => {
                 const mine = m.sender === myId;
                 const remove = <DeleteMessageButton onClick={() => askDelete({ message: m })} />;
-                return (
-                  <div key={m._id} className={`group flex flex-col ${mine ? "items-end" : "items-start"}`} data-mine={mine}>
+                const newDay = chats && (i === 0 || !sameDay(thread.messages[i - 1].createdAt, m.createdAt));
+                const message = (
+                  <div
+                    key={m._id}
+                    className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${chats && !mine ? "min-w-0 flex-1" : ""}`}
+                    data-mine={mine}
+                  >
                     <div className={`flex w-full items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
                       {mine && remove}
                       {m.deleted ? (
@@ -685,9 +762,8 @@ export default function ChatPanel({ basePath, heightClass }) {
                       {!mine && remove}
                     </div>
                     <p className="mt-1 flex items-center gap-1 text-[11px] text-gray-400">
-                      <span>
-                        {mine ? "You" : displayName(other)} · {messageTime(m.createdAt)}
-                      </span>
+                      {/* The day is written above, so the buyer's look needs only the time. */}
+                      <span>{chats ? clock(m.createdAt) : `${mine ? "You" : displayName(other)} · ${messageTime(m.createdAt)}`}</span>
                       {m._id === receiptOn && (
                         <span
                           data-testid="receipt"
@@ -701,14 +777,34 @@ export default function ChatPanel({ basePath, heightClass }) {
                     </p>
                   </div>
                 );
+                if (!chats) return message;
+                return (
+                  <Fragment key={m._id}>
+                    {newDay && (
+                      <div className="flex justify-center pt-1" data-testid="day-heading">
+                        <span className="rounded-full bg-gray-200/70 px-3 py-0.5 text-[11px] font-semibold text-gray-600">
+                          {dayHeading(m.createdAt)}
+                        </span>
+                      </div>
+                    )}
+                    {mine ? (
+                      message
+                    ) : (
+                      <div className="flex items-end gap-2" data-testid="their-message">
+                        <SenderPhoto person={other} />
+                        {message}
+                      </div>
+                    )}
+                  </Fragment>
+                );
               })}
-              {theyAreTyping && <TypingBubble name={displayName(other)} />}
+              {theyAreTyping && <TypingBubble name={displayName(other)} person={chats ? other : null} />}
             </div>
 
             {thread.notice ? (
               <p className="border-t border-gray-200 bg-gray-50 px-5 py-4 text-center text-sm text-gray-500">{thread.notice}</p>
             ) : (
-              <form onSubmit={send} className="border-t border-gray-200 p-3">
+              <form onSubmit={send} className={`border-t border-gray-200 ${chats ? "px-4 py-3" : "p-3"}`}>
                 {sendError && <p className="mb-2 px-1 text-xs text-red-600">{sendError}</p>}
                 {staged && (
                   <div className="mb-2 flex items-center gap-3 px-1" data-testid="photo-preview">
@@ -741,7 +837,11 @@ export default function ChatPanel({ basePath, heightClass }) {
                     disabled={sending}
                     aria-label="Send a photo"
                     title="Send a photo"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                    className={
+                      chats
+                        ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-50 text-[#2f8f66] transition hover:bg-green-100 disabled:opacity-60"
+                        : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                    }
                   >
                     <ImagePlus className="h-5 w-5" />
                   </button>
@@ -752,14 +852,18 @@ export default function ChatPanel({ basePath, heightClass }) {
                       noteTyping(e.target.value);
                     }}
                     maxLength={MAX_MESSAGE}
-                    placeholder={staged ? "Add a caption (optional)" : "Type a message"}
+                    placeholder={staged ? "Add a caption (optional)" : chats ? "Type a message..." : "Type a message"}
                     aria-label="Message"
-                    className="min-w-0 flex-1 rounded-full border border-gray-300 px-4 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+                    className={`min-w-0 flex-1 rounded-full border border-gray-300 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66] ${
+                      chats ? "h-11 px-5" : "px-4 py-2"
+                    }`}
                   />
                   <button
                     type="submit"
                     disabled={(!text.trim() && !staged) || sending}
-                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#267a56] active:scale-95 disabled:opacity-60"
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full bg-[#2f8f66] text-sm font-semibold text-white transition hover:bg-[#267a56] active:scale-95 disabled:opacity-60 ${
+                      chats ? "h-11 px-5" : "px-4 py-2"
+                    }`}
                   >
                     <Send className="h-4 w-4" />
                     {sending && staged ? "Sending..." : "Send"}
