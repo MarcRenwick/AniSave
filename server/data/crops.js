@@ -33,9 +33,17 @@ const VARIETIES = [
   ["fruit", "Latundan Banana", ["latundan", "tundan"], "Banana"],
   ["fruit", "Saba Banana", ["saba", "cardaba"], "Banana"],
   ["fruit", "Carabao Mango", ["carabao mango", "manggang kalabaw"], "Mango"],
+  // "Señorita" folds to "se orita", so the plain spelling is an alias too -
+  // most people type it without the tilde.
+  ["fruit", "Señorita Banana", ["senorita", "senorita banana", "sinoritas"], "Banana"],
+  ["fruit", "Pico Mango", ["pico", "piko", "manggang piko"], "Mango"],
 ];
 
-// Requirement: the products the Recommended Price feature supports initially.
+// Requirement: the products the Recommended Price feature supports initially -
+// the start of each section below. The rest of each section (Apple onwards in
+// the fruits, Chinese Cabbage onwards in the vegetables, and so on), and the
+// meat and seafood at the end, is common produce that first list missed. It
+// can all be priced as well.
 const SUPPORTED = [
   // ---- Fruits ----
   ["fruit", "Mango", ["mangga", "manga"]],
@@ -58,6 +66,21 @@ const SUPPORTED = [
   ["fruit", "Tamarind", ["sampaloc", "sampalok"]],
   ["fruit", "Caimito", ["star apple", "kaimito"]],
   ["fruit", "Orange", ["dalandan"]],
+  ["fruit", "Apple", ["mansanas"]],
+  ["fruit", "Grapes (Ubas)", ["ubas", "grapes"]],
+  ["fruit", "Lemon", ["limon"]],
+  ["fruit", "Lime (Dayap)", ["dayap", "lime", "key lime"]],
+  ["fruit", "Ponkan", ["mandarin", "mandarin orange"]],
+  ["fruit", "Marang", ["terap"]],
+  ["fruit", "Longan", []],
+  ["fruit", "Macopa", ["makopa", "wax apple", "java apple", "tambis"]],
+  ["fruit", "Kamias", ["camias", "bilimbi"]],
+  ["fruit", "Siniguelas", ["sineguelas", "seriguelas", "spanish plum"]],
+  ["fruit", "Chesa", ["tiesa", "canistel"]],
+  ["fruit", "Bignay", ["bugnay", "currant tree"]],
+  ["fruit", "Aratiles", ["aratilis", "datiles", "jamaican cherry"]],
+  ["fruit", "Pili Nut", ["pili"]],
+  ["fruit", "Honeydew Melon", ["honeydew"]],
 
   // ---- Vegetables ----
   ["vegetable", "Eggplant", ["talong", "egg plant"]],
@@ -89,6 +112,22 @@ const SUPPORTED = [
   // sold as a vegetable, as opposed to the grain further down.
   ["vegetable", "Sweet Corn", ["corn for fresh vegetable use", "green corn", "sweetcorn"]],
   ["vegetable", "Green Beans", ["baguio beans", "green bean", "snap beans"]],
+  ["vegetable", "Chinese Cabbage (Pechay Baguio)", ["pechay baguio", "chinese cabbage", "napa cabbage", "wombok"]],
+  ["vegetable", "Saluyot", ["jute mallow", "jute leaves"]],
+  ["vegetable", "Sweet Potato Tops (Talbos ng Kamote)", ["talbos ng kamote", "camote tops", "kamote tops", "sweet potato leaves"]],
+  ["vegetable", "Hyacinth Bean (Bataw)", ["bataw", "hyacinth bean", "lablab"]],
+  ["vegetable", "Lima Bean (Patani)", ["patani", "lima bean", "butter bean"]],
+  ["vegetable", "Pigeon Pea (Kadyos)", ["kadyos", "pigeon pea", "kardis"]],
+  ["vegetable", "Snow Peas (Sitsaro)", ["sitsaro", "chicharo", "snow peas"]],
+  ["vegetable", "Bamboo Shoots (Labong)", ["labong", "rabong", "bamboo shoots"]],
+  ["vegetable", "Banana Heart (Puso ng Saging)", ["puso ng saging", "banana blossom", "banana heart"]],
+  ["vegetable", "Oyster Mushroom", ["kabute"]],
+  ["vegetable", "Finger Chili (Siling Haba)", ["siling haba", "siling pansigang", "long chili", "green chili"]],
+  ["vegetable", "Lemongrass (Tanglad)", ["tanglad", "lemongrass", "lemon grass"]],
+  ["vegetable", "Coriander (Wansoy)", ["wansoy", "cilantro", "coriander"]],
+  ["vegetable", "Leeks", []],
+  ["vegetable", "Asparagus", []],
+  ["vegetable", "Zucchini", ["courgette"]],
 
   // ---- Root crops ----
   ["root crop", "Sweet Potato (Camote)", ["camote", "kamote", "sweet potato"]],
@@ -101,6 +140,7 @@ const SUPPORTED = [
   // The requirement lists this under both vegetables and root crops; it is one
   // crop, catalogued as the root crop it is.
   ["root crop", "Jicama (Singkamas)", ["singkamas", "jicama", "turnip"]],
+  ["root crop", "Turmeric (Luyang Dilaw)", ["luyang dilaw", "turmeric", "dilaw"]],
 
   // ---- Grains ----
   ["grain", "Rice", ["bigas", "palay"]],
@@ -112,6 +152,41 @@ const SUPPORTED = [
   ["grain", "Barley", []],
   ["grain", "Oats", ["oat"]],
   ["grain", "Wheat", ["trigo"]],
+  ["grain", "Adlai", ["adlay", "job's tears", "jobs tears"]],
+  ["grain", "Black Rice", ["pirurutong", "purple rice"]],
+  ["grain", "Red Rice", ["pulang bigas"]],
+  ["grain", "White Corn", ["puting mais", "white maize"]],
+
+  // ---- Meat ----
+  // Unlike the meat in EGGS_MEAT_SEAFOOD below, these can be priced.
+  ["meat", "Duck (Itik)", ["itik", "pato", "duck", "duck meat"]],
+  ["meat", "Quail (Pugo)", ["pugo", "quail", "quail meat"]],
+  ["meat", "Turkey (Pabo)", ["pabo", "turkey"]],
+  ["meat", "Rabbit", ["kuneho", "rabbit meat"]],
+  ["meat", "Mutton (Tupa)", ["tupa", "mutton", "lamb", "karne ng tupa"]],
+
+  // ---- Seafood ----
+  // Fish included - Seafood is the buyers' category for both. Likewise
+  // priceable, unlike the seafood below.
+  ["seafood", "Tuna (Tambakol)", ["tambakol", "tuna", "yellowfin tuna", "bariles"]],
+  ["seafood", "Frigate Tuna (Tulingan)", ["tulingan", "frigate tuna", "bullet tuna"]],
+  ["seafood", "Indian Mackerel (Alumahan)", ["alumahan", "indian mackerel"]],
+  ["seafood", "Short Mackerel (Hasa-hasa)", ["hasa-hasa", "short mackerel"]],
+  ["seafood", "Spanish Mackerel (Tanigue)", ["tanigue", "tangigue", "spanish mackerel"]],
+  ["seafood", "Sardines (Tamban)", ["tamban", "sardines", "sardinas"]],
+  ["seafood", "Anchovy (Dilis)", ["dilis", "anchovy", "anchovies"]],
+  ["seafood", "Fusilier (Dalagang Bukid)", ["dalagang bukid", "fusilier"]],
+  ["seafood", "Grouper (Lapu-lapu)", ["lapu-lapu", "grouper"]],
+  ["seafood", "Red Snapper (Maya-maya)", ["maya-maya", "red snapper", "snapper"]],
+  ["seafood", "Threadfin Bream (Bisugo)", ["bisugo", "threadfin bream"]],
+  ["seafood", "Trevally (Talakitok)", ["talakitok", "trevally", "mamsa"]],
+  ["seafood", "Pompano", ["pampano"]],
+  ["seafood", "Mudfish (Dalag)", ["dalag", "mudfish", "snakehead"]],
+  ["seafood", "Carp (Karpa)", ["karpa", "carp"]],
+  ["seafood", "Gourami", ["gurami", "gouramy"]],
+  ["seafood", "Freshwater Prawn (Ulang)", ["ulang", "freshwater prawn"]],
+  ["seafood", "Clams (Halaan)", ["halaan", "clams", "tulya"]],
+  ["seafood", "Seaweed (Lato)", ["lato", "seaweed", "sea grapes", "guso"]],
 ];
 
 // Other produce a farmer may legitimately sell. Searchable and listable, but
@@ -142,7 +217,8 @@ const ALSO_GROWN = [
 // Eggs, meat and seafood - what poultry and livestock raisers and fisherfolk
 // sell. Each kind is a buyer-facing category of its own rather than being
 // filed under vegetables. Like ALSO_GROWN, nobody records a market price for
-// them yet, so no price is recommended.
+// them yet, so no price is recommended. (The meat and seafood at the end of
+// SUPPORTED are the priceable ones.)
 const EGGS_MEAT_SEAFOOD = [
   // ---- Eggs ----
   ["egg", "Chicken Egg", ["egg", "itlog", "itlog ng manok", "fresh egg"]],
