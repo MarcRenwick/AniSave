@@ -105,6 +105,8 @@ const getFarmerOrders = asyncHandler(async (req, res) => {
 const getBuyerOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ buyer: req.user._id })
     .populate("farmer", "name farmName")
+    // The photo My Orders shows beside each order.
+    .populate("product", "image")
     .sort({ createdAt: -1 });
 
   const ratings = await Rating.find({ order: { $in: orders.map((o) => o._id) } }).select("order");
