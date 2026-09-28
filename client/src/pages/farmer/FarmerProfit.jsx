@@ -84,7 +84,25 @@ const Gap = ({ children }) => (
 );
 
 const NO_SALES = "No completed sales yet";
-const NO_MARKET = "No recommended price in your municipality yet";
+const NO_STOCK = "Out of stock - nothing left to estimate";
+
+// Which price the stock was valued at: the market's, or - with none recorded
+// in the farmer's municipality - their own selling price.
+function PriceTag({ estimated }) {
+  const market = estimated.basis === "market";
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] text-gray-500" data-testid="estimate-basis">
+      {money(estimated.pricePerKg)}/kg
+      <span
+        className={`rounded-full px-1.5 py-px font-semibold ring-1 ${
+          market ? "bg-blue-50 text-blue-800 ring-blue-100" : "bg-gray-100 text-gray-600 ring-gray-200"
+        }`}
+      >
+        {market ? "Market price" : "Your price"}
+      </span>
+    </span>
+  );
+}
 
 function ProductName({ row }) {
   return (
@@ -120,13 +138,18 @@ function TableRow({ row }) {
           <td className={`${cell} font-bold ${actualTone(actual.profit)}`}>{money(actual.profit)}</td>
         </>
       )}
-      {estimated.profit === null ? (
+      {estimated.quantity === 0 ? (
         <td colSpan={3} className="border-l border-gray-100 px-4 py-3 text-center">
-          <Gap>{NO_MARKET}</Gap>
+          <Gap>{NO_STOCK}</Gap>
         </td>
       ) : (
         <>
-          <td className={`${cell} border-l border-gray-100 text-gray-700`}>{money(estimated.income)}</td>
+          <td className={`${cell} border-l border-gray-100 text-gray-700`}>
+            {money(estimated.income)}
+            <div className="mt-0.5">
+              <PriceTag estimated={estimated} />
+            </div>
+          </td>
           <td className={`${cell} text-gray-700`}>{money(estimated.expense)}</td>
           <td className={`${cell} pr-5 font-bold ${estimateTone(estimated.profit)}`}>{money(estimated.profit)}</td>
         </>
@@ -138,9 +161,12 @@ function TableRow({ row }) {
 // The same on a phone or tablet: the product, then its two sets of figures.
 function MobileRow({ row }) {
   const { actual, estimated } = row;
-  const line = (title, titleClass, figures, tone, gap) => (
+  const line = (title, titleClass, figures, tone, gap, tag = null) => (
     <div className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs">
-      <p className={`font-semibold ${titleClass}`}>{title}</p>
+      <p className={`flex flex-wrap items-center justify-between gap-2 font-semibold ${titleClass}`}>
+        {title}
+        {figures && tag}
+      </p>
       {figures ? (
         <div className="mt-1 grid grid-cols-3 gap-2">
           <p className="text-gray-500">
@@ -162,7 +188,7 @@ function MobileRow({ row }) {
     <li className="space-y-2.5 px-5 py-4" data-testid="profit-row" data-product={row._id}>
       <ProductName row={row} />
       {line("Actual sales", "text-[#2f8f66]", actual.soldKg === 0 ? null : actual, actualTone, NO_SALES)}
-      {line("Estimated on stock", "text-blue-800", estimated.profit === null ? null : estimated, estimateTone, NO_MARKET)}
+      {line("Estimated on stock", "text-blue-800", estimated.quantity === 0 ? null : estimated, estimateTone, NO_STOCK, <PriceTag estimated={estimated} />)}
     </li>
   );
 }
@@ -233,9 +259,13 @@ export default function FarmerProfit() {
                 icon={Package}
                 iconClass="bg-blue-50 text-blue-700 ring-1 ring-blue-100"
                 title="Estimated on stock"
-                note={`If you sell the ${kilos(totals.estimated.quantity)} left, at ${
-                  municipality ? `${municipality}'s` : "your municipality's"
-                } recommended price`}
+                note={
+                  totals.estimated.ownCount === 0
+                    ? `If you sell the ${kilos(totals.estimated.quantity)} left, at ${
+                        municipality ? `${municipality}'s` : "your municipality's"
+                      } recommended price`
+                    : `If you sell the ${kilos(totals.estimated.quantity)} left`
+                }
               >
                 <Equation
                   income={totals.estimated.income}
@@ -246,6 +276,12 @@ export default function FarmerProfit() {
                     totals.estimated.profit < 0 ? "bg-red-50 text-red-700 ring-1 ring-red-100" : "bg-blue-50 text-blue-900 ring-1 ring-blue-100"
                   }
                 />
+                {totals.estimated.ownCount > 0 && (
+                  <p className="mt-3 text-xs text-gray-500" data-testid="estimate-basis-note">
+                    Estimate uses market price for {plural(totals.estimated.marketCount, "product")} and your own selling
+                    price for {totals.estimated.ownCount} (no market price recorded in your municipality).
+                  </p>
+                )}
               </TotalCard>
             </div>
 
@@ -355,12 +391,13 @@ export default function FarmerProfit() {
                 </p>
                 <p>
                   <span className="font-semibold text-gray-800">Estimated on stock:</span> the kilos still in stock ×
-                  the recommended price for your municipality, less your cost per kg on them. Your own selling price
-                  isn&apos;t used for this estimate.
+                  the recommended price for your municipality, less your cost per kg on them. Where no market price
+                  is recorded for a product in your municipality, your own selling price is used instead, and the
+                  product says &quot;Your price&quot;.
                 </p>
                 <p>
-                  Only products with a cost per kg are added up, and only those with a recommended price are in the
-                  estimate - so each profit is exactly its income less its expense.
+                  Only products with a cost per kg are added up - so each profit is exactly its income less its
+                  expense.
                 </p>
               </div>
             </details>

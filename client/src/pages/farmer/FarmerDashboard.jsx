@@ -21,9 +21,9 @@ import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit } f
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 import { money } from "../../utils/profit";
 
-// "Old stock nobody bought" - long enough that a normal slow week doesn't
-// get flagged as needing a discount.
-const STALE_PRODUCT_DAYS = 14;
+// A product nobody has ordered for this long is suggested for a Flash Sale.
+const STALE_PRODUCT_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const PROFIT_PAGE = "/farmer/dashboard/profit";
 
 // Every card has one look: white, a hairline border, a dark title - no
@@ -168,22 +168,29 @@ export default function FarmerDashboard() {
     return { current, change: previous > 0 ? ((current - previous) / previous) * 100 : null };
   }, [completedOrders]);
 
-  // Flash Sale candidates: still in stock, no buyer interest at all (this is
-  // about whether it's ever been ordered, not whether that order finished -
-  // one still in progress means it isn't sitting idle), not already
-  // discounted, and old enough that it isn't just a normal slow week.
+  // Flash Sale candidates: still in stock, not already discounted, and not
+  // ordered by anyone for a week - counted from its last order, or from when
+  // it was listed if it has never had one. Any order that wasn't cancelled
+  // counts, finished or not: one in progress means it is selling. The longest
+  // idle come first.
   const staleStock = useMemo(() => {
-    const everOrdered = new Set(orders.filter((o) => o.status !== "cancelled").map(orderProductId));
-    const cutoff = new Date().getTime() - STALE_PRODUCT_DAYS * 24 * 60 * 60 * 1000;
+    const lastOrderAt = new Map();
+    orders
+      .filter((o) => o.status !== "cancelled")
+      .forEach((o) => {
+        const id = orderProductId(o);
+        const at = new Date(o.createdAt).getTime();
+        if (!(lastOrderAt.get(id) >= at)) lastOrderAt.set(id, at);
+      });
+    const now = new Date().getTime();
     return products
-      .filter(
-        (p) =>
-          p.stock > 0 &&
-          !p.salePrice &&
-          !everOrdered.has(p._id) &&
-          new Date(p.createdAt).getTime() <= cutoff
-      )
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .map((p) => {
+        const lastOrder = lastOrderAt.get(p._id) ?? null;
+        const idleSince = lastOrder ?? new Date(p.createdAt).getTime();
+        return { ...p, everOrdered: lastOrder !== null, idleDays: Math.floor((now - idleSince) / DAY_MS) };
+      })
+      .filter((p) => p.stock > 0 && !p.salePrice && p.idleDays >= STALE_PRODUCT_DAYS)
+      .sort((a, b) => b.idleDays - a.idleDays)
       .slice(0, 6);
   }, [products, orders]);
 
@@ -368,7 +375,7 @@ export default function FarmerDashboard() {
 
             <section className={CARD} data-testid="flash-sale">
               <h2 className="text-base font-semibold text-gray-900">Flash sale suggestions</h2>
-              <p className="text-xs text-gray-500">Old stock that could use a discount</p>
+              <p className="text-xs text-gray-500">Products with no orders for a week or more</p>
               {loading ? (
                 <p className="mt-4 text-sm text-gray-400">Loading...</p>
               ) : staleStock.length === 0 ? (
@@ -378,7 +385,7 @@ export default function FarmerDashboard() {
                   </span>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Nothing sitting idle — nice!</p>
-                    <p className="text-xs text-gray-600">Products that stay unsold too long will show up here.</p>
+                    <p className="text-xs text-gray-600">A product with no orders for a week will show up here.</p>
                   </div>
                 </div>
               ) : (
@@ -387,7 +394,9 @@ export default function FarmerDashboard() {
                     <li key={p._id} className="flex items-center justify-between gap-3 py-2.5">
                       <div className="min-w-0 text-sm">
                         <p className="truncate font-medium text-gray-800">{p.title}</p>
-                        <p className="text-xs text-gray-500">{p.stock} kg left, no orders yet</p>
+                        <p className="text-xs text-gray-500">
+                          {p.stock} kg left · {p.everOrdered ? `no orders in ${p.idleDays} days` : `no orders yet (listed ${p.idleDays} days ago)`}
+                        </p>
                       </div>
                       <button
                         type="button"

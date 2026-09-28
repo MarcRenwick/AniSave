@@ -8,8 +8,10 @@ const { effectivePrice } = require("./pricing");
 //
 // Every kilo of a listing is in one of three places, and is counted in one:
 //   - still in stock: valued at the RECOMMENDED (market) price - an estimate,
-//     since nobody has bought it yet. The farmer's own selling price is
-//     deliberately not used for this, and never replaced by the market one.
+//     since nobody has bought it yet. Where the farmer's municipality has no
+//     market price for the product, the farmer's own selling price stands in,
+//     and `estimated.basis` says which was used. The selling price itself is
+//     never replaced by the market one.
 //   - sold, in a completed order: ACTUAL income is what the buyers paid.
 //   - in an order a buyer hasn't picked up yet: neither, until it is. These
 //     kilos are reported so the gap between the two is explained.
@@ -28,7 +30,10 @@ function productProfit(product, recommendation, sales = {}) {
   const income = money(sales.income || 0);
 
   const stockExpense = expensePerKg === null ? null : money(product.stock * expensePerKg);
-  const stockIncome = marketPrice === null ? null : money(product.stock * marketPrice);
+  const sellingPrice = effectivePrice(product);
+  // What the stock is valued at: the market price, or the farmer's own.
+  const estimatePrice = marketPrice ?? sellingPrice;
+  const stockIncome = money(product.stock * estimatePrice);
   const soldExpense = expensePerKg === null ? null : money(soldKg * expensePerKg);
 
   return {
@@ -40,14 +45,16 @@ function productProfit(product, recommendation, sales = {}) {
     price: product.price,
     salePrice: product.salePrice ?? null,
     // What a buyer pays right now - the Flash Sale price while one is running.
-    sellingPrice: effectivePrice(product),
+    sellingPrice,
     expensePerKg,
     recommendation: recommendation || { available: false, reason: "no-product" },
     estimated: {
       quantity: product.stock,
+      basis: marketPrice === null ? "selling" : "market",
+      pricePerKg: estimatePrice,
       expense: stockExpense,
       income: stockIncome,
-      profit: stockExpense === null || stockIncome === null ? null : money(stockIncome - stockExpense),
+      profit: stockExpense === null ? null : money(stockIncome - stockExpense),
     },
     actual: {
       soldKg,
@@ -60,14 +67,16 @@ function productProfit(product, recommendation, sales = {}) {
   };
 }
 
-// The totals across listings. Only listings whose figures are all known are
-// added up - one with no expense per kilo yet, or (for the estimate) no market
-// price - so each total profit is exactly its total income less its total
-// expense, and the listings left out are counted so the page can say so.
+// The totals across listings. Only listings with an expense per kilo are
+// added up - without one there is no expense or profit to add - so each total
+// profit is exactly its total income less its total expense, and the listings
+// left out are counted so the page can say so. The estimate takes every such
+// listing with stock, and counts how many were valued at the market price and
+// how many at the farmer's own.
 function profitTotals(rows) {
   const sum = (list, pick) => money(list.reduce((total, row) => total + pick(row), 0));
 
-  const estimated = rows.filter((row) => row.estimated.profit !== null);
+  const estimated = rows.filter((row) => row.estimated.profit !== null && row.estimated.quantity > 0);
   const actual = rows.filter((row) => row.actual.profit !== null);
   const estimatedExpense = sum(estimated, (row) => row.estimated.expense);
   const estimatedIncome = sum(estimated, (row) => row.estimated.income);
@@ -81,6 +90,8 @@ function profitTotals(rows) {
       expense: estimatedExpense,
       income: estimatedIncome,
       profit: money(estimatedIncome - estimatedExpense),
+      marketCount: estimated.filter((row) => row.estimated.basis === "market").length,
+      ownCount: estimated.filter((row) => row.estimated.basis === "selling").length,
     },
     actual: {
       products: actual.filter((row) => row.actual.soldKg > 0).length,
@@ -91,7 +102,6 @@ function profitTotals(rows) {
       profit: money(actualIncome - actualExpense),
     },
     missingExpense: rows.filter((row) => row.expensePerKg === null).length,
-    missingMarketPrice: rows.filter((row) => row.expensePerKg !== null && row.estimated.income === null).length,
   };
 }
 
