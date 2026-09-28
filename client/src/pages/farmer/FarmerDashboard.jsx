@@ -17,7 +17,7 @@ import VerificationBanner from "../../components/farmer/VerificationBanner";
 import { ChartSkeleton } from "../../components/farmer/charts/ChartParts";
 import { Caption, CaptionRow, Figure, MiniBars, Sparkline, StatCard, StockBar, Warning } from "../../components/farmer/StatCard";
 import { useAuth } from "../../context/AuthContext";
-import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit } from "../../services/api";
+import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit, SERVER_URL } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 import { money } from "../../utils/profit";
 
@@ -34,24 +34,12 @@ const PROFIT_PAGE = "/farmer/dashboard/profit";
 // coloured header bars, so green is kept for what can be clicked or chosen.
 const CARD = "rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm";
 
-// Shared by the all-time and this-month leaderboards below - only the set of
-// orders considered differs between them.
 // getFarmerOrders populates `product` (for its image/category/location), so
 // an order's product is an object here, not a plain id - grouping or
 // comparing by the object itself would treat every order as a different
 // product, since each is a distinct object from JSON parsing.
 const orderProductId = (order) => order.product?._id || order.product;
 
-function rankByQuantitySold(orders) {
-  const salesByProduct = new Map();
-  orders.forEach((order) => {
-    const key = orderProductId(order);
-    const entry = salesByProduct.get(key) || { title: order.productTitle, qty: 0 };
-    entry.qty += order.quantity;
-    salesByProduct.set(key, entry);
-  });
-  return [...salesByProduct.values()].sort((a, b) => b.qty - a.qty).slice(0, 6);
-}
 
 function isToday(dateString) {
   const d = new Date(dateString);
@@ -146,16 +134,6 @@ export default function FarmerDashboard() {
   // it's actually done, not the moment it's placed.
   const completedOrders = useMemo(() => orders.filter((o) => o.status === "done"), [orders]);
 
-  // Same ranking, narrowed to this calendar month - by when the order was
-  // actually completed, not when it was first placed.
-  const topProductsThisMonth = useMemo(() => {
-    const now = new Date();
-    const thisMonth = completedOrders.filter((order) => {
-      const d = new Date(order.doneAt || order.createdAt);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
-    return rankByQuantitySold(thisMonth);
-  }, [completedOrders]);
 
   // This month's revenue, and last month's to set it against.
   const monthRevenue = useMemo(() => {
@@ -355,9 +333,20 @@ export default function FarmerDashboard() {
                     const look = NOTE_LOOK[note.kind] || NOTE_LOOK.order;
                     return (
                       <li key={note.id} className="flex items-center gap-3 py-3">
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${look.tone}`}>
-                          <look.icon className="h-4 w-4" />
-                        </span>
+                        {/* The product's own photo, so it can be told at a glance
+                            which product it is - the icon only for one without. */}
+                        {note.image ? (
+                          <img
+                            src={`${SERVER_URL}${note.image}`}
+                            alt=""
+                            className="h-9 w-9 shrink-0 rounded-lg bg-gray-100 object-cover ring-1 ring-gray-200"
+                            data-testid="note-photo"
+                          />
+                        ) : (
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${look.tone}`}>
+                            <look.icon className="h-4 w-4" />
+                          </span>
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-gray-900">{sentenceCase(note.title)}</p>
                           <p className="text-xs text-gray-600">
@@ -388,8 +377,7 @@ export default function FarmerDashboard() {
 
           <div className="min-w-0 space-y-6">
             {/* Demand as buyers show it - what they look for and open - rather
-                than what has already been sold. The sales leaderboard below is
-                the other half of the picture. */}
+                than what has already been sold. */}
             <RankedList
               testId="top-searched"
               title="What buyers look for"
@@ -403,21 +391,6 @@ export default function FarmerDashboard() {
                 value: crop.count,
                 label: crop.count.toLocaleString(),
                 hint: `${crop.searches} search${crop.searches === 1 ? "" : "es"}, ${plural(crop.views, "view")}`,
-              }))}
-            />
-
-            <RankedList
-              testId="best-sellers"
-              title="Best sellers this month"
-              subtitle="Top purchases · kg sold"
-              loading={loading}
-              empty="No orders yet this month"
-              barClass="bg-orange-500"
-              items={topProductsThisMonth.map((p) => ({
-                key: p.title,
-                name: p.title,
-                value: p.qty,
-                label: `${p.qty.toLocaleString()} kg`,
               }))}
             />
 

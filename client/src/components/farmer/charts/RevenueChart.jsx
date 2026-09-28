@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bar,
   CartesianGrid,
-  Cell,
   ComposedChart,
   Line,
   ReferenceArea,
@@ -19,8 +17,8 @@ const EVERY = { hour: "Hourly", day: "Daily", month: "Monthly" };
 const BEST = { hour: "Best hour", day: "Best day", month: "Best month" };
 const HEIGHT = 260;
 
-// Tells the card which bar the chart's own keyboard navigation is on, so Enter
-// can open it the way a tap does.
+// Tells the card which point the chart's own keyboard navigation is on, so
+// Enter can open it the way a tap does.
 function ActiveBar({ onChange }) {
   const label = useActiveTooltipLabel();
   useEffect(() => onChange(label === undefined || label === null ? null : Number(label)), [label, onChange]);
@@ -43,9 +41,9 @@ function Stat({ label, value, detail, testId }) {
   );
 }
 
-// Revenue (or kilos) per hour, day or month as bars, with the running total
-// as a line over them on the same axis - so a farmer sees both how each day
-// went and where the period has got to.
+// Revenue (or kilos) over the period as one line - the running total, so it
+// climbs with every sale - with each day's own figure in its readout. Tapping
+// a point on the line lists that day's orders.
 export default function RevenueChart({ data, range, period, metric, orders, phone }) {
   const [selected, setSelected] = useState(null);
   const active = useRef(null);
@@ -126,7 +124,15 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
         data-testid="revenue-chart"
       >
         <ResponsiveContainer width="100%" height={HEIGHT}>
-          <ComposedChart data={points} margin={{ top: 16, right: 8, bottom: 0, left: 0 }}>
+          <ComposedChart
+            data={points}
+            margin={{ top: 16, right: 8, bottom: 0, left: 0 }}
+            className="cursor-pointer"
+            onClick={(state) => {
+              const i = state?.activeTooltipIndex;
+              if (i !== undefined && i !== null && points[Number(i)] && !points[Number(i)].upcoming) toggle(Number(i));
+            }}
+          >
             <CartesianGrid vertical={false} stroke={COLORS.grid} />
             {chart.firstUpcoming > 0 && (
               <ReferenceArea
@@ -163,7 +169,7 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
               allowDecimals={false}
             />
             <Tooltip
-              cursor={{ fill: "rgba(31, 122, 77, 0.06)" }}
+              cursor={{ stroke: "#C9D3CD", strokeDasharray: "3 3" }}
               content={({ active: shown, payload }) => {
                 if (!shown || !payload?.length) return null;
                 const b = payload[0].payload;
@@ -171,42 +177,32 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
                   <TooltipBox
                     title={b.full}
                     lines={[
-                      [metric.legend, metric.format(b.value), COLORS.green],
                       ...(b.running !== null ? [["Running total", metric.format(b.running), COLORS.orange]] : []),
+                      [`This ${unit}`, metric.format(b.value)],
                       ["Orders", String(b.orders)],
                     ]}
                   />
                 );
               }}
             />
-            <Bar
-              dataKey="value"
-              name={metric.legend}
-              maxBarSize={28}
-              radius={[4, 4, 0, 0]}
-              cursor="pointer"
-              onClick={(_, i) => toggle(i)}
-              isAnimationActive={false}
-            >
-              {points.map((b) => (
-                <Cell
-                  key={b.i}
-                  fill={b.i === selected ? COLORS.darkGreen : b.isCurrent ? "#CFE8D9" : COLORS.green}
-                  stroke={b.isCurrent ? COLORS.green : "none"}
-                  strokeWidth={b.isCurrent ? 1.5 : 0}
-                  strokeDasharray={b.isCurrent ? "4 3" : undefined}
-                  data-testid={b.isCurrent ? "bar-current" : undefined}
-                />
-              ))}
-            </Bar>
             <Line
               type="monotone"
               dataKey="running"
               name="Running total"
               stroke={COLORS.orange}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 4 }}
+              strokeWidth={2.5}
+              // Only two points are marked: now (hollow, dashed), and the one
+              // tapped open.
+              dot={({ cx, cy, index }) =>
+                cy == null ? null : index === current ? (
+                  <circle key={index} cx={cx} cy={cy} r={5} fill="#fff" stroke={COLORS.orange} strokeWidth={2} strokeDasharray="2 2" data-testid="point-current" />
+                ) : index === selected ? (
+                  <circle key={index} cx={cx} cy={cy} r={5} fill={COLORS.orange} stroke="#fff" strokeWidth={2} data-testid="point-selected" />
+                ) : (
+                  <g key={index} />
+                )
+              }
+              activeDot={{ r: 5, fill: COLORS.orange, stroke: "#fff", strokeWidth: 2 }}
               connectNulls={false}
               isAnimationActive={false}
             />
@@ -216,17 +212,16 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: COLORS.muted }} data-testid="chart-legend">
-        <Key swatch={<span className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS.green }} />}>
-          {metric.legend} per {unit}
+        <Key swatch={<span className="h-0.5 w-4 rounded" style={{ background: COLORS.orange }} />}>
+          {metric.legend}, running total
         </Key>
-        <Key swatch={<span className="h-0.5 w-4 rounded" style={{ background: COLORS.orange }} />}>Running total</Key>
         {current !== -1 && granularity !== "month" && (
-          <Key swatch={<span className="h-2.5 w-2.5 rounded-sm border border-dashed" style={{ background: "#CFE8D9", borderColor: COLORS.green }} />}>
-            {granularity === "hour" ? "This hour" : "Today"}
+          <Key swatch={<span className="h-2.5 w-2.5 rounded-full border-2 border-dashed bg-white" style={{ borderColor: COLORS.orange }} />}>
+            {granularity === "hour" ? "Now" : "Today"}
           </Key>
         )}
         {chart.firstUpcoming > 0 && <Key swatch={<span className="h-2.5 w-2.5 rounded-sm bg-[#E4E9E6]" />}>Upcoming</Key>}
-        <span>Tip: tap a bar to see that {unit}&apos;s orders</span>
+        <span>Tip: tap the line to see that {unit}&apos;s orders</span>
       </div>
 
       {open && (

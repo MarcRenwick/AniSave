@@ -13,7 +13,8 @@ export const LOW_STOCK_THRESHOLD = 10;
 
 // Each notification also says where it leads and what to call that - the
 // dashboard's list puts a button on every one - and, for an order, the part of
-// the sentence worth emphasising ("2 kg of Tomato").
+// the sentence worth emphasising ("2 kg of Tomato"), and the photo of the
+// product it is about (the first one, when it names several), if it has one.
 export function deriveNotifications(products, orders) {
   const list = [];
 
@@ -32,6 +33,7 @@ export function deriveNotifications(products, orders) {
         emphasis: `${order.quantity} kg of ${order.productTitle}`,
         to: `/farmer/orders/${order._id}`,
         action: "View order",
+        image: order.product?.image || null,
       });
     });
 
@@ -40,6 +42,7 @@ export function deriveNotifications(products, orders) {
     list.push({
       id: "out-of-stock",
       kind: "out-of-stock",
+      image: outOfStock.find((p) => p.image)?.image || null,
       category: "system",
       to: "/farmer/products",
       action: "Restock",
@@ -57,6 +60,7 @@ export function deriveNotifications(products, orders) {
     list.push({
       id: "low-stock",
       kind: "low-stock",
+      image: lowStock.find((p) => p.image)?.image || null,
       category: "system",
       to: "/farmer/products",
       action: "Restock",
