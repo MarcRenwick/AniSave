@@ -20,3 +20,45 @@ export function estimate({ quantity, expensePerKg, marketPrice }) {
   const income = cents(quantity * marketPrice);
   return { expense, income, profit: cents(income - expense) };
 }
+
+// Everything the farmer's Product Details panel shows, from the listing's
+// profit row (GET /api/products/:id/profit): the per-kilo figures, where
+// every listed kilo is, and what the kilos left would make.
+//
+// The remaining stock is valued at the recommended (market) price when the
+// farmer's municipality has one, as everywhere else. Only here, with no
+// market price recorded, it falls back to the farmer's own selling price -
+// and says so - rather than showing nothing.
+export function productFinancials(row) {
+  const { expensePerKg, sellingPrice, price, recommendation, actual, pendingKg = 0, stock } = row;
+  const hasCost = expensePerKg !== null && expensePerKg !== undefined;
+  const marketPrice = recommendation?.available ? recommendation.pricePerKilo : null;
+  const valuedAt = marketPrice ?? sellingPrice;
+  const capital = hasCost ? cents(stock * expensePerKg) : null;
+  const income = cents(stock * valuedAt);
+
+  return {
+    hasCost,
+    expensePerKg: hasCost ? expensePerKg : null,
+    sellingPrice,
+    regularPrice: price,
+    onSale: sellingPrice !== price,
+    margin: hasCost ? cents(sellingPrice - expensePerKg) : null,
+    marketPrice,
+    municipality: recommendation?.municipality || null,
+    actual,
+    stock: {
+      soldKg: actual.soldKg,
+      pendingKg,
+      inStockKg: stock,
+      listedKg: actual.soldKg + pendingKg + stock,
+    },
+    remaining: {
+      basis: marketPrice === null ? "selling" : "market",
+      pricePerKg: valuedAt,
+      capital,
+      income,
+      profit: hasCost ? cents(income - capital) : null,
+    },
+  };
+}

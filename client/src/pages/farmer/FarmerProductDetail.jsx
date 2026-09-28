@@ -1,37 +1,202 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Package, Star } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Lock, Star } from "lucide-react";
 import ProductGallery from "../../components/products/ProductGallery";
-import PriceTag from "../../components/products/PriceTag";
-import ProfitPanels from "../../components/farmer/profit/ProfitPanels";
 import { getProduct, getProductProfit } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
 import useScrollReveal from "../../hooks/useScrollReveal";
 import { categoryLabel } from "../../utils/categories";
-import { money } from "../../utils/profit";
+import { discountPercent, effectivePrice, onFlashSale } from "../../utils/pricing";
+import { money, productFinancials } from "../../utils/profit";
 
-// One of the three prices the profit figures come from.
-function Price({ label, value, note }) {
+const CARD = "rounded-[18px] bg-white p-6 shadow-sm";
+const kilos = (kg) => `${kg.toLocaleString()} kg`;
+
+function Chip({ tone = "green", children }) {
+  const look = {
+    green: "bg-green-50 text-[#1f5c42] ring-green-100",
+    grey: "bg-gray-100 text-gray-700 ring-gray-200",
+    amber: "bg-amber-50 text-amber-800 ring-amber-100",
+  }[tone];
+  return <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${look}`}>{children}</span>;
+}
+
+// A small bordered box: a grey label over a bold value.
+function Tile({ label, children, wide = false }) {
   return (
-    <div className="rounded-lg bg-gray-50 px-3 py-2.5">
-      <dt className="text-xs text-gray-500">{label}</dt>
-      <dd className="font-semibold text-gray-900">{value}</dd>
-      {note && <dd className="text-xs text-gray-400">{note}</dd>}
+    <div className={`rounded-xl border border-gray-200 px-3.5 py-2.5 ${wide ? "col-span-2" : ""}`}>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="font-semibold text-gray-900">{children}</p>
     </div>
   );
 }
 
-function Row({ label, children }) {
+// One label-left, value-right line of the Per kilo list.
+function PerKilo({ label, children }) {
   return (
-    <div className="grid grid-cols-[8rem_1fr] items-start gap-4">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="font-medium text-gray-900">{children}</dd>
+    <div className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+      <dt className="text-gray-600">{label}</dt>
+      <dd className="text-right font-semibold text-gray-900">{children}</dd>
     </div>
+  );
+}
+
+// Where every listed kilo is, as one bar: sold, waiting to be picked up, and
+// still in stock.
+function StockBar({ stock }) {
+  const { soldKg, pendingKg, inStockKg, listedKg } = stock;
+  const parts = [
+    { key: "sold", label: "Sold", kg: soldKg, className: "bg-[#1f5c42]" },
+    { key: "pending", label: "Awaiting pick-up", kg: pendingKg, className: "bg-amber-400" },
+    { key: "stock", label: "In stock", kg: inStockKg, className: "bg-green-200" },
+  ];
+  return (
+    <div data-testid="stock-bar">
+      <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
+        {listedKg > 0 &&
+          parts.map((p) =>
+            p.kg > 0 ? (
+              <div key={p.key} data-part={p.key} className={`h-full ${p.className}`} style={{ width: `${(p.kg / listedKg) * 100}%` }} />
+            ) : null
+          )}
+      </div>
+      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+        {parts.map((p) => (
+          <li key={p.key} className="flex items-center gap-1.5">
+            <span className={`h-2.5 w-2.5 rounded-sm ${p.className}`} />
+            {p.label} {kilos(p.kg)}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// The farmer's own figures for this listing. Only they see it.
+function FinancialsPanel({ fin, productTitle, city, editPath }) {
+  const { actual, remaining } = fin;
+  const loss = actual.profit !== null && actual.profit < 0;
+  const sub = (text) => <p className="text-[11px] opacity-80">{text}</p>;
+
+  return (
+    <>
+      {/* Only the profit card is solid green; a loss turns it to a warning. */}
+      <div
+        data-testid="profit-card"
+        className={`mt-4 rounded-2xl p-5 text-white ${loss ? "bg-red-600" : "bg-[#2f8f66]"}`}
+      >
+        <p className="text-sm font-medium opacity-90">Profit from completed sales</p>
+        {actual.profit === null ? (
+          <p className="mt-1 text-sm font-semibold">Add your cost per kg to see it</p>
+        ) : (
+          <p className="mt-1 text-4xl font-bold tracking-tight">{money(actual.profit)}</p>
+        )}
+        <p className="mt-1 text-xs opacity-90">
+          {actual.soldKg > 0
+            ? `${kilos(actual.soldKg)} sold · ${actual.orders} completed order${actual.orders === 1 ? "" : "s"}`
+            : "No completed sales yet"}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-xl bg-white/15 px-3 py-2.5">
+            <p className="text-xs opacity-90">Income</p>
+            <p className="text-lg font-bold">{money(actual.income)}</p>
+            {sub("What buyers paid")}
+          </div>
+          <div className="rounded-xl bg-white/15 px-3 py-2.5">
+            <p className="text-xs opacity-90">Expense</p>
+            <p className="text-lg font-bold">{actual.expense === null ? "—" : money(actual.expense)}</p>
+            {sub(fin.hasCost ? `${kilos(actual.soldKg)} × ${money(fin.expensePerKg)}` : "No cost per kg yet")}
+          </div>
+        </div>
+      </div>
+
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">Per kilo</p>
+      <dl className="mt-1 divide-y divide-gray-100" data-testid="per-kilo">
+        <PerKilo label="Your cost">
+          {fin.hasCost ? (
+            money(fin.expensePerKg)
+          ) : (
+            <Link to={editPath} className="text-amber-700 underline underline-offset-2 hover:text-amber-800">
+              Not set - add it
+            </Link>
+          )}
+        </PerKilo>
+        <PerKilo label="Selling price">
+          {money(fin.sellingPrice)}
+          {fin.onSale && <span className="ml-1 text-xs font-normal text-gray-500">(usually {money(fin.regularPrice)})</span>}
+        </PerKilo>
+        <PerKilo label="Margin">
+          {fin.margin === null ? (
+            <span className="font-normal text-gray-400">—</span>
+          ) : (
+            <span className={fin.margin < 0 ? "text-red-600" : "text-[#2f8f66]"}>
+              {fin.margin > 0 ? "+" : ""}
+              {money(fin.margin)}
+            </span>
+          )}
+        </PerKilo>
+        <PerKilo label={`Market price (${city})`}>
+          {fin.marketPrice === null ? <span className="font-normal text-gray-400">Not recorded</span> : money(fin.marketPrice)}
+        </PerKilo>
+      </dl>
+
+      <div className="mt-5 flex items-baseline justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Stock</p>
+        <p className="text-xs text-gray-500">{kilos(fin.stock.listedKg)} listed</p>
+      </div>
+      <div className="mt-2">
+        <StockBar stock={fin.stock} />
+      </div>
+
+      <div className="mt-5 rounded-xl border border-dashed border-gray-300 p-4" data-testid="remaining-stock">
+        <p className="text-sm font-semibold text-gray-900">Remaining stock ({kilos(fin.stock.inStockKg)})</p>
+        <dl className="mt-2 space-y-1.5 text-sm">
+          {fin.hasCost && (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-gray-600">
+                Capital in stock{" "}
+                <span className="text-xs text-gray-400">
+                  {kilos(fin.stock.inStockKg)} × {money(fin.expensePerKg)}
+                </span>
+              </dt>
+              <dd className="font-semibold text-gray-900">{money(remaining.capital)}</dd>
+            </div>
+          )}
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-gray-600">
+              {remaining.basis === "market" ? "If sold at market price" : "If sold at your price"}{" "}
+              <span className="text-xs text-gray-400">
+                {kilos(fin.stock.inStockKg)} × {money(remaining.pricePerKg)}
+              </span>
+            </dt>
+            <dd className="font-semibold text-gray-900">{money(remaining.income)}</dd>
+          </div>
+          {remaining.profit !== null && (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-gray-600">Estimated profit</dt>
+              <dd className={`font-bold ${remaining.profit < 0 ? "text-red-600" : "text-[#2f8f66]"}`}>{money(remaining.profit)}</dd>
+            </div>
+          )}
+        </dl>
+        {remaining.basis === "selling" && (
+          <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-500">
+            No market price is recorded for {productTitle} in {city} yet, so this uses your own selling price.
+          </p>
+        )}
+        {!fin.hasCost && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            Add your cost per kg to see what this stock cost you and what it would make.
+          </p>
+        )}
+      </div>
+    </>
   );
 }
 
 export default function FarmerProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,157 +222,112 @@ export default function FarmerProductDetail() {
   }, [id]);
 
   const isPreOrder = product?.productType === "preorder";
+  const fin = profit ? productFinancials(profit) : null;
+  const city = fin?.municipality || user?.address?.city || "your municipality";
+  const editPath = `/farmer/products/${id}/edit`;
 
   return (
     <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
-        <button type="button" onClick={() => navigate("/farmer/products")} aria-label="Back">
-          <ArrowLeft className="h-6 w-6" />
+      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-3 text-white sm:px-6">
+        <button
+          type="button"
+          onClick={() => navigate("/farmer/products")}
+          aria-label="Back"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/15 transition hover:bg-white/25"
+        >
+          <ArrowLeft className="h-5 w-5" />
         </button>
-        <h1 className="flex-1 pr-6 text-center text-xl font-semibold">Product Details</h1>
+        <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">Product Details</h1>
+        <Link
+          to={editPath}
+          className="flex h-11 shrink-0 items-center rounded-lg border border-white/70 px-4 text-sm font-semibold transition hover:bg-white/10"
+        >
+          Edit product
+        </Link>
       </div>
 
-      <div className="mx-auto max-w-4xl space-y-6 p-4 sm:p-8">
+      <div className="mx-auto max-w-6xl p-4 sm:p-8">
         {loading && <p className="text-sm text-gray-600">Loading...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && product && (
-          <>
-            <div className="grid gap-8 rounded-2xl bg-white p-6 shadow-sm md:grid-cols-2">
-              <div>
-                <ProductGallery key={product._id} product={product} />
-                <button
-                  type="button"
-                  onClick={() => navigate(`/farmer/products/${product._id}/ratings`)}
-                  className="mx-auto mt-5 block rounded-md bg-[#2f8f66] px-8 py-2.5 text-sm font-semibold text-white hover:bg-[#267a56]"
-                >
-                  View Ratings
-                </button>
-              </div>
+          <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-6">
+              <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,22.5rem)_minmax(0,1fr)] ${CARD}`} data-testid="product-card">
+                <ProductGallery key={product._id} product={product} variant="farmer" />
 
-              <div>
-                <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-900">
-                  {product.title}
-                  {isPreOrder && (
-                    <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                      Pre-Order
-                    </span>
-                  )}
-                </h2>
-
-                <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-700">
-                  {product.ratingCount > 0 ? (
-                    <span className="flex items-center gap-1.5">
-                      {product.rating.toFixed(1)}
-                      <span className="flex">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <Star
-                            key={n}
-                            className={`h-4 w-4 ${
-                              n <= Math.round(product.rating)
-                                ? "fill-amber-400 text-amber-400"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap gap-1.5">
+                    <Chip>{categoryLabel(product.category)}</Chip>
+                    {isPreOrder ? <Chip tone="amber">For Pre-Order</Chip> : <Chip tone="grey">For Sale</Chip>}
+                  </div>
+                  <h2 className="mt-2 break-words text-3xl font-bold text-gray-900">{product.title}</h2>
+                  <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                    {product.ratingCount > 0 ? (
+                      <span className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        {product.rating.toFixed(1)} ({product.ratingCount} rating{product.ratingCount === 1 ? "" : "s"})
                       </span>
-                    </span>
-                  ) : (
-                    <span>No ratings yet</span>
-                  )}
-                  <span className="h-4 w-px bg-gray-300" />
-                  <span>
-                    {product.ratingCount} Rating{product.ratingCount === 1 ? "" : "s"}
-                  </span>
-                  <span className="h-4 w-px bg-gray-300" />
-                  <span>Sold {product.sold}</span>
-                </div>
+                    ) : (
+                      <span>No ratings yet</span>
+                    )}
+                    <span className="h-3.5 w-px bg-gray-300" aria-hidden="true" />
+                    <span>{product.sold} sold</span>
+                  </p>
 
-                <div className="mt-5 rounded-md bg-[#2f8f66] px-4 py-2">
-                  <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
-                </div>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-100 bg-green-50/70 px-4 py-3" data-testid="price-block">
+                    <p className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="text-3xl font-bold text-[#2f8f66]">{money(effectivePrice(product))}</span>
+                      <span className="text-sm text-gray-600">per kilo</span>
+                      {onFlashSale(product) && <span className="text-sm text-gray-400 line-through">{money(product.price)}</span>}
+                    </p>
+                    {onFlashSale(product) && (
+                      <span className="rounded-full bg-yellow-300 px-2.5 py-1 text-xs font-bold text-[#1f5c42]">
+                        Flash sale −{discountPercent(product)}%
+                      </span>
+                    )}
+                  </div>
 
-                <dl className="mt-6 space-y-5 text-sm">
-                  <Row label="Order Fulfillment">
-                    <span className="flex items-center gap-2">
-                      <Package className="h-5 w-5 text-[#2f8f66]" />
-                      Pick-up
-                    </span>
-                  </Row>
-                  <Row label="Category">{categoryLabel(product.category)}</Row>
-                  <Row label="Product Type">{isPreOrder ? "For Pre-Order" : "For Sale"}</Row>
-                  <Row label="Address">{product.location || "Not set"}</Row>
-                  <Row label="Quantity">{product.stock} kilos Available</Row>
-                </dl>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <Tile label="Order fulfillment">Pick-up</Tile>
+                    <Tile label="Available">{kilos(product.stock)}</Tile>
+                    <Tile label="Pick-up address" wide>
+                      {product.location || "Not set"}
+                    </Tile>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/farmer/products/${product._id}/ratings`)}
+                    className="mt-4 h-11 rounded-lg border border-[#2f8f66] px-5 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                  >
+                    View ratings
+                  </button>
+                </div>
+              </div>
+
+              <div className={CARD}>
+                <h2 className="font-semibold text-gray-900">Product description</h2>
+                <p className="mt-2 whitespace-pre-line break-words text-sm leading-relaxed text-gray-600">
+                  {product.description || "No description provided yet."}
+                </p>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-white p-6 shadow-sm">
-              <p className="font-semibold text-gray-900">Product Description</p>
-              <p className="mt-3 whitespace-pre-line break-words rounded-md border border-gray-300 p-4 text-sm leading-relaxed text-gray-700">
-                {product.description || "No description provided yet."}
-              </p>
-            </div>
-
-            <section className="rounded-2xl bg-white p-6 shadow-sm" data-testid="product-profit">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                <h2 className="font-semibold text-gray-900">Expense, Income &amp; Profit</h2>
-                <p className="text-xs text-gray-500">Only you can see this.</p>
+            <section className={`${CARD} lg:sticky lg:top-6`} data-testid="product-profit">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-base font-semibold text-gray-900">Expense, Income &amp; Profit</h2>
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                  <Lock className="h-3 w-3" />
+                  Only you
+                </span>
               </div>
 
               {profitError && <p className="mt-3 text-sm text-red-600">{profitError}</p>}
               {!profit && !profitError && <p className="mt-3 text-sm text-gray-500">Working it out...</p>}
-
-              {profit && (
-                <>
-                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                    <Price
-                      label="Expense per kg"
-                      value={profit.expensePerKg === null ? "Not set" : money(profit.expensePerKg)}
-                    />
-                    <Price
-                      label="Selling price per kg"
-                      value={money(profit.sellingPrice)}
-                      note={profit.sellingPrice !== profit.price ? `Flash Sale - usually ${money(profit.price)}` : null}
-                    />
-                    <Price
-                      label="Recommended price per kg"
-                      value={profit.recommendation.available ? money(profit.recommendation.pricePerKilo) : "None"}
-                      note={
-                        profit.recommendation.available
-                          ? `${profit.recommendation.municipality} market price`
-                          : "No market price recorded"
-                      }
-                    />
-                  </dl>
-
-                  {profit.expensePerKg === null && (
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                      <p>This listing has no expense per kg yet, so its profit can&apos;t be worked out.</p>
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/farmer/products/${product._id}/edit`)}
-                        className="rounded-md border border-[#2f8f66] bg-white px-3 py-1.5 text-xs font-semibold text-[#2f8f66] hover:bg-green-50"
-                      >
-                        Add expense
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="mt-4">
-                    <ProfitPanels row={profit} />
-                  </div>
-
-                  {profit.pendingKg > 0 && (
-                    <p className="mt-3 text-xs text-gray-500">
-                      {profit.pendingKg} kg {profit.pendingKg === 1 ? "is" : "are"} in orders not picked up
-                      yet - counted as sold once they are completed.
-                    </p>
-                  )}
-                </>
-              )}
+              {fin && <FinancialsPanel fin={fin} productTitle={product.title} city={city} editPath={editPath} />}
             </section>
-          </>
+          </div>
         )}
       </div>
     </div>

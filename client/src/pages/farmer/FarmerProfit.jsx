@@ -1,60 +1,27 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ImageOff, Info, Receipt, Sprout, TrendingUp, Wallet } from "lucide-react";
+import { AlertCircle, ArrowLeft, Check, ChevronRight, ImageOff, Package, Plus } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
-import Segmented from "../../components/farmer/Segmented";
-import { Caption, Figure, StatCard, Warning } from "../../components/farmer/StatCard";
 import { getMyProfit, SERVER_URL } from "../../services/api";
-import { money, profitTone } from "../../utils/profit";
+import { money } from "../../utils/profit";
 
-// The same card as the dashboard's: white, a hairline border, a dark title.
-const CARD = "rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm";
+// White, rounded, a hairline border - the dashboard's card.
+const CARD = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const kilos = (kg) => `${kg.toLocaleString()} kg`;
 
-// Which of a product's two sets of figures the list shows.
-const VIEWS = [
-  { key: "actual", label: "Actual sales" },
-  { key: "estimated", label: "Estimated on stock" },
-];
+// A profit in green, a loss in red; an estimate in blue, so it never reads
+// as money already made.
+const actualTone = (amount) => (amount < 0 ? "text-red-600" : "text-[#2f8f66]");
+const estimateTone = (amount) => (amount < 0 ? "text-red-600" : "text-blue-900");
 
-// A product's income, expense and profit for the chosen view - or null when
-// there is nothing to work them out from yet.
-function figuresFor(row, view) {
-  if (row.expensePerKg === null) return null;
-  if (view === "actual") {
-    return row.actual.soldKg === 0 ? null : row.actual;
-  }
-  return row.estimated.profit === null ? null : row.estimated;
-}
-
-// Why a product has no figures for the chosen view.
-function whyNone(row, view) {
-  if (view === "actual") {
-    return `No completed sales yet${row.pendingKg > 0 ? ` · ${kilos(row.pendingKg)} waiting to be picked up` : ""}`;
-  }
-  return row.recommendation?.reason === "no-municipality"
-    ? "Add your municipality in Edit Profile to estimate this"
-    : "No recommended price in your municipality";
-}
-
-// "10 kg in stock · 4 kg sold · ₱80/kg cost"
-const facts = (row) =>
-  [
-    `${kilos(row.stock)} in stock`,
-    row.actual.soldKg > 0 && `${kilos(row.actual.soldKg)} sold`,
-    row.expensePerKg !== null && `${money(row.expensePerKg)}/kg cost`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
-function Thumb({ row }) {
+function Thumb({ row, size = "h-11 w-11" }) {
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-50 text-gray-300 ring-1 ring-gray-100">
+    <div className={`flex ${size} shrink-0 items-center justify-center overflow-hidden rounded-lg bg-green-50 text-gray-300 ring-1 ring-gray-100`}>
       {row.image ? (
-        <img src={`${SERVER_URL}${row.image}`} alt={row.title} className="h-full w-full object-cover" />
+        <img src={`${SERVER_URL}${row.image}`} alt="" className="h-full w-full object-cover" />
       ) : (
         <ImageOff className="h-4 w-4" />
       )}
@@ -62,145 +29,151 @@ function Thumb({ row }) {
   );
 }
 
-// Income split into what the expense took and what was left: the green part
-// is the profit. A loss fills the bar red.
-function SplitBar({ income, expense }) {
-  if (!income && !expense) return <div className="h-2.5 rounded-full bg-gray-100" data-testid="split-bar" />;
-  if (expense > income) {
-    return <div className="h-2.5 rounded-full bg-red-500" title="The expense is more than the income" data-testid="split-bar" />;
-  }
-  const kept = income === 0 ? 0 : ((income - expense) / income) * 100;
+// "99 kg in stock · 1 kg sold · ₱10/kg cost"
+const facts = (row, withCost = true) =>
+  [
+    row.stock > 0 ? `${kilos(row.stock)} in stock` : "Out of stock",
+    row.actual.soldKg > 0 && `${kilos(row.actual.soldKg)} sold`,
+    withCost && row.expensePerKg !== null && `${money(row.expensePerKg)}/kg cost`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+// One side of a total: Income − Expense = Profit, each in its own tile.
+function Equation({ income, expense, result, resultLabel, resultClass }) {
+  const tile = (label, value, look = "bg-gray-50 text-gray-900") => (
+    <div className={`min-w-0 rounded-lg px-3 py-2.5 ${look}`}>
+      <p className="text-[11px] opacity-75">{label}</p>
+      <p className="truncate text-lg font-bold">{money(value)}</p>
+    </div>
+  );
   return (
-    <div className="flex h-2.5 overflow-hidden rounded-full bg-gray-100" data-testid="split-bar">
-      <div className="h-full bg-orange-400" style={{ width: `${100 - kept}%` }} />
-      <div className="h-full bg-[#2f8f66]" style={{ width: `${kept}%` }} />
+    <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1.15fr)] items-center gap-2">
+      {tile("Income", income)}
+      <span className="text-gray-400" aria-hidden="true">−</span>
+      {tile("Expense", expense)}
+      <span className="text-gray-400" aria-hidden="true">=</span>
+      <div className={`min-w-0 rounded-lg px-3 py-2.5 ${resultClass}`} data-testid="equation-result">
+        <p className="text-[11px] opacity-80">{resultLabel}</p>
+        <p className="truncate text-xl font-bold">{money(result)}</p>
+      </div>
     </div>
   );
 }
 
-// One of the two totals: what buyers actually paid, or what the stock would
-// fetch at the recommended price. The estimate is drawn with a dashed edge,
-// so it is never read as money already made.
-function TotalsCard({ kind, title, badge, note, lines, income, expense }) {
-  const estimated = kind === "estimated";
+function TotalCard({ kind, icon: Icon, iconClass, title, note, children }) {
   return (
-    <section
-      data-testid={`totals-${kind}`}
-      className={`rounded-xl p-5 shadow-sm ${
-        estimated ? "border border-dashed border-gray-300 bg-white" : "border border-gray-200/70 bg-white"
-      }`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-            estimated ? "bg-gray-100 text-gray-600" : "bg-green-100 text-[#1f5c42]"
-          }`}
-        >
-          {badge}
+    <section className={`${CARD} p-5`} data-testid={`totals-${kind}`}>
+      <div className="flex items-start gap-3">
+        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
+          <Icon className="h-4 w-4" />
         </span>
-      </div>
-      <p className="mt-0.5 text-xs text-gray-500">{note}</p>
-
-      <div className="mt-4">
-        <SplitBar income={income} expense={expense} />
-        <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-500">
-          <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-orange-400" /> Expense
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-[#2f8f66]" /> Profit
-          </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+          <p className="text-xs text-gray-500">{note}</p>
         </div>
       </div>
-
-      <dl className="mt-4 space-y-2 text-sm">
-        {lines.map(({ label, value, strong }) => (
-          <div
-            key={label}
-            className={`flex items-baseline justify-between gap-3 ${strong ? "border-t border-gray-100 pt-2" : ""}`}
-          >
-            <dt className={strong ? "font-semibold text-gray-900" : "text-gray-600"}>{label}</dt>
-            <dd className={strong ? `text-xl font-bold ${profitTone(value)}` : "font-semibold text-gray-900"}>
-              {money(value)}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      {children}
     </section>
   );
 }
 
-// One product in the list: what it is, its figures for the chosen view, and a
-// bar showing how its profit compares with the best one's.
-function ProductLine({ row, view, top }) {
-  const figures = figuresFor(row, view);
+// A grey pill standing in for a set of figures that can't be worked out.
+const Gap = ({ children }) => (
+  <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-500">{children}</span>
+);
+
+const NO_SALES = "No completed sales yet";
+const NO_MARKET = "No recommended price in your municipality yet";
+
+function ProductName({ row }) {
   return (
-    <li className="py-4 first:pt-0 last:pb-0" data-testid="profit-row" data-product={row._id}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex min-w-0 flex-1 basis-60 items-center gap-3">
-          <Thumb row={row} />
-          <div className="min-w-0">
-            <Link
-              to={`/farmer/products/${row._id}`}
-              className="font-medium text-gray-900 hover:text-[#2f8f66] hover:underline"
-            >
-              {row.title}
-            </Link>
-            <p className="text-xs text-gray-500">{facts(row)}</p>
-          </div>
-        </div>
-
-        {row.expensePerKg === null ? (
-          <Link
-            to={`/farmer/products/${row._id}/edit`}
-            className="ml-auto flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 ring-1 ring-amber-100 transition hover:bg-amber-100"
-          >
-            No cost per kg yet
-            <span className="font-semibold">Add it →</span>
-          </Link>
-        ) : figures === null ? (
-          <p className="ml-auto text-xs text-gray-400">{whyNone(row, view)}</p>
-        ) : (
-          <div className="ml-auto flex items-center gap-5 text-right">
-            <dl className="space-y-0.5 text-xs">
-              <div className="flex justify-end gap-2">
-                <dt className="text-gray-500">Income</dt>
-                <dd className="font-medium text-gray-800">{money(figures.income)}</dd>
-              </div>
-              <div className="flex justify-end gap-2">
-                <dt className="text-gray-500">Expense</dt>
-                <dd className="font-medium text-gray-800">{money(figures.expense)}</dd>
-              </div>
-            </dl>
-            <div className="min-w-24">
-              <p className="text-[11px] text-gray-500">Profit</p>
-              <p className={`text-lg font-bold ${profitTone(figures.profit)}`}>{money(figures.profit)}</p>
-            </div>
-          </div>
-        )}
+    <div className="flex min-w-0 items-center gap-3">
+      <Thumb row={row} />
+      <div className="min-w-0">
+        <Link to={`/farmer/products/${row._id}`} className="font-semibold text-gray-900 hover:text-[#2f8f66] hover:underline">
+          {row.title}
+        </Link>
+        <p className="text-xs text-gray-500">{facts(row)}</p>
       </div>
+    </div>
+  );
+}
 
-      {figures !== null && (
-        <div className="mt-2 h-1.5 rounded-full bg-gray-100" aria-hidden="true" data-testid="profit-bar">
-          <div
-            className={`h-full rounded-full ${figures.profit < 0 ? "bg-red-500" : "bg-[#2f8f66]"}`}
-            style={{ width: `${Math.max((Math.abs(figures.profit) / top) * 100, figures.profit === 0 ? 0 : 2)}%` }}
-          />
-        </div>
+// The table, from lg up: a product's actual sales, then its estimate on stock.
+function TableRow({ row }) {
+  const { actual, estimated } = row;
+  const cell = "px-4 py-3 text-right";
+  return (
+    <tr data-testid="profit-row" data-product={row._id}>
+      <td className="px-5 py-3">
+        <ProductName row={row} />
+      </td>
+      {actual.soldKg === 0 ? (
+        <td colSpan={3} className="border-l border-gray-100 px-4 py-3 text-center">
+          <Gap>{NO_SALES}</Gap>
+        </td>
+      ) : (
+        <>
+          <td className={`${cell} border-l border-gray-100 text-gray-700`}>{money(actual.income)}</td>
+          <td className={`${cell} text-gray-700`}>{money(actual.expense)}</td>
+          <td className={`${cell} font-bold ${actualTone(actual.profit)}`}>{money(actual.profit)}</td>
+        </>
       )}
+      {estimated.profit === null ? (
+        <td colSpan={3} className="border-l border-gray-100 px-4 py-3 text-center">
+          <Gap>{NO_MARKET}</Gap>
+        </td>
+      ) : (
+        <>
+          <td className={`${cell} border-l border-gray-100 text-gray-700`}>{money(estimated.income)}</td>
+          <td className={`${cell} text-gray-700`}>{money(estimated.expense)}</td>
+          <td className={`${cell} pr-5 font-bold ${estimateTone(estimated.profit)}`}>{money(estimated.profit)}</td>
+        </>
+      )}
+    </tr>
+  );
+}
+
+// The same on a phone or tablet: the product, then its two sets of figures.
+function MobileRow({ row }) {
+  const { actual, estimated } = row;
+  const line = (title, titleClass, figures, tone, gap) => (
+    <div className="rounded-lg bg-gray-50 px-3 py-2.5 text-xs">
+      <p className={`font-semibold ${titleClass}`}>{title}</p>
+      {figures ? (
+        <div className="mt-1 grid grid-cols-3 gap-2">
+          <p className="text-gray-500">
+            Income <span className="block text-sm font-medium text-gray-800">{money(figures.income)}</span>
+          </p>
+          <p className="text-gray-500">
+            Expense <span className="block text-sm font-medium text-gray-800">{money(figures.expense)}</span>
+          </p>
+          <p className="text-gray-500">
+            Profit <span className={`block text-sm font-bold ${tone(figures.profit)}`}>{money(figures.profit)}</span>
+          </p>
+        </div>
+      ) : (
+        <p className="mt-1 text-gray-500">{gap}</p>
+      )}
+    </div>
+  );
+  return (
+    <li className="space-y-2.5 px-5 py-4" data-testid="profit-row" data-product={row._id}>
+      <ProductName row={row} />
+      {line("Actual sales", "text-[#2f8f66]", actual.soldKg === 0 ? null : actual, actualTone, NO_SALES)}
+      {line("Estimated on stock", "text-blue-800", estimated.profit === null ? null : estimated, estimateTone, NO_MARKET)}
     </li>
   );
 }
 
-// The farmer's expense, income and profit across all their products: the
-// totals first, then each product's own figures. Everything here is worked out
-// by the server from what is stored (server/utils/profit.js).
+// The farmer's expense, income and profit: the two totals, each product's
+// figures, then the products still missing a cost per kg. Everything is
+// worked out by the server from what is stored (server/utils/profit.js).
 export default function FarmerProfit() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [view, setView] = useState("actual");
 
   useEffect(() => {
     getMyProfit()
@@ -211,16 +184,9 @@ export default function FarmerProfit() {
 
   const totals = data?.totals;
   const rows = data?.products || [];
+  const costed = rows.filter((row) => row.expensePerKg !== null);
+  const needCost = rows.filter((row) => row.expensePerKg === null);
   const municipality = rows.find((row) => row.recommendation.municipality)?.recommendation.municipality;
-  const firstMissing = rows.find((row) => row.expensePerKg === null);
-
-  // Products with figures first, most profitable at the top; the rest after
-  // them in the order they were listed.
-  const ordered = [
-    ...rows.filter((row) => figuresFor(row, view)).sort((a, b) => figuresFor(b, view).profit - figuresFor(a, view).profit),
-    ...rows.filter((row) => !figuresFor(row, view)),
-  ];
-  const top = Math.max(...ordered.map((row) => Math.abs(figuresFor(row, view)?.profit || 0)), 1);
 
   return (
     <FarmerLayout>
@@ -230,155 +196,174 @@ export default function FarmerProfit() {
           className="inline-flex items-center gap-1 text-sm font-medium text-[#2f8f66] hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
-          Dashboard
+          Back to Dashboard
         </Link>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">Profit</h1>
-        <p className="text-sm text-gray-500">Expense, income and profit on your products</p>
+        <p className="text-sm text-gray-500">Your expenses, income and profit per product</p>
       </FarmerTopBar>
 
-      <div className="space-y-6 p-4 sm:p-8">
+      <div className="space-y-5 p-4 sm:p-8">
         {loading && <p className="text-sm text-gray-500">Working out your figures...</p>}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {totals && (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard icon={TrendingUp} label="Profit so far" testId="stat-profit">
-                <Figure tone={totals.actual.profit < 0 ? "text-red-600" : "text-gray-900"}>
-                  {money(totals.actual.profit)}
-                </Figure>
-                <Caption>
-                  {totals.actual.soldKg > 0
-                    ? `From ${kilos(totals.actual.soldKg)} sold in ${plural(totals.actual.orders, "completed order")}`
-                    : "No completed sales yet"}
-                </Caption>
-              </StatCard>
-              <StatCard icon={Wallet} label="Income" testId="stat-income">
-                <Figure>{money(totals.actual.income)}</Figure>
-                <Caption>What buyers paid on completed orders</Caption>
-              </StatCard>
-              <StatCard icon={Receipt} label="Expense" testId="stat-expense">
-                <Figure>{money(totals.actual.expense)}</Figure>
-                <Caption>
-                  {totals.actual.soldKg > 0
-                    ? `${kilos(totals.actual.soldKg)} sold × your cost per kg`
-                    : "Your cost per kg on what you sell"}
-                </Caption>
-              </StatCard>
-              <StatCard icon={Sprout} label="Estimated on stock" testId="stat-estimated">
-                <Figure tone={totals.estimated.profit < 0 ? "text-red-600" : "text-gray-900"}>
-                  {money(totals.estimated.profit)}
-                </Figure>
-                <Caption>
-                  Est. profit on {kilos(totals.estimated.quantity)} at the recommended price
-                </Caption>
-                {firstMissing && (
-                  <Warning to={`/farmer/products/${firstMissing._id}/edit`} action="Add">
-                    {plural(totals.missingExpense, "product")} need{totals.missingExpense === 1 ? "s" : ""} an expense
-                  </Warning>
-                )}
-              </StatCard>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
-              <TotalsCard
+            <div className="grid gap-5 lg:grid-cols-2">
+              <TotalCard
                 kind="actual"
+                icon={Check}
+                iconClass="bg-green-50 text-[#2f8f66] ring-1 ring-green-100"
                 title="Actual sales"
-                badge="Completed orders"
                 note={
                   totals.actual.soldKg > 0
-                    ? `${kilos(totals.actual.soldKg)} sold in ${plural(totals.actual.orders, "completed order")}`
-                    : "No completed sales yet"
+                    ? `Completed orders · ${kilos(totals.actual.soldKg)} sold in ${plural(totals.actual.orders, "order")}`
+                    : "Completed orders · no completed sales yet"
                 }
-                income={totals.actual.income}
-                expense={totals.actual.expense}
-                lines={[
-                  { label: "Total Income", value: totals.actual.income },
-                  { label: "Total Expense", value: totals.actual.expense },
-                  { label: "Total Profit", value: totals.actual.profit, strong: true },
-                ]}
-              />
-              <TotalsCard
+              >
+                <Equation
+                  income={totals.actual.income}
+                  expense={totals.actual.expense}
+                  result={totals.actual.profit}
+                  resultLabel="Profit"
+                  resultClass={totals.actual.profit < 0 ? "bg-red-600 text-white" : "bg-[#2f8f66] text-white"}
+                />
+              </TotalCard>
+              <TotalCard
                 kind="estimated"
+                icon={Package}
+                iconClass="bg-blue-50 text-blue-700 ring-1 ring-blue-100"
                 title="Estimated on stock"
-                badge="Recommended price"
-                note={`${kilos(totals.estimated.quantity)} in stock across ${plural(
-                  totals.estimated.products,
-                  "product"
-                )}, valued at the recommended price${municipality ? ` for ${municipality}` : ""}`}
-                income={totals.estimated.income}
-                expense={totals.estimated.expense}
-                lines={[
-                  { label: "Estimated Income", value: totals.estimated.income },
-                  { label: "Total Expense", value: totals.estimated.expense },
-                  { label: "Estimated Profit", value: totals.estimated.profit, strong: true },
-                ]}
-              />
+                note={`If you sell the ${kilos(totals.estimated.quantity)} left, at ${
+                  municipality ? `${municipality}'s` : "your municipality's"
+                } recommended price`}
+              >
+                <Equation
+                  income={totals.estimated.income}
+                  expense={totals.estimated.expense}
+                  result={totals.estimated.profit}
+                  resultLabel="Est. profit"
+                  resultClass={
+                    totals.estimated.profit < 0 ? "bg-red-50 text-red-700 ring-1 ring-red-100" : "bg-blue-50 text-blue-900 ring-1 ring-blue-100"
+                  }
+                />
+              </TotalCard>
             </div>
 
-            {(totals.missingExpense > 0 || totals.missingMarketPrice > 0) && (
-              <div
-                className="flex items-start gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600 ring-1 ring-gray-100"
-                data-testid="left-out"
-              >
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-                <div className="space-y-1">
-                  {totals.missingExpense > 0 && (
-                    <p>
-                      {totals.missingExpense} product{totals.missingExpense === 1 ? " has" : "s have"} no
-                      expense per kg yet, so {totals.missingExpense === 1 ? "it isn't" : "they aren't"} in
-                      either total. Add it from the product&apos;s Edit page.
-                    </p>
-                  )}
-                  {totals.missingMarketPrice > 0 && (
-                    <p>
-                      {totals.missingMarketPrice} product{totals.missingMarketPrice === 1 ? " has" : "s have"} no
-                      recommended price in your municipality, so {totals.missingMarketPrice === 1 ? "it isn't" : "they aren't"} in
-                      the estimate.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
             <section className={CARD} data-testid="profit-products">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-900">Profit by product</h2>
-                  <p className="text-xs text-gray-500">
-                    {view === "actual"
-                      ? "What each product made on completed orders, best first"
-                      : "What each product's stock would make at the recommended price, best first"}
-                  </p>
-                </div>
-                <Segmented label="Show" options={VIEWS} value={view} onChange={setView} />
+              <div className="px-5 pb-3 pt-5">
+                <h2 className="text-base font-semibold text-gray-900">Profit per product</h2>
+                <p className="text-xs text-gray-500">Products with an expense per kg set</p>
               </div>
 
-              {rows.length === 0 ? (
-                <p className="mt-4 text-sm text-gray-500">
-                  No products yet. Add one from My Products to see its expense and profit here.
+              {costed.length === 0 ? (
+                <p className="px-5 pb-5 text-sm text-gray-500">
+                  {rows.length === 0
+                    ? "No products yet. Add one from My Products to see its expense and profit here."
+                    : "None of your products has a cost per kg yet - add one below to see its figures."}
                 </p>
               ) : (
-                <ol className="mt-5 divide-y divide-gray-100">
-                  {ordered.map((row) => (
-                    <ProductLine key={row._id} row={row} view={view} top={top} />
-                  ))}
-                </ol>
+                <>
+                  <div className="max-lg:hidden">
+                    <table className="w-full text-left text-sm" data-testid="profit-table">
+                      <thead className="border-y border-gray-100 bg-gray-50/70 text-xs text-gray-500">
+                        <tr>
+                          <th rowSpan={2} className="px-5 py-2 align-bottom font-semibold text-gray-700">
+                            Product
+                          </th>
+                          <th colSpan={3} className="border-l border-gray-100 px-4 pt-2 text-center font-semibold text-[#2f8f66]">
+                            Actual sales
+                          </th>
+                          <th colSpan={3} className="border-l border-gray-100 px-5 pt-2 text-center font-semibold text-blue-800">
+                            Estimated on stock
+                          </th>
+                        </tr>
+                        <tr>
+                          <th className="border-l border-gray-100 px-4 pb-2 text-right font-medium">Income</th>
+                          <th className="px-4 pb-2 text-right font-medium">Expense</th>
+                          <th className="px-4 pb-2 text-right font-medium">Profit</th>
+                          <th className="border-l border-gray-100 px-4 pb-2 text-right font-medium">Income</th>
+                          <th className="px-4 pb-2 text-right font-medium">Expense</th>
+                          <th className="px-5 pb-2 text-right font-medium">Profit</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {costed.map((row) => (
+                          <TableRow key={row._id} row={row} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <ul className="divide-y divide-gray-100 border-t border-gray-100 lg:hidden" data-testid="profit-cards">
+                    {costed.map((row) => (
+                      <MobileRow key={row._id} row={row} />
+                    ))}
+                  </ul>
+                </>
               )}
             </section>
 
-            <div className="space-y-1 text-xs text-gray-500">
-              <p>
-                <span className="font-semibold text-gray-700">Actual sales:</span> what buyers paid on
-                completed orders, less your expense per kg on the kilos sold. Orders not picked up yet count
-                in neither until they are completed.
-              </p>
-              <p>
-                <span className="font-semibold text-gray-700">Estimated on stock:</span> the kilos still in
-                stock × the recommended price for your municipality, less your expense per kg on them. Your
-                own selling price isn&apos;t used for the estimate.
-              </p>
-            </div>
+            {needCost.length > 0 && (
+              <section className={`${CARD} p-5`} data-testid="needs-cost">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+                    <AlertCircle className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-base font-semibold text-gray-900">
+                      {plural(needCost.length, "product")} need{needCost.length === 1 ? "s" : ""} your cost per kg
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      {needCost.length === 1 ? "It isn't" : "They're not"} counted in the totals above until you add it.
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {needCost.map((row) => (
+                    <li
+                      key={row._id}
+                      data-product={row._id}
+                      className="flex items-center gap-3 rounded-lg border border-gray-200 px-3 py-2.5"
+                    >
+                      <Thumb row={row} size="h-10 w-10" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-gray-900">{row.title}</p>
+                        <p className="truncate text-xs text-gray-500">{facts(row, false)}</p>
+                      </div>
+                      <Link
+                        to={`/farmer/products/${row._id}/edit`}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-100 transition hover:bg-amber-100"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add cost
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <details className={`${CARD} group`} data-testid="how-computed">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-5 py-3 text-sm font-semibold text-gray-800 [&::-webkit-details-marker]:hidden">
+                <ChevronRight className="h-4 w-4 transition group-open:rotate-90" />
+                How are these numbers computed?
+              </summary>
+              <div className="space-y-2 border-t border-gray-100 px-5 py-4 text-xs leading-relaxed text-gray-600">
+                <p>
+                  <span className="font-semibold text-gray-800">Actual sales:</span> what buyers paid on completed
+                  orders, less your cost per kg on the kilos sold. Orders not picked up yet count in neither until
+                  they are completed.
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-800">Estimated on stock:</span> the kilos still in stock ×
+                  the recommended price for your municipality, less your cost per kg on them. Your own selling price
+                  isn&apos;t used for this estimate.
+                </p>
+                <p>
+                  Only products with a cost per kg are added up, and only those with a recommended price are in the
+                  estimate - so each profit is exactly its income less its expense.
+                </p>
+              </div>
+            </details>
           </>
         )}
       </div>

@@ -205,7 +205,7 @@ export default function FarmerDashboard() {
 
   return (
     <FarmerLayout>
-      <FarmerTopBar variant="dashboard">
+      <FarmerTopBar>
         <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Hello, {user?.name}!</h1>
         <p className="text-sm text-gray-500">Here&apos;s how your farm store is doing · {today}</p>
       </FarmerTopBar>
