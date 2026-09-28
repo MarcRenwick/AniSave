@@ -44,7 +44,11 @@ if (process.env.JWT_SECRET.length < 32) {
 connectDB()
   .then(ensureCropCatalogue)
   .then((result) => {
-    if (result) console.log(`Crop catalogue: ${result.missing} crop(s) were missing, so it was written (${result.added} added).`);
+    if (result) {
+      console.log(
+        `Crop catalogue: ${result.missing} crop(s) were missing and ${result.changed} out of date, so it was written (${result.added} added).`
+      );
+    }
   })
   .catch((err) => console.error(`Could not write the crop catalogue: ${err.message}`));
 

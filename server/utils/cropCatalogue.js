@@ -63,15 +63,39 @@ async function syncCropCatalogue() {
   return { added, updated, linked };
 }
 
+// Whether a stored crop still says what the list says about it. Aliases are
+// compared folded, the way they are stored.
+const sameAliases = (stored, listed) => {
+  const a = [...new Set(stored.map(fold))].sort();
+  const b = [...new Set(listed.map(fold).filter(Boolean))].sort();
+  return a.length === b.length && a.every((alias, i) => alias === b[i]);
+};
+const upToDate = (stored, crop) =>
+  stored.name === crop.name &&
+  stored.group === crop.group &&
+  stored.listingCategory === crop.listingCategory &&
+  stored.priceSupported === crop.priceSupported &&
+  sameAliases(stored.aliases || [], crop.aliases);
+
 // At startup. A farmer can only list produce the catalogue knows, so a
 // database without it - a new one, like a freshly made Atlas cluster - leaves
 // the Add Product form with nothing to choose from. If any crop in the list is
-// missing, the catalogue is written; otherwise nothing is touched.
+// missing, or stored differently from what the list now says (a product made
+// priceable, say), the catalogue is written; otherwise nothing is touched. So
+// a change to data/crops.js reaches a deployed database on the next start.
 async function ensureCropCatalogue() {
-  const present = new Set(await Crop.distinct("slug"));
-  const missing = CROPS.filter((crop) => !present.has(fold(crop.name))).length;
-  if (missing === 0) return null;
-  return { missing, ...(await syncCropCatalogue()) };
+  const stored = new Map(
+    (await Crop.find({}).select("slug name group listingCategory priceSupported aliases").lean()).map((c) => [c.slug, c])
+  );
+  let missing = 0;
+  let changed = 0;
+  for (const crop of CROPS) {
+    const row = stored.get(fold(crop.name));
+    if (!row) missing += 1;
+    else if (!upToDate(row, crop)) changed += 1;
+  }
+  if (missing === 0 && changed === 0) return null;
+  return { missing, changed, ...(await syncCropCatalogue()) };
 }
 
 module.exports = { CROPS, checkCatalogue, syncCropCatalogue, ensureCropCatalogue };

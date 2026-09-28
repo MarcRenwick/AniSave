@@ -1,0 +1,243 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bar,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  ReferenceArea,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  useActiveTooltipLabel,
+} from "recharts";
+import { COLORS, buildBuckets, fmtDay, fmtHour, ordersBetween, pickTicks } from "./analytics";
+import { EmptyState, Key, OrdersPanel, TooltipBox, ViewHeading } from "./ChartParts";
+
+const EVERY = { hour: "Hourly", day: "Daily", month: "Monthly" };
+const BEST = { hour: "Best hour", day: "Best day", month: "Best month" };
+const HEIGHT = 260;
+
+// Tells the card which bar the chart's own keyboard navigation is on, so Enter
+// can open it the way a tap does.
+function ActiveBar({ onChange }) {
+  const label = useActiveTooltipLabel();
+  useEffect(() => onChange(label === undefined || label === null ? null : Number(label)), [label, onChange]);
+  return null;
+}
+
+function Stat({ label, value, detail, testId }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-[#F4F7F5] px-3 py-2.5" data-testid={testId}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: COLORS.muted }}>
+        {label}
+      </p>
+      <p className="truncate text-base font-bold tabular-nums text-gray-900">{value}</p>
+      {detail && (
+        <p className="truncate text-[11px]" style={{ color: COLORS.muted }} title={detail}>
+          {detail}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Revenue (or kilos) per hour, day or month as bars, with the running total
+// as a line over them on the same axis - so a farmer sees both how each day
+// went and where the period has got to.
+export default function RevenueChart({ data, range, period, metric, orders, phone }) {
+  const [selected, setSelected] = useState(null);
+  const active = useRef(null);
+  const onActive = useCallback((i) => {
+    active.current = i;
+  }, []);
+  const { granularity } = range;
+  const { current: rows, days, products } = data;
+
+  const chart = useMemo(() => {
+    const buckets = buildBuckets(range, period, rows, new Date());
+    // Each bar's own figure, and everything up to and including it.
+    const points = [];
+    for (const b of buckets) {
+      const value = b[metric.field];
+      const before = points.length ? points[points.length - 1].sum : 0;
+      points.push({ ...b, value, sum: before + value, running: b.upcoming ? null : before + value });
+    }
+    const total = points.length ? points[points.length - 1].sum : 0;
+    const current = points.findIndex((b) => b.isCurrent);
+    const peak = points.reduce((best, b, i) => (b.value > points[best].value ? i : best), 0);
+    const firstUpcoming = points.findIndex((b) => b.upcoming);
+    const saleDays = days.filter((d) => d[metric.field] > 0).length;
+    const top = [...products].sort((a, b) => b[metric.field] - a[metric.field])[0];
+    return { points, total, current, peak, firstUpcoming, saleDays, top };
+  }, [rows, days, products, range, period, metric]);
+
+  const { points, total, current, peak } = chart;
+  const open = selected !== null ? points[selected] : null;
+  const toggle = (i) => setSelected((s) => (s === i ? null : i));
+  const unit = granularity;
+
+  const bestLabel = (b) =>
+    granularity === "hour" ? fmtHour(b.start) : granularity === "day" ? fmtDay(b.start) : b.full;
+
+  const subtitle = `${EVERY[granularity]} ${metric.noun} · ${range.rangeLabel}`;
+
+  if (total === 0) {
+    return (
+      <div className="space-y-4">
+        <ViewHeading subtitle={subtitle} />
+        <EmptyState title="Nothing completed in this period yet">
+          Completed orders show up here as bars, one per {unit}, with the running total over them.
+        </EmptyState>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <ViewHeading subtitle={subtitle} />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="revenue-stats">
+        <Stat label={metric.total} value={metric.format(total)} testId="chart-total" />
+        <Stat label={BEST[granularity]} value={metric.format(points[peak].value)} detail={bestLabel(points[peak])} testId="stat-best" />
+        <Stat
+          label="Avg per sale day"
+          value={metric.format(chart.saleDays ? total / chart.saleDays : 0)}
+          detail={`${chart.saleDays} sale day${chart.saleDays === 1 ? "" : "s"}`}
+          testId="stat-average"
+        />
+        <Stat
+          label="Top product"
+          value={chart.top ? chart.top.title : "—"}
+          detail={chart.top ? metric.format(chart.top[metric.field]) : ""}
+          testId="stat-top-product"
+        />
+      </div>
+
+      <div
+        className="rounded-xl focus-within:outline-none"
+        onKeyDown={(e) => {
+          if ((e.key === "Enter" || e.key === " ") && active.current !== null) {
+            e.preventDefault();
+            toggle(active.current);
+          }
+        }}
+        data-testid="revenue-chart"
+      >
+        <ResponsiveContainer width="100%" height={HEIGHT}>
+          <ComposedChart data={points} margin={{ top: 16, right: 8, bottom: 0, left: 0 }}>
+            <CartesianGrid vertical={false} stroke={COLORS.grid} />
+            {chart.firstUpcoming > 0 && (
+              <ReferenceArea
+                x1={chart.firstUpcoming}
+                x2={points.length - 1}
+                fill="#F1F4F2"
+                fillOpacity={1}
+                ifOverflow="extendDomain"
+                // Named on the chart only where the shaded stretch is wide enough
+                // to hold the word; the legend says what the shading is either way.
+                label={
+                  !phone && points.length - chart.firstUpcoming >= 5
+                    ? { value: "Upcoming", position: "insideBottom", fill: "#8A968F", fontSize: 11 }
+                    : undefined
+                }
+              />
+            )}
+            <XAxis
+              dataKey="i"
+              type="category"
+              ticks={pickTicks(points.length, current, peak, phone)}
+              tickFormatter={(i) => points[i]?.label ?? ""}
+              tick={{ fontSize: 11, fill: COLORS.muted }}
+              axisLine={{ stroke: "#D5DDD8" }}
+              tickLine={false}
+              interval={0}
+            />
+            <YAxis
+              tickFormatter={metric.compact}
+              tick={{ fontSize: 11, fill: COLORS.muted }}
+              axisLine={false}
+              tickLine={false}
+              width={52}
+              allowDecimals={false}
+            />
+            <Tooltip
+              cursor={{ fill: "rgba(31, 122, 77, 0.06)" }}
+              content={({ active: shown, payload }) => {
+                if (!shown || !payload?.length) return null;
+                const b = payload[0].payload;
+                return (
+                  <TooltipBox
+                    title={b.full}
+                    lines={[
+                      [metric.legend, metric.format(b.value), COLORS.green],
+                      ...(b.running !== null ? [["Running total", metric.format(b.running), COLORS.orange]] : []),
+                      ["Orders", String(b.orders)],
+                    ]}
+                  />
+                );
+              }}
+            />
+            <Bar
+              dataKey="value"
+              name={metric.legend}
+              maxBarSize={28}
+              radius={[4, 4, 0, 0]}
+              cursor="pointer"
+              onClick={(_, i) => toggle(i)}
+              isAnimationActive={false}
+            >
+              {points.map((b) => (
+                <Cell
+                  key={b.i}
+                  fill={b.i === selected ? COLORS.darkGreen : b.isCurrent ? "#CFE8D9" : COLORS.green}
+                  stroke={b.isCurrent ? COLORS.green : "none"}
+                  strokeWidth={b.isCurrent ? 1.5 : 0}
+                  strokeDasharray={b.isCurrent ? "4 3" : undefined}
+                  data-testid={b.isCurrent ? "bar-current" : undefined}
+                />
+              ))}
+            </Bar>
+            <Line
+              type="monotone"
+              dataKey="running"
+              name="Running total"
+              stroke={COLORS.orange}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+            <ActiveBar onChange={onActive} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: COLORS.muted }} data-testid="chart-legend">
+        <Key swatch={<span className="h-2.5 w-2.5 rounded-sm" style={{ background: COLORS.green }} />}>
+          {metric.legend} per {unit}
+        </Key>
+        <Key swatch={<span className="h-0.5 w-4 rounded" style={{ background: COLORS.orange }} />}>Running total</Key>
+        {current !== -1 && granularity !== "month" && (
+          <Key swatch={<span className="h-2.5 w-2.5 rounded-sm border border-dashed" style={{ background: "#CFE8D9", borderColor: COLORS.green }} />}>
+            {granularity === "hour" ? "This hour" : "Today"}
+          </Key>
+        )}
+        {chart.firstUpcoming > 0 && <Key swatch={<span className="h-2.5 w-2.5 rounded-sm bg-[#E4E9E6]" />}>Upcoming</Key>}
+        <span>Tip: tap a bar to see that {unit}&apos;s orders</span>
+      </div>
+
+      {open && (
+        <OrdersPanel
+          title={open.full}
+          orders={ordersBetween(orders, open.start, open.end)}
+          summary={metric.format(open.value)}
+          emptyText={`No orders were completed in this ${unit}.`}
+          onClose={() => setSelected(null)}
+        />
+      )}
+    </div>
+  );
+}

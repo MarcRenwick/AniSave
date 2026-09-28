@@ -1,6 +1,6 @@
 // A segmented control: the chosen option filled in AniSave green, so which one
 // is on is never in doubt.
-export default function Segmented({ label, options, value, onChange }) {
+export default function Segmented({ label, options, value, onChange, activeClass = "bg-[#2f8f66] text-white shadow-sm" }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs font-medium text-gray-500">{label}</span>
@@ -12,7 +12,7 @@ export default function Segmented({ label, options, value, onChange }) {
             onClick={() => onChange(key)}
             aria-pressed={value === key}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-              value === key ? "bg-[#2f8f66] text-white shadow-sm" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              value === key ? activeClass : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             }`}
           >
             {Icon && <Icon className="h-3.5 w-3.5" />}

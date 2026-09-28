@@ -2,18 +2,14 @@
  * The catalogue of agricultural products a farmer can list, seeded into the
  * `crops` collection by scripts/seedCrops.js.
  *
- * Two lists, and the difference matters:
- *
- *   SUPPORTED  - the products the Recommended Price feature covers. An
- *                administrator records market prices for these, and a farmer
- *                listing one is shown the latest price for their own
- *                municipality (or told plainly that there isn't one yet).
- *
- *   ALSO_GROWN - everything else a farmer may legitimately sell. These are
- *                fully searchable and listable; they simply have no price
- *                recommendation, because nobody records a market price for
- *                them. Listing a crop and having a price recommended for it
- *                are deliberately not the same thing.
+ * Every product here is covered by the Recommended Price feature: an
+ * administrator can record market prices for any of them, and a farmer
+ * listing one is shown the latest price for their own municipality (or told
+ * plainly that there isn't one yet). The lists below are kept apart only as a
+ * record of where each product came from - SUPPORTED is the requirement's
+ * initial list plus common produce added later; ALSO_GROWN and
+ * EGGS_MEAT_SEAFOOD were first catalogued without prices, and were opened to
+ * pricing once administrators needed to price pork, fish and the rest.
  *
  * `group` is the catalogue's own grouping. `listingCategory` is which of the
  * marketplace's buyer-facing categories a listing lands in - Vegetables,
@@ -158,7 +154,6 @@ const SUPPORTED = [
   ["grain", "White Corn", ["puting mais", "white maize"]],
 
   // ---- Meat ----
-  // Unlike the meat in EGGS_MEAT_SEAFOOD below, these can be priced.
   ["meat", "Duck (Itik)", ["itik", "pato", "duck", "duck meat"]],
   ["meat", "Quail (Pugo)", ["pugo", "quail", "quail meat"]],
   ["meat", "Turkey (Pabo)", ["pabo", "turkey"]],
@@ -166,8 +161,7 @@ const SUPPORTED = [
   ["meat", "Mutton (Tupa)", ["tupa", "mutton", "lamb", "karne ng tupa"]],
 
   // ---- Seafood ----
-  // Fish included - Seafood is the buyers' category for both. Likewise
-  // priceable, unlike the seafood below.
+  // Fish included - Seafood is the buyers' category for both.
   ["seafood", "Tuna (Tambakol)", ["tambakol", "tuna", "yellowfin tuna", "bariles"]],
   ["seafood", "Frigate Tuna (Tulingan)", ["tulingan", "frigate tuna", "bullet tuna"]],
   ["seafood", "Indian Mackerel (Alumahan)", ["alumahan", "indian mackerel"]],
@@ -189,8 +183,7 @@ const SUPPORTED = [
   ["seafood", "Seaweed (Lato)", ["lato", "seaweed", "sea grapes", "guso"]],
 ];
 
-// Other produce a farmer may legitimately sell. Searchable and listable, but
-// no market price is recorded for them, so no price is ever recommended.
+// Other produce a farmer may legitimately sell.
 const ALSO_GROWN = [
   ["vegetable", "Broccoli", ["brocoli", "brokoli"]],
   ["vegetable", "Cauliflower", ["koliplor"]],
@@ -216,9 +209,7 @@ const ALSO_GROWN = [
 
 // Eggs, meat and seafood - what poultry and livestock raisers and fisherfolk
 // sell. Each kind is a buyer-facing category of its own rather than being
-// filed under vegetables. Like ALSO_GROWN, nobody records a market price for
-// them yet, so no price is recommended. (The meat and seafood at the end of
-// SUPPORTED are the priceable ones.)
+// filed under vegetables.
 const EGGS_MEAT_SEAFOOD = [
   // ---- Eggs ----
   ["egg", "Chicken Egg", ["egg", "itlog", "itlog ng manok", "fresh egg"]],
@@ -267,8 +258,8 @@ const rowsOf = (list, priceSupported) =>
 const CROPS = [
   ...rowsOf(SUPPORTED, true),
   ...rowsOf(VARIETIES, true),
-  ...rowsOf(ALSO_GROWN, false),
-  ...rowsOf(EGGS_MEAT_SEAFOOD, false),
+  ...rowsOf(ALSO_GROWN, true),
+  ...rowsOf(EGGS_MEAT_SEAFOOD, true),
 ];
 
 module.exports = { CROPS, SUPPORTED, VARIETIES, ALSO_GROWN, EGGS_MEAT_SEAFOOD, listingCategoryFor };

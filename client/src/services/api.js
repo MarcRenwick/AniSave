@@ -150,6 +150,11 @@ export const archiveMarketPrice = (id) => api.delete(`/market-prices/${id}`);
 export const deleteMarketPrice = (id) => api.delete(`/market-prices/${id}`, { params: { permanent: true } });
 
 export const getFarmerOrders = () => sharedGet("/orders/farmer");
+// The dashboard's Analytical Demands charts: completed sales over a period and
+// the one before, added up by the server - and each listing's stock against
+// how much buyers have looked for it.
+export const getFarmerAnalytics = (params) => api.get("/orders/farmer/analytics", { params });
+export const getMyDemand = () => sharedGet("/products/mine/demand");
 export const getBuyerOrders = () => api.get("/orders/buyer");
 export const getOrder = (id) => api.get(`/orders/${id}`);
 export const createOrder = (productId, quantity) => api.post("/orders", { productId, quantity });

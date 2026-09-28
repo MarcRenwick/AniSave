@@ -2,6 +2,7 @@ const express = require("express");
 const {
   createOrder,
   getFarmerOrders,
+  getFarmerAnalytics,
   getBuyerOrders,
   getOrderById,
   updateOrderStatus,
@@ -17,6 +18,8 @@ router.use(protect);
 
 router.post("/", authorize("buyer"), createOrder);
 router.get("/farmer", authorize("farmer"), getFarmerOrders);
+// The dashboard's sales charts.
+router.get("/farmer/analytics", authorize("farmer"), getFarmerAnalytics);
 router.get("/buyer", authorize("buyer"), getBuyerOrders);
 router.get("/:id", getOrderById);
 router.patch("/:id/status", authorize("farmer"), updateOrderStatus);

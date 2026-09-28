@@ -633,9 +633,33 @@ const getTopSearched = asyncHandler(async (req, res) => {
   );
 });
 
+// @desc    Each of the farmer's own listings with its stock on hand and how
+//          much buyers have looked for it - for the dashboard's Demand vs
+//          Stock chart. The searches and views are counted since the listing
+//          went up; they are running totals, not dated, so they can't be
+//          narrowed to a period. The stock is what is on hand now.
+// @route   GET /api/products/mine/demand
+// @access  Private (farmer)
+const getMyDemand = asyncHandler(async (req, res) => {
+  const [products, interest] = await Promise.all([
+    Product.find({ farmer: req.user._id }).select("title stock").lean(),
+    ProductInterest.find({ farmer: req.user._id }).select("product searches views").lean(),
+  ]);
+  const byProduct = new Map(interest.map((row) => [row.product.toString(), row]));
+  res.json(
+    products.map((p) => {
+      const seen = byProduct.get(p._id.toString());
+      const searches = seen?.searches || 0;
+      const views = seen?.views || 0;
+      return { _id: p._id, title: p.title, stock: p.stock, searches, views, demand: searches + views };
+    })
+  );
+});
+
 module.exports = {
   createProduct,
   getMyProducts,
+  getMyDemand,
   getAllProducts,
   getProductById,
   getTopSearched,

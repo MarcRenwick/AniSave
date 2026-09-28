@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 @layer base {
+  /* Recharts makes its inner drawing layers focusable, so clicking a bar drew
+     the browser's focus box around the whole group of bars. The chart itself
+     keeps its outline for anyone moving through it with the keyboard. */
+  .recharts-wrapper g:focus {
+    outline: none;
+  }
+
   /* Every page scrolls the window and always shows its scrollbar, so the bar
      doesn't vanish on short pages and shift the layout between pages. */
   html {

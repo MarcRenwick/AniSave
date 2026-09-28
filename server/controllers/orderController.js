@@ -99,6 +99,116 @@ const getFarmerOrders = asyncHandler(async (req, res) => {
   res.json(orders);
 });
 
+// The farmer's completed sales, added up for the dashboard's Analytical
+// Demands charts. A sale is dated by when the farmer completed it (or when it
+// was placed, for orders from before that was recorded), the same as every
+// other sales figure on the dashboard.
+const SOLD_AT = { $ifNull: ["$doneAt", "$createdAt"] };
+// How a moment is written down for each bucket size - in the farmer's own
+// time zone, since "Monday" or "September 3" means their day, not the
+// server's.
+const BUCKET_FORMAT = { hour: "%Y-%m-%dT%H", day: "%Y-%m-%d", month: "%Y-%m" };
+// Four years either way is more than any chart asks for, and stops a request
+// from making the database add up everything since 1970.
+const MAX_SPAN_MS = 4 * 366 * 24 * 60 * 60 * 1000;
+
+const isTimeZone = (tz) => {
+  if (typeof tz !== "string" || !/^[A-Za-z0-9_+\-/]{1,64}$/.test(tz)) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const addUp = (key) => ({
+  $group: {
+    _id: key,
+    revenue: { $sum: "$total" },
+    kg: { $sum: "$quantity" },
+    orders: { $sum: 1 },
+  },
+});
+const rounded = (rows) =>
+  rows.map(({ _id, revenue, kg, orders }) => ({
+    key: _id,
+    revenue: Math.round(revenue * 100) / 100,
+    kg: Math.round(kg * 100) / 100,
+    orders,
+  }));
+
+// @desc    The farmer's completed sales over a period, and the period before,
+//          added up per hour, day or month, per day (both periods), and per
+//          product
+// @route   GET /api/orders/farmer/analytics?from=&to=&prevFrom=&granularity=&tz=
+// @access  Private (farmer)
+const getFarmerAnalytics = asyncHandler(async (req, res) => {
+  const from = new Date(req.query.from);
+  const to = new Date(req.query.to);
+  const prevFrom = new Date(req.query.prevFrom);
+  const granularity = req.query.granularity;
+  if ([from, to, prevFrom].some((d) => Number.isNaN(d.getTime())) || !(prevFrom <= from && from < to)) {
+    res.status(400);
+    throw new Error("Choose a valid period");
+  }
+  if (to - from > MAX_SPAN_MS || from - prevFrom > MAX_SPAN_MS) {
+    res.status(400);
+    throw new Error("That period is too long");
+  }
+  if (!BUCKET_FORMAT[granularity]) {
+    res.status(400);
+    throw new Error("Choose hour, day or month");
+  }
+  const timezone = isTimeZone(req.query.tz) ? req.query.tz : "Asia/Manila";
+  const bucket = (format) => ({ $dateToString: { format, date: "$soldAt", timezone } });
+  const within = (start, end) => ({ $match: { soldAt: { $gte: start, $lt: end } } });
+
+  const [result] = await Order.aggregate([
+    { $match: { farmer: req.user._id, status: "done" } },
+    { $addFields: { soldAt: SOLD_AT } },
+    within(prevFrom, to),
+    {
+      $facet: {
+        current: [within(from, to), addUp(bucket(BUCKET_FORMAT[granularity])), { $sort: { _id: 1 } }],
+        previous: [within(prevFrom, from), addUp(bucket(BUCKET_FORMAT[granularity])), { $sort: { _id: 1 } }],
+        days: [within(from, to), addUp(bucket(BUCKET_FORMAT.day)), { $sort: { _id: 1 } }],
+        previousDays: [within(prevFrom, from), addUp(bucket(BUCKET_FORMAT.day)), { $sort: { _id: 1 } }],
+        products: [
+          within(from, to),
+          { $sort: { soldAt: 1 } },
+          {
+            $group: {
+              _id: "$product",
+              // The title it was last sold under, if the farmer renamed it.
+              title: { $last: "$productTitle" },
+              revenue: { $sum: "$total" },
+              kg: { $sum: "$quantity" },
+              orders: { $sum: 1 },
+            },
+          },
+          { $sort: { kg: -1, revenue: -1 } },
+        ],
+      },
+    },
+  ]);
+
+  res.json({
+    timezone,
+    current: rounded(result.current),
+    previous: rounded(result.previous),
+    days: rounded(result.days),
+    previousDays: rounded(result.previousDays),
+    products: result.products.map(({ _id, title, revenue, kg, orders }) => ({
+      product: _id,
+      title,
+      revenue: Math.round(revenue * 100) / 100,
+      kg: Math.round(kg * 100) / 100,
+      orders,
+    })),
+  });
+});
+
 // @desc    Get the logged-in buyer's own orders
 // @route   GET /api/orders/buyer
 // @access  Private (buyer)
@@ -346,6 +456,7 @@ const getOrderById = asyncHandler(async (req, res) => {
 module.exports = {
   createOrder,
   getFarmerOrders,
+  getFarmerAnalytics,
   getBuyerOrders,
   getOrderById,
   updateOrderStatus,

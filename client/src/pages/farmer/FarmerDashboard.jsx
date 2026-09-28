@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -14,12 +14,16 @@ import {
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import VerificationBanner from "../../components/farmer/VerificationBanner";
-import DemandChart from "../../components/farmer/DemandChart";
-import { Caption, Figure, StatCard, Warning } from "../../components/farmer/StatCard";
+import { ChartSkeleton } from "../../components/farmer/charts/ChartParts";
+import { Caption, CaptionRow, Figure, MiniBars, Sparkline, StatCard, StockBar, Warning } from "../../components/farmer/StatCard";
 import { useAuth } from "../../context/AuthContext";
 import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 import { money } from "../../utils/profit";
+
+// The Analytical Demands card draws its charts with Recharts, which is large -
+// so it is fetched when a farmer opens the dashboard, not with every page.
+const DemandChart = lazy(() => import("../../components/farmer/DemandChart"));
 
 // A product nobody has ordered for this long is suggested for a Flash Sale.
 const STALE_PRODUCT_DAYS = 7;
@@ -194,12 +198,40 @@ export default function FarmerDashboard() {
       .slice(0, 6);
   }, [products, orders]);
 
-  const todaysSales = useMemo(
-    () =>
-      completedOrders
-        .filter((o) => isToday(o.doneAt || o.createdAt))
-        .reduce((sum, o) => sum + o.total, 0),
-    [completedOrders]
+  // Today's completed sales: what they brought in, how many kilos, how many orders.
+  const todaySales = useMemo(() => {
+    const sold = completedOrders.filter((o) => isToday(o.doneAt || o.createdAt));
+    return {
+      revenue: sold.reduce((sum, o) => sum + o.total, 0),
+      kg: Math.round(sold.reduce((sum, o) => sum + o.quantity, 0) * 100) / 100,
+      orders: sold.length,
+    };
+  }, [completedOrders]);
+
+  // Revenue per day, for the small charts on the first two cards: the last
+  // seven days (today last), and each day of this month so far.
+  const dailyRevenue = useMemo(() => {
+    const byDay = new Map();
+    completedOrders.forEach((o) => {
+      const d = new Date(o.doneAt || o.createdAt);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      byDay.set(key, (byDay.get(key) || 0) + o.total);
+    });
+    const on = (d) => byDay.get(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`) || 0;
+    const now = new Date();
+    const lastWeek = Array.from({ length: 7 }, (_, i) => on(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + i)));
+    const thisMonth = Array.from({ length: now.getDate() }, (_, i) => on(new Date(now.getFullYear(), now.getMonth(), i + 1)));
+    return { lastWeek, thisMonth, saleDays: thisMonth.filter((v) => v > 0).length };
+  }, [completedOrders]);
+
+  // How the products split between plenty of stock, running low and sold out.
+  const stockSplit = useMemo(
+    () => ({
+      inStock: products.filter((p) => p.stock > LOW_STOCK_THRESHOLD).length,
+      low: lowStock.length,
+      out: products.filter((p) => p.stock <= 0).length,
+    }),
+    [products, lowStock]
   );
 
   const notifications = useMemo(() => deriveNotifications(products, orders), [products, orders]);
@@ -222,28 +254,34 @@ export default function FarmerDashboard() {
 
         {/* The four figures a farmer checks first, side by side */}
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard icon={Clock} label="Today's sales" testId="stat-today">
-            <Figure>{money(todaysSales)}</Figure>
-            <Caption>Earned so far today</Caption>
+          <StatCard icon={Clock} label="Today's sales" tone="green" testId="stat-today">
+            <Figure>{money(todaySales.revenue)}</Figure>
+            <CaptionRow pill={`${todaySales.kg} kg · ${plural(todaySales.orders, "order")}`} testId="today-pill">
+              <Caption tone="mt-0 text-gray-600">Earned so far today</Caption>
+            </CaptionRow>
+            <Sparkline values={dailyRevenue.lastWeek} color="#1F7A4D" label="Sales over the last 7 days" testId="today-sparkline" />
           </StatCard>
 
-          <StatCard icon={CalendarDays} label="Revenue this month" testId="stat-revenue">
+          <StatCard icon={CalendarDays} label="Revenue this month" tone="blue" testId="stat-revenue">
             <Figure>{money(monthRevenue.current)}</Figure>
-            {monthRevenue.change === null ? (
-              <Caption>No sales last month to compare</Caption>
-            ) : (
-              <Caption tone={monthRevenue.change >= 0 ? "font-medium text-emerald-600" : "font-medium text-red-600"}>
-                <span className="inline-flex items-center gap-1">
-                  {monthRevenue.change >= 0 ? (
-                    <TrendingUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <TrendingDown className="h-3.5 w-3.5" />
-                  )}
-                  {monthRevenue.change >= 0 ? "+" : ""}
-                  {Math.round(monthRevenue.change)}% vs last month
-                </span>
-              </Caption>
-            )}
+            <CaptionRow pill={plural(dailyRevenue.saleDays, "sale day")} testId="revenue-pill">
+              {monthRevenue.change === null ? (
+                <Caption tone="mt-0 text-gray-600">No sales last month to compare</Caption>
+              ) : (
+                <Caption tone={`mt-0 font-medium ${monthRevenue.change >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                  <span className="inline-flex items-center gap-1">
+                    {monthRevenue.change >= 0 ? (
+                      <TrendingUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <TrendingDown className="h-3.5 w-3.5" />
+                    )}
+                    {monthRevenue.change >= 0 ? "+" : ""}
+                    {Math.round(monthRevenue.change)}% vs last month
+                  </span>
+                </Caption>
+              )}
+            </CaptionRow>
+            <MiniBars values={dailyRevenue.thisMonth} color="#2D63AA" label="Revenue on each day of this month" testId="revenue-bars" />
           </StatCard>
 
           {/* The profit made so far on completed sales, with the estimate on
@@ -252,6 +290,7 @@ export default function FarmerDashboard() {
           <StatCard
             icon={TrendingUp}
             label="Profit"
+            tone="amber"
             link={{ to: PROFIT_PAGE, label: "Details" }}
             onClick={() => navigate(PROFIT_PAGE)}
             testId="profit-card"
@@ -260,7 +299,7 @@ export default function FarmerDashboard() {
               {profit ? money(profit.actual.profit) : profitFailed ? "N/A" : "..."}
             </Figure>
             {profit && (
-              <Caption>
+              <Caption tone="text-gray-600">
                 {profit.actual.soldKg > 0 ? `From ${profit.actual.soldKg} kg sold` : "No completed sales yet"}
                 {profit.estimated.products > 0 && ` · Est. ${money(profit.estimated.profit)} on stock`}
               </Caption>
@@ -272,9 +311,10 @@ export default function FarmerDashboard() {
             )}
           </StatCard>
 
-          <StatCard icon={Package} label="Stock" link={{ to: "/farmer/products", label: "Manage" }} testId="stat-stock">
+          <StatCard icon={Package} label="Stock" tone="purple" link={{ to: "/farmer/products", label: "Manage" }} testId="stat-stock">
             <Figure>{totalStockKg.toLocaleString()} kg</Figure>
-            <Caption>Across {plural(products.length, "product")}</Caption>
+            <Caption tone="text-gray-600">Across {plural(products.length, "product")}</Caption>
+            <StockBar counts={stockSplit} />
             {lowStock.length > 0 && (
               <Warning to="/farmer/products" action="View">
                 {plural(lowStock.length, "product")} low in stock
@@ -285,7 +325,15 @@ export default function FarmerDashboard() {
 
         <div className="grid items-start gap-6 lg:grid-cols-3">
           <div className="min-w-0 space-y-6 lg:col-span-2">
-            <DemandChart orders={orders} loading={loading} />
+            <Suspense
+              fallback={
+                <section className="rounded-[18px] border border-[#E1E7E2] bg-white p-5 shadow-sm sm:p-6">
+                  <ChartSkeleton stats />
+                </section>
+              }
+            >
+              <DemandChart orders={orders} />
+            </Suspense>
 
             {/* Notifications preview - real, derived from your products and
                 orders - each with the one thing to do about it. */}

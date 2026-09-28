@@ -6,6 +6,7 @@ const {
   getProductById,
   getTopSearched,
   getMyProfit,
+  getMyDemand,
   getProductProfit,
   updateProduct,
   restockProduct,
@@ -27,6 +28,8 @@ router.get("/mine", protect, authorize("farmer"), getMyProducts);
 // Expense, income and profit on every listing, for the Profit page - before
 // "/:id/profit" below, which would otherwise read "mine" as a product id.
 router.get("/mine/profit", protect, authorize("farmer"), getMyProfit);
+// Stock against buyer interest, per listing, for the dashboard's charts.
+router.get("/mine/demand", protect, authorize("farmer"), getMyDemand);
 // What buyers are searching for and opening, for the farmer's dashboard -
 // registered before "/:id" for the same reason as "/mine" above.
 router.get("/top-searched", protect, authorize("farmer"), getTopSearched);
