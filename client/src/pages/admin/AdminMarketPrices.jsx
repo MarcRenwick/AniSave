@@ -12,6 +12,7 @@ import {
   getSupportedCrops,
   updateMarketPrice,
 } from "../../services/api";
+import { unitOf } from "../../utils/units";
 
 // Kilos are priced in pesos and centavos; nothing else is accepted as it is
 // typed, so what is on screen is always what gets sent.
@@ -51,12 +52,14 @@ function PriceForm({ record, crops, cities, onClose, onSaved }) {
   const [error, setError] = useState("");
 
   const set = (name, value) => setDraft((prev) => ({ ...prev, [name]: value }));
+  // Eggs are priced by the tray, everything else by the kilo.
+  const tray = unitOf(crops.find((c) => c._id === draft.crop)) === "tray";
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
     if (!draft.crop || !draft.cityCode || draft.pricePerKilo === "") {
-      setError("Choose a product and municipality, and enter a price per kilo.");
+      setError(`Choose a product and municipality, and enter a price per ${tray ? "tray" : "kilo"}.`);
       return;
     }
     setSaving(true);
@@ -122,7 +125,7 @@ function PriceForm({ record, crops, cities, onClose, onSaved }) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="mp-price" className={labelClass}>
-              Price per KG
+              {tray ? "Price per tray" : "Price per KG"}
             </label>
             <input
               id="mp-price"
@@ -131,7 +134,7 @@ function PriceForm({ record, crops, cities, onClose, onSaved }) {
               required
               value={draft.pricePerKilo}
               onChange={(e) => set("pricePerKilo", priceOnly(e.target.value))}
-              placeholder="₱ per kilo"
+              placeholder={tray ? "₱ per tray" : "₱ per kilo"}
               className={inputClass}
             />
           </div>
@@ -236,7 +239,7 @@ export default function AdminMarketPrices() {
   const afterSave = (saved, wasNew) => {
     setEditing(null);
     setNotice(
-      `${saved.crop?.name} in ${saved.municipality} ${wasNew ? "recorded" : "updated"} at ${peso(saved.pricePerKilo)}/kg.`
+      `${saved.crop?.name} in ${saved.municipality} ${wasNew ? "recorded" : "updated"} at ${peso(saved.pricePerKilo)}/${unitOf(saved.crop) === "tray" ? "tray" : "kg"}.`
     );
     // A record saved as archived belongs in the other list, not this one.
     setRecords((prev) => {
@@ -371,7 +374,7 @@ export default function AdminMarketPrices() {
                 <tr>
                   <th className="px-4 py-3 font-semibold">Product</th>
                   <th className="px-4 py-3 font-semibold">Municipality / City</th>
-                  <th className="px-4 py-3 font-semibold">Price per KG</th>
+                  <th className="px-4 py-3 font-semibold">Price</th>
                   <th className="px-4 py-3 font-semibold">Date recorded</th>
                   <th className="px-4 py-3 font-semibold">Source</th>
                   <th className="px-4 py-3 text-right font-semibold">Actions</th>
@@ -384,7 +387,10 @@ export default function AdminMarketPrices() {
                       {record.crop?.name || "Unknown product"}
                     </td>
                     <td className="px-4 py-3 text-gray-700">{record.municipality}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{peso(record.pricePerKilo)}</td>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {peso(record.pricePerKilo)}
+                      <span className="font-normal text-gray-500"> / {unitOf(record.crop) === "tray" ? "tray" : "kg"}</span>
+                    </td>
                     <td className="px-4 py-3 text-gray-700">{formatDate(record.recordedAt)}</td>
                     <td className="px-4 py-3 text-gray-500">{record.source || "-"}</td>
                     <td className="px-4 py-3">
@@ -452,7 +458,7 @@ export default function AdminMarketPrices() {
         <Modal title="Delete this record?" onClose={() => setConfirmingDelete(null)}>
           <p className="text-sm text-gray-600">
             {confirmingDelete.crop?.name} in {confirmingDelete.municipality},{" "}
-            {peso(confirmingDelete.pricePerKilo)}/kg, recorded {formatDate(confirmingDelete.recordedAt)}.
+            {peso(confirmingDelete.pricePerKilo)}/{unitOf(confirmingDelete.crop) === "tray" ? "tray" : "kg"}, recorded {formatDate(confirmingDelete.recordedAt)}.
             This can&apos;t be undone - archive it instead to keep the history.
           </p>
           <div className="mt-5 flex gap-3">

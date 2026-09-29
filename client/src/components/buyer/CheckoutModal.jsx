@@ -5,6 +5,7 @@ import PriceTag from "../products/PriceTag";
 import QuantityInput from "./QuantityInput";
 import { SERVER_URL } from "../../services/api";
 import { effectivePrice } from "../../utils/pricing";
+import { unitOf, unitWord, unitWords } from "../../utils/units";
 
 export default function CheckoutModal({ product, preorder = false, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
@@ -30,7 +31,7 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
         </div>
         <div className="min-w-0">
           <p className="truncate font-medium text-gray-900">{product.title}</p>
-          <PriceTag product={product} size="sm" suffix=" per kilo" />
+          <PriceTag product={product} size="sm" suffix={` per ${unitWord(unitOf(product))}`} />
         </div>
       </div>
 
@@ -40,12 +41,13 @@ export default function CheckoutModal({ product, preorder = false, onClose, onCo
         value={quantity}
         onChange={setQuantity}
         max={preorder ? undefined : product.stock}
+        unit={unitOf(product)}
         onValidChange={setQuantityValid}
       />
       <p className="mt-2 text-center text-xs text-gray-400">
         {preorder
           ? "Pre-order - the farmer prepares this once it's available"
-          : `${product.stock} kilos available`}
+          : `${product.stock} ${unitWords(unitOf(product))} available`}
       </p>
 
       <div className="mt-4 flex items-center justify-between rounded-md bg-gray-50 px-4 py-3">

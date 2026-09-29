@@ -4,6 +4,7 @@ const Product = require("../models/Product");
 const Rating = require("../models/Rating");
 const { effectivePrice } = require("../utils/pricing");
 const { hasBlocked } = require("../utils/blocks");
+const { unitOf, amountOf } = require("../utils/units");
 
 // Every reply about a single order sends the whole order: the buyer, the
 // farmer and the product it is for, not just their ids. A status change that
@@ -55,9 +56,15 @@ const createOrder = asyncHandler(async (req, res) => {
   // Only a listing the farmer put up For Pre-Order takes pre-orders - an
   // ordinary listing still needs the stock to actually be there.
   const isPreOrder = product.productType === "preorder";
+  const unit = unitOf(product.category);
+  // Eggs go by the whole tray.
+  if (unit === "tray" && !Number.isInteger(Number(quantity))) {
+    res.status(400);
+    throw new Error("Eggs are sold by the whole tray");
+  }
   if (!isPreOrder && product.stock < quantity) {
     res.status(400);
-    throw new Error(`Only ${product.stock}kg of ${product.title} left in stock`);
+    throw new Error(`Only ${amountOf(product.stock, unit)} of ${product.title} left in stock`);
   }
 
   // Charges whatever price is live on the product right now - the sale price
@@ -73,6 +80,7 @@ const createOrder = asyncHandler(async (req, res) => {
     productTitle: product.title,
     pricePerKilo,
     quantity,
+    unit,
     total,
     status: isPreOrder ? "preorder" : "new",
     openedAs: isPreOrder ? "preorder" : "new",
@@ -122,19 +130,26 @@ const isTimeZone = (tz) => {
   }
 };
 
+// Kilos and trays (eggs) are added up apart - a tray isn't a kilo.
+const IS_TRAY = { $eq: ["$unit", "tray"] };
+const KILOS = { $sum: { $cond: [IS_TRAY, 0, "$quantity"] } };
+const TRAYS = { $sum: { $cond: [IS_TRAY, "$quantity", 0] } };
+
 const addUp = (key) => ({
   $group: {
     _id: key,
     revenue: { $sum: "$total" },
-    kg: { $sum: "$quantity" },
+    kg: KILOS,
+    trays: TRAYS,
     orders: { $sum: 1 },
   },
 });
 const rounded = (rows) =>
-  rows.map(({ _id, revenue, kg, orders }) => ({
+  rows.map(({ _id, revenue, kg, trays, orders }) => ({
     key: _id,
     revenue: Math.round(revenue * 100) / 100,
     kg: Math.round(kg * 100) / 100,
+    trays,
     orders,
   }));
 
@@ -183,7 +198,9 @@ const getFarmerAnalytics = asyncHandler(async (req, res) => {
               // The title it was last sold under, if the farmer renamed it.
               title: { $last: "$productTitle" },
               revenue: { $sum: "$total" },
-              kg: { $sum: "$quantity" },
+              kg: KILOS,
+              trays: TRAYS,
+              unit: { $last: { $ifNull: ["$unit", "kg"] } },
               orders: { $sum: 1 },
             },
           },
@@ -199,11 +216,13 @@ const getFarmerAnalytics = asyncHandler(async (req, res) => {
     previous: rounded(result.previous),
     days: rounded(result.days),
     previousDays: rounded(result.previousDays),
-    products: result.products.map(({ _id, title, revenue, kg, orders }) => ({
+    products: result.products.map(({ _id, title, revenue, kg, trays, unit, orders }) => ({
       product: _id,
       title,
+      unit,
       revenue: Math.round(revenue * 100) / 100,
       kg: Math.round(kg * 100) / 100,
+      trays,
       orders,
     })),
   });
@@ -277,7 +296,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     if (product.stock < order.quantity) {
       res.status(400);
       throw new Error(
-        `You need ${order.quantity}kg in stock to accept this pre-order - you have ${product.stock}kg`
+        `You need ${amountOf(order.quantity, order.unit)} in stock to accept this pre-order - you have ${amountOf(product.stock, order.unit)}`
       );
     }
     product.stock -= order.quantity;

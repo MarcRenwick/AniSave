@@ -81,19 +81,35 @@ const productSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    // What one kilo cost the farmer to produce - seeds, fertilizer, labor,
-    // transport - as they reckon it. The expense, income and profit figures
-    // are all worked out from this and the listing's other fields (see
-    // utils/profit.js), so nothing else about them is stored.
+    // What the whole batch cost the farmer to produce - seeds, fertilizer,
+    // labor, transport - for all the kilos (or trays) listed, as they reckon
+    // it. The expense, income and profit figures are all worked out from this
+    // and the listing's other fields (see utils/profit.js), so nothing else
+    // about them is stored.
     //
     // It is the farmer's own business, so it is left out of every query
-    // unless one asks for it by name ("+expensePerKg"), and the marketplace's
-    // aggregations drop it explicitly. New listings must have one (the
-    // controller checks); listings from before it existed have none and are
-    // asked for it when next edited.
-    expensePerKg: {
+    // unless one asks for it by name ("+totalExpense"), and the marketplace's
+    // aggregations drop it explicitly. Every new listing must have one; a
+    // listing from before expenses were recorded may have none, and is asked
+    // for it when next edited (the controller checks).
+    totalExpense: {
       type: Number,
-      min: [0, "Expense per kg cannot be negative"],
+      min: [0, "Total expense cannot be negative"],
+      default: null,
+      required: [
+        function requiredWhenNew() {
+          return this.isNew;
+        },
+        "Total expense is required",
+      ],
+      select: false,
+    },
+    // How many kilos (or trays) the batch the expense is for held - the stock
+    // when the listing was made. The cost of one is totalExpense divided by
+    // this, never by the stock left, which falls as it sells.
+    initialQuantity: {
+      type: Number,
+      min: [0, "Initial quantity cannot be negative"],
       default: null,
       select: false,
     },

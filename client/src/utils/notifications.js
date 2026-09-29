@@ -1,4 +1,5 @@
 import { FileText, AlertTriangle, TrendingDown } from "lucide-react";
+import { amountOf, unitOf } from "./units";
 
 // "market" (price-change alerts) has no real data source yet - no price-history
 // feature exists - so it's kept here only so the Notifications page's filter tab
@@ -10,6 +11,13 @@ export const categoryLabels = {
 };
 
 export const LOW_STOCK_THRESHOLD = 10;
+
+// What the low-stock line counts in: kilos, trays (eggs), or both.
+function lowStockUnits(products) {
+  const units = new Set(products.map((p) => unitOf(p)));
+  if (units.size > 1) return "kg or trays";
+  return units.has("tray") ? "trays" : "kg";
+}
 
 // Each notification also says where it leads and what to call that - the
 // dashboard's list puts a button on every one - and, for an order, the part of
@@ -28,9 +36,9 @@ export function deriveNotifications(products, orders) {
         icon: FileText,
         color: "bg-blue-500",
         title: "New Order",
-        description: `${order.buyer?.name || "A buyer"} ordered ${order.quantity}kg of ${order.productTitle}`,
+        description: `${order.buyer?.name || "A buyer"} ordered ${amountOf(order.quantity, unitOf(order))} of ${order.productTitle}`,
         lead: `${order.buyer?.name || "A buyer"} ordered`,
-        emphasis: `${order.quantity} kg of ${order.productTitle}`,
+        emphasis: `${amountOf(order.quantity, unitOf(order))} of ${order.productTitle}`,
         to: `/farmer/orders/${order._id}`,
         action: "View order",
         image: order.product?.image || null,
@@ -67,7 +75,7 @@ export function deriveNotifications(products, orders) {
       icon: AlertTriangle,
       color: "bg-yellow-500",
       title: "Low Stock",
-      description: `${lowStock.map((p) => p.title).join(", ")} running low (under ${LOW_STOCK_THRESHOLD}kg)`,
+      description: `${lowStock.map((p) => p.title).join(", ")} running low (under ${LOW_STOCK_THRESHOLD} ${lowStockUnits(lowStock)})`,
     });
   }
 

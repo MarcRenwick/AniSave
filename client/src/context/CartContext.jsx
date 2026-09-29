@@ -40,6 +40,8 @@ export function CartProvider({ children }) {
             originalPrice: product.price,
             image: product.image,
             stock: product.stock,
+            // Eggs are counted in trays, everything else in kilos.
+            category: product.category,
             farmerId: product.farmer?._id,
             farmerName: product.farmer?.farmName || product.farmer?.name,
             location: product.location || product.farmer?.location,

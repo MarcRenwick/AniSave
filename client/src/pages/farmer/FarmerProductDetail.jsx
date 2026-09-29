@@ -8,9 +8,11 @@ import useScrollReveal from "../../hooks/useScrollReveal";
 import { categoryLabel } from "../../utils/categories";
 import { discountPercent, effectivePrice, onFlashSale } from "../../utils/pricing";
 import { money, productFinancials } from "../../utils/profit";
+import { amountOf, unitOf, unitWord } from "../../utils/units";
 
 const CARD = "rounded-[18px] bg-white p-6 shadow-sm";
-const kilos = (kg) => `${kg.toLocaleString()} kg`;
+// "12 kg", or "3 trays" for eggs.
+const kilos = (n, unit = "kg") => amountOf(n.toLocaleString(), unit);
 
 function Chip({ tone = "green", children }) {
   const look = {
@@ -31,7 +33,7 @@ function Tile({ label, children, wide = false }) {
   );
 }
 
-// One label-left, value-right line of the Per kilo list.
+// One label-left, value-right line of the Per kilo (or Per tray) list.
 function PerKilo({ label, children }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
@@ -43,7 +45,7 @@ function PerKilo({ label, children }) {
 
 // Where every listed kilo is, as one bar: sold, waiting to be picked up, and
 // still in stock.
-function StockBar({ stock }) {
+function StockBar({ stock, unit }) {
   const { soldKg, pendingKg, inStockKg, listedKg } = stock;
   const parts = [
     { key: "sold", label: "Sold", kg: soldKg, className: "bg-[#1f5c42]" },
@@ -64,7 +66,7 @@ function StockBar({ stock }) {
         {parts.map((p) => (
           <li key={p.key} className="flex items-center gap-1.5">
             <span className={`h-2.5 w-2.5 rounded-sm ${p.className}`} />
-            {p.label} {kilos(p.kg)}
+            {p.label} {kilos(p.kg, unit)}
           </li>
         ))}
       </ul>
@@ -74,7 +76,7 @@ function StockBar({ stock }) {
 
 // The farmer's own figures for this listing. Only they see it.
 function FinancialsPanel({ fin, productTitle, city, editPath }) {
-  const { actual, remaining } = fin;
+  const { actual, remaining, unit } = fin;
   const loss = actual.profit !== null && actual.profit < 0;
   const sub = (text) => <p className="text-[11px] opacity-80">{text}</p>;
 
@@ -87,13 +89,13 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
       >
         <p className="text-sm font-medium opacity-90">Profit from completed sales</p>
         {actual.profit === null ? (
-          <p className="mt-1 text-sm font-semibold">Add your cost per kg to see it</p>
+          <p className="mt-1 text-sm font-semibold">Add your total expense to see it</p>
         ) : (
           <p className="mt-1 text-4xl font-bold tracking-tight">{money(actual.profit)}</p>
         )}
         <p className="mt-1 text-xs opacity-90">
           {actual.soldKg > 0
-            ? `${kilos(actual.soldKg)} sold · ${actual.orders} completed order${actual.orders === 1 ? "" : "s"}`
+            ? `${kilos(actual.soldKg, unit)} sold · ${actual.orders} completed order${actual.orders === 1 ? "" : "s"}`
             : "No completed sales yet"}
         </p>
         <div className="mt-4 grid grid-cols-2 gap-3">
@@ -105,16 +107,21 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
           <div className="rounded-xl bg-white/15 px-3 py-2.5">
             <p className="text-xs opacity-90">Expense</p>
             <p className="text-lg font-bold">{actual.expense === null ? "—" : money(actual.expense)}</p>
-            {sub(fin.hasCost ? `${kilos(actual.soldKg)} × ${money(fin.expensePerKg)}` : "No cost per kg yet")}
+            {sub(fin.hasCost ? `${kilos(actual.soldKg, unit)} × ${money(fin.costPerUnit)}` : "No total expense yet")}
           </div>
         </div>
       </div>
 
-      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">Per kilo</p>
+      {fin.totalExpense !== null && (
+        <dl className="mt-6" data-testid="total-expense">
+          <PerKilo label={`Total expense (${kilos(fin.initialQuantity ?? 0, unit)} listed)`}>{money(fin.totalExpense)}</PerKilo>
+        </dl>
+      )}
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-gray-500">Per {unitWord(unit)}</p>
       <dl className="mt-1 divide-y divide-gray-100" data-testid="per-kilo">
         <PerKilo label="Your cost">
           {fin.hasCost ? (
-            money(fin.expensePerKg)
+            money(fin.costPerUnit)
           ) : (
             <Link to={editPath} className="text-amber-700 underline underline-offset-2 hover:text-amber-800">
               Not set - add it
@@ -142,21 +149,21 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
 
       <div className="mt-5 flex items-baseline justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Stock</p>
-        <p className="text-xs text-gray-500">{kilos(fin.stock.listedKg)} listed</p>
+        <p className="text-xs text-gray-500">{kilos(fin.stock.listedKg, unit)} listed</p>
       </div>
       <div className="mt-2">
-        <StockBar stock={fin.stock} />
+        <StockBar stock={fin.stock} unit={unit} />
       </div>
 
       <div className="mt-5 rounded-xl border border-dashed border-gray-300 p-4" data-testid="remaining-stock">
-        <p className="text-sm font-semibold text-gray-900">Remaining stock ({kilos(fin.stock.inStockKg)})</p>
+        <p className="text-sm font-semibold text-gray-900">Remaining stock ({kilos(fin.stock.inStockKg, unit)})</p>
         <dl className="mt-2 space-y-1.5 text-sm">
           {fin.hasCost && (
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-gray-600">
                 Capital in stock{" "}
                 <span className="text-xs text-gray-400">
-                  {kilos(fin.stock.inStockKg)} × {money(fin.expensePerKg)}
+                  {kilos(fin.stock.inStockKg, unit)} × {money(fin.costPerUnit)}
                 </span>
               </dt>
               <dd className="font-semibold text-gray-900">{money(remaining.capital)}</dd>
@@ -166,7 +173,7 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
             <dt className="text-gray-600">
               {remaining.basis === "market" ? "If sold at market price" : "If sold at your price"}{" "}
               <span className="text-xs text-gray-400">
-                {kilos(fin.stock.inStockKg)} × {money(remaining.pricePerKg)}
+                {kilos(fin.stock.inStockKg, unit)} × {money(remaining.pricePerKg)}
               </span>
             </dt>
             <dd className="font-semibold text-gray-900">{money(remaining.income)}</dd>
@@ -185,7 +192,7 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
         )}
         {!fin.hasCost && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Add your cost per kg to see what this stock cost you and what it would make.
+            Add your total expense to see what this stock cost you and what it would make.
           </p>
         )}
       </div>
@@ -278,7 +285,7 @@ export default function FarmerProductDetail() {
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-100 bg-green-50/70 px-4 py-3" data-testid="price-block">
                     <p className="flex flex-wrap items-baseline gap-x-2">
                       <span className="text-3xl font-bold text-[#2f8f66]">{money(effectivePrice(product))}</span>
-                      <span className="text-sm text-gray-600">per kilo</span>
+                      <span className="text-sm text-gray-600">per {unitWord(unitOf(product))}</span>
                       {onFlashSale(product) && <span className="text-sm text-gray-400 line-through">{money(product.price)}</span>}
                     </p>
                     {onFlashSale(product) && (
@@ -290,7 +297,7 @@ export default function FarmerProductDetail() {
 
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <Tile label="Order fulfillment">Pick-up</Tile>
-                    <Tile label="Available">{kilos(product.stock)}</Tile>
+                    <Tile label="Available">{kilos(product.stock, unitOf(product))}</Tile>
                     <Tile label="Pick-up address" wide>
                       {product.location || "Not set"}
                     </Tile>

@@ -1,9 +1,12 @@
 import { useState } from "react";
 import Modal from "../../Modal";
+import { amountOf, unitOf } from "../../../utils/units";
 
 const presets = [10, 25, 50, 100, 200, 500];
 
 export default function RestockModal({ product, onClose, onConfirm }) {
+  // Eggs are restocked by the tray.
+  const unit = unitOf(product);
   const [selected, setSelected] = useState(100);
   const [custom, setCustom] = useState("");
 
@@ -31,7 +34,7 @@ export default function RestockModal({ product, onClose, onConfirm }) {
               }}
               className="h-4 w-4 accent-[#2f8f66]"
             />
-            {kg} kg
+            {amountOf(kg, unit)}
           </label>
         ))}
 
@@ -44,7 +47,7 @@ export default function RestockModal({ product, onClose, onConfirm }) {
             onChange={(e) => setCustom(e.target.value)}
             className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
           />
-          <span>kg</span>
+          <span>{unit === "tray" ? "trays" : "kg"}</span>
         </label>
       </div>
 

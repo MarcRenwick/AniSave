@@ -4,6 +4,7 @@ import fieldPhoto from "../../assets/lndingpge.jpg";
 import farmPhoto from "../../assets/bckgrnd.jpg";
 import { SERVER_URL } from "../../services/api";
 import PriceTag from "../products/PriceTag";
+import { unitOf, unitWord } from "../../utils/units";
 
 const AUTO_ADVANCE_MS = 4000;
 
@@ -75,7 +76,7 @@ export default function HomeBanner({ featured, buyerLocation, onShop, onBrowse, 
           </span>
           <h2 className="mt-3 line-clamp-2 text-2xl font-bold leading-tight sm:text-3xl">{product.title}</h2>
           <p className="mt-1">
-            <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
+            <PriceTag product={product} tone="light" size="lg" suffix={` per ${unitWord(unitOf(product))}`} />
           </p>
           <p className="truncate text-sm text-white/90">
             {product.farmer?.farmName || product.farmer?.name}

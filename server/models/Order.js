@@ -22,9 +22,17 @@ const orderSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // Per unit: per kilo, or per tray for eggs (see `unit`).
     pricePerKilo: {
       type: Number,
       required: true,
+    },
+    // What `quantity` and `pricePerKilo` count in, kept with the order: eggs
+    // are sold by the tray, everything else by the kilo.
+    unit: {
+      type: String,
+      enum: ["kg", "tray"],
+      default: "kg",
     },
     quantity: {
       type: Number,

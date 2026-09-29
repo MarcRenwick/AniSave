@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { MoreHorizontal, ImageOff, Package, RefreshCw } from "lucide-react";
 import { SERVER_URL } from "../../../services/api";
 import { onFlashSale, discountPercent } from "../../../utils/pricing";
+import { amountOf, unitOf } from "../../../utils/units";
 
 // One of a farmer's listings on My Products: the photo (opens the listing),
 // its name and stock, and Restock; Edit and Delete sit in the ... menu.
@@ -93,7 +94,7 @@ export default function ProductCard({ product, isNew, onViewDetails, onRestock, 
         <p className="mt-1.5 flex items-center gap-1.5 text-sm text-gray-600">
           <Package className="h-4 w-4 shrink-0 text-[#2f8f66]" />
           <span>
-            Current stock: <span className="font-semibold text-gray-900">{product.stock} kg</span>
+            Current stock: <span className="font-semibold text-gray-900">{amountOf(product.stock, unitOf(product))}</span>
           </span>
         </p>
         <button

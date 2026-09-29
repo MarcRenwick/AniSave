@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ImageOff, Trash2 } from "lucide-react";
 import { SERVER_URL } from "../../services/api";
+import { amountOf, unitOf } from "../../utils/units";
 
 const peso = (amount) => `₱ ${Number(amount || 0).toLocaleString()}`;
 
@@ -45,7 +46,7 @@ export default function RemoveCartItemModal({ item, onClose, onConfirm }) {
             <span className="min-w-0">
               <span className="block truncate font-semibold text-gray-900">{item.title}</span>
               <span className="block text-sm text-gray-500">
-                {item.quantity} kg · {peso(item.price * item.quantity)}
+                {amountOf(item.quantity, unitOf(item))} · {peso(item.price * item.quantity)}
               </span>
             </span>
           </div>

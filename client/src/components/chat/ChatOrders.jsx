@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronDown, Package } from "lucide-react";
 import { SERVER_URL, getConversationOrders } from "../../services/api";
 import { BUYER_ORDER_STATUS } from "../../utils/orderStatus";
+import { amountOf, unitOf } from "../../utils/units";
 
 const orderDate = (date) =>
   new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -25,7 +26,7 @@ function OrderRow({ order, caption }) {
       </span>
       <span className="min-w-0 flex-1 truncate text-xs text-gray-500">
         <span className="text-sm font-semibold text-gray-900">{order.productTitle}</span>
-        {caption && ` · ${caption}`} · {order.quantity} kg · ₱{Number(order.total).toLocaleString()} ·{" "}
+        {caption && ` · ${caption}`} · {amountOf(order.quantity, unitOf(order))} · ₱{Number(order.total).toLocaleString()} ·{" "}
         {orderDate(order.createdAt)}
       </span>
       <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.color}`}>{meta.label}</span>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { unitWord, unitWords } from "../../utils/units";
 
 // The - / number / + control shared by the Add to Cart and Checkout dialogs.
 //
@@ -14,7 +15,7 @@ import { useState } from "react";
 // one. `onValidChange` lets the dialog turn its confirm button off until the
 // box holds a real quantity - pass a setState function, which never changes
 // identity between renders.
-export default function QuantityInput({ value, onChange, max, onValidChange }) {
+export default function QuantityInput({ value, onChange, max, onValidChange, unit = "kg" }) {
   const [text, setText] = useState(String(value));
 
   const typed = text.trim();
@@ -80,7 +81,7 @@ export default function QuantityInput({ value, onChange, max, onValidChange }) {
           type="text"
           inputMode="numeric"
           maxLength={6}
-          aria-label="Quantity in kilos"
+          aria-label={`Quantity in ${unitWords(unit)}`}
           aria-invalid={invalid}
           value={text}
           onChange={handleTyped}
@@ -110,7 +111,7 @@ export default function QuantityInput({ value, onChange, max, onValidChange }) {
 
       {invalid && (
         <p role="alert" className="mt-2 text-center text-xs font-medium text-red-600">
-          Enter at least 1 kilo.
+          Enter at least 1 {unitWord(unit)}.
         </p>
       )}
     </>

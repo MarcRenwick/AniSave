@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { COLORS } from "./analytics";
 import { Badge, EmptyState, TooltipBox, ViewHeading } from "./ChartParts";
+import { amountOf, unitOf } from "../../../utils/units";
 
 const HEIGHT = 320;
 
@@ -125,7 +126,7 @@ export default function DemandStockChart({ demand }) {
               tick={{ fontSize: 11, fill: COLORS.muted }}
               tickLine={false}
               axisLine={{ stroke: "#D5DDD8" }}
-              label={{ value: "Stock on hand (kg) →", position: "insideBottom", offset: -12, fill: COLORS.muted, fontSize: 11 }}
+              label={{ value: `Stock on hand (${chart.placed.some((p) => unitOf(p) === "tray") ? "kg, or trays of eggs" : "kg"}) →`, position: "insideBottom", offset: -12, fill: COLORS.muted, fontSize: 11 }}
             />
             <YAxis
               type="number"
@@ -147,7 +148,7 @@ export default function DemandStockChart({ demand }) {
                   <TooltipBox
                     title={p.title}
                     lines={[
-                      ["Stock", `${p.stock.toLocaleString()} kg`],
+                      ["Stock", amountOf(p.stock.toLocaleString(), unitOf(p))],
                       ["Searches", p.searches.toLocaleString()],
                       ["Views", p.views.toLocaleString()],
                       ["Suggests", NAMES[p.quadrant]],

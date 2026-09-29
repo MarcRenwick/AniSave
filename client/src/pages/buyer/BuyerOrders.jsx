@@ -7,6 +7,7 @@ import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getBuyerOrders, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { BUYER_ORDER_STATUS as statusMeta } from "../../utils/orderStatus";
+import { amountOf, perUnit, unitOf } from "../../utils/units";
 
 // Pre-Order sits right after New: both are orders the farmer hasn't answered
 // yet, so they belong next to each other at the front.
@@ -124,8 +125,8 @@ function OrderCard({ order, actions }) {
         <Thumb order={order} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-gray-900">{order.productTitle}</p>
-          <p className="text-xs text-gray-500">Unit price: {peso(order.pricePerKilo)} / kg</p>
-          <p className="text-xs text-gray-500">x{order.quantity}kg</p>
+          <p className="text-xs text-gray-500">Unit price: {peso(order.pricePerKilo)} {perUnit(unitOf(order))}</p>
+          <p className="text-xs text-gray-500">x{amountOf(order.quantity, unitOf(order))}</p>
         </div>
         <div className="shrink-0 text-right">
           <p className="text-lg font-bold text-[#2f8f66]">{peso(order.total)}</p>

@@ -14,6 +14,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { activeAgo, timeAgo } from "../../utils/activity";
 import { effectivePrice } from "../../utils/pricing";
+import { amountOf, unitOf, unitWord, unitWords } from "../../utils/units";
 
 function Stat({ label, value }) {
   return (
@@ -69,7 +70,7 @@ export default function ProductDetail() {
   const handleConfirmAddToCart = (qty) => {
     addToCart(product, qty);
     setShowAddToCart(false);
-    setBuyMessage(`Added ${qty}kg to cart!`);
+    setBuyMessage(`Added ${amountOf(qty, unitOf(product))} to cart!`);
   };
 
   const isPreOrder = product?.productType === "preorder";
@@ -187,7 +188,7 @@ export default function ProductDetail() {
               </p>
 
               <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2">
-                <PriceTag product={product} tone="light" size="lg" suffix=" per kilo" />
+                <PriceTag product={product} tone="light" size="lg" suffix={` per ${unitWord(unitOf(product))}`} />
               </div>
 
               <dl className="mt-4 space-y-3 text-sm">
@@ -220,7 +221,7 @@ export default function ProductDetail() {
                 </div>
                 <div>
                   <dt className="text-gray-500">Available Stock</dt>
-                  <dd className="font-medium text-gray-900">{product.stock} kilos</dd>
+                  <dd className="font-medium text-gray-900">{product.stock} {unitWords(unitOf(product))}</dd>
                 </div>
               </dl>
             </div>

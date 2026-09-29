@@ -446,6 +446,7 @@ const getConversationOrders = asyncHandler(async (req, res) => {
       productTitle: o.productTitle,
       image: o.product?.image || null,
       quantity: o.quantity,
+      unit: o.unit || "kg",
       total: o.total,
       status: o.status,
       createdAt: o.createdAt,

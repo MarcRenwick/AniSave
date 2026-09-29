@@ -4,6 +4,7 @@ import { discountPercent, effectivePrice, onFlashSale } from "../../utils/pricin
 import { formatDistance } from "../../utils/address";
 import ProductImage from "./ProductImage";
 import { categoryLabel } from "../../utils/categories";
+import { amountOf, unitOf, unitWord } from "../../utils/units";
 
 const peso = (amount) => `₱${Number(amount ?? 0).toLocaleString()}`;
 
@@ -59,7 +60,7 @@ export default function ProductCard({ product, onOpen }) {
 
         <p className="flex flex-wrap items-baseline gap-2">
           <span className="text-lg font-bold text-[#2f8f66]">
-            {peso(effectivePrice(product))} / kilo
+            {peso(effectivePrice(product))} / {unitWord(unitOf(product))}
           </span>
           {/* A discounted listing still says what it was, or the price would
               be a claim nobody can check. */}
@@ -84,7 +85,7 @@ export default function ProductCard({ product, onOpen }) {
 
         <p className="flex items-center gap-2 text-sm text-gray-500">
           <Box className="h-4 w-4 shrink-0 text-[#2f8f66]" />
-          Available: {product.stock} kg
+          Available: {amountOf(product.stock, unitOf(product))}
         </p>
       </div>
     </button>

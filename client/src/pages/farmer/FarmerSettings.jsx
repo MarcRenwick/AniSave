@@ -30,6 +30,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../../services/api";
 import { useSmoothNavigate, withPageTransition } from "../../utils/pageTransition";
 import { listCategories } from "../../utils/categories";
+import { unitOf } from "../../utils/units";
 
 export default function FarmerSettings() {
   const { user, updateUser, logout } = useAuth();
@@ -306,7 +307,7 @@ export default function FarmerSettings() {
                     </div>
                     <div className="bg-gradient-to-r from-[#2f8f66] to-[#3d9e73] px-2 py-1.5 text-white">
                       <p className="truncate text-xs font-semibold">{p.title}</p>
-                      <PriceTag product={p} tone="light" size="sm" suffix="/kg" />
+                      <PriceTag product={p} tone="light" size="sm" suffix={`/${unitOf(p) === "tray" ? "tray" : "kg"}`} />
                     </div>
                   </button>
                 ))}

@@ -25,6 +25,7 @@ import { formatDistance } from "../../utils/address";
 import { forgetReportSent, reportJustSent } from "../../utils/reports";
 import { usePageSettled, useSmoothNavigate } from "../../utils/pageTransition";
 import { categoryFilters } from "../../utils/categories";
+import { unitOf, unitWord } from "../../utils/units";
 
 const baseTabs = [
   { key: "home", label: "Home" },
@@ -85,7 +86,7 @@ function ProductGrid({ products, empty }) {
           </div>
           <div className="p-3">
             <p className="truncate font-semibold text-gray-900">{product.title}</p>
-            <PriceTag product={product} size="sm" suffix=" per kilo" />
+            <PriceTag product={product} size="sm" suffix={` per ${unitWord(unitOf(product))}`} />
           </div>
         </Link>
       ))}

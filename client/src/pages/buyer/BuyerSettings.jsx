@@ -32,6 +32,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { getCurrentUser, getBuyerOrders } from "../../services/api";
 import { withPageTransition } from "../../utils/pageTransition";
+import { totalAmounts } from "../../utils/units";
 
 // One of the three figures under the photo. They are counted from this
 // account's own orders and cart - nothing here is decorative.
@@ -135,7 +136,8 @@ export default function BuyerSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const kilos = orders?.reduce((sum, order) => sum + (Number(order.quantity) || 0), 0) ?? 0;
+  // Kilos and trays each added up on their own.
+  const ordered = orders ? totalAmounts(orders) : null;
 
   // Logging out (or deleting the account) eases from this page to the login page.
   const leaveToLogin = () =>
@@ -197,7 +199,7 @@ export default function BuyerSettings() {
 
               <dl className="mt-5 grid w-full grid-cols-3 gap-2 rounded-xl bg-gray-50 px-2 py-4 text-center">
                 <Stat icon={Package} value={orders ? orders.length : "-"} label="Orders" />
-                <Stat icon={Scale} value={orders ? `${kilos} kg` : "-"} label="Ordered" />
+                <Stat icon={Scale} value={ordered ?? "-"} label="Ordered" />
                 <Stat icon={ShoppingCart} value={items.length} label="In cart" />
               </dl>
 

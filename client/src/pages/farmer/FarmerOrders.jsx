@@ -6,6 +6,7 @@ import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { getFarmerOrders, SERVER_URL } from "../../services/api";
 import { formatDateTime } from "../../utils/orderStatus";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import { amountOf, unitOf } from "../../utils/units";
 
 // Pre-Order sits right after New: both are orders still waiting on the
 // farmer's answer, so they belong next to each other at the front.
@@ -95,7 +96,7 @@ export default function FarmerOrders() {
                     </p>
                     <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
                     <p className="truncate text-sm text-gray-600">
-                      {order.quantity}kg {order.productTitle}
+                      {amountOf(order.quantity, unitOf(order))} {order.productTitle}
                     </p>
                     <p className="text-sm font-semibold text-gray-900">Total ₱{order.total}</p>
                   </div>

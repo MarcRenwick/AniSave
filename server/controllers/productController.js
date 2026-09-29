@@ -13,19 +13,20 @@ const validate = require("../utils/validate");
 const { recordView, recordSearchHits, forgetProducts } = require("../utils/interest");
 const { productProfit, profitTotals, salesByProduct } = require("../utils/profit");
 const { recommendationsFor } = require("./marketPriceController");
+const { batchQuantity } = require("../utils/expenseMigration");
 
 // The numbers on a listing, checked before they reach the database. A form
 // sends text, and a browser's own number field still lets things like "100e+"
 // or "12abc" through - which would be stored as NaN, or as an exponent nobody
 // meant to type. Not given at all means "leave this field alone"; blank means
 // "clear the sale price".
-const listingNumbers = ({ stock, price, salePrice, expensePerKg }) => ({
+const listingNumbers = ({ stock, price, salePrice, totalExpense }) => ({
   ...(stock !== undefined ? { stock: validate.wholeNumber(stock, "Available quantity") } : {}),
   ...(price !== undefined ? { price: validate.number(price, "Price") } : {}),
   ...(salePrice !== undefined
     ? { salePrice: validate.number(salePrice, "Flash sale price", { allowBlank: true }) }
     : {}),
-  ...(expensePerKg !== undefined ? { expensePerKg: validate.number(expensePerKg, "Expense per kg") } : {}),
+  ...(totalExpense !== undefined ? { totalExpense: validate.number(totalExpense, "Total expense") } : {}),
 });
 
 const MAX_IMAGES = 5;
@@ -105,10 +106,10 @@ const createProduct = asyncHandler(async (req, res) => {
   }
   // What the listing cost to produce is part of every new one - it is what
   // the farmer's expense, income and profit figures are worked out from.
-  if (req.body.expensePerKg === undefined) {
+  if (req.body.totalExpense === undefined || req.body.totalExpense === "") {
     discardUploads(req);
     res.status(400);
-    throw new Error("Expense per kg is required");
+    throw new Error("Total expense is required");
   }
   if (productType !== undefined && !PRODUCT_TYPES.includes(productType)) {
     discardUploads(req);
@@ -140,6 +141,10 @@ const createProduct = asyncHandler(async (req, res) => {
       // typed - which is what makes a listing's produce identifiable.
       title: crop.name,
       ...numbers,
+      // The batch the total expense is for: what is being listed now. The
+      // cost of one kilo (or tray) is the expense divided by this, not by
+      // whatever stock is left later.
+      initialQuantity: numbers.stock,
       salePrice: numbers.salePrice ?? null,
       // The crop decides which of the two buyer-facing categories the listing
       // belongs in, so a mango can't end up filed under vegetables.
@@ -276,8 +281,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
       { $match: { $or: [{ boughtBefore: true }, { avgRating: { $gte: 4 } }] } },
       { $sort: { boughtBefore: -1, avgRating: -1, totalSold: -1, createdAt: -1 } },
       // An aggregation returns every field, including the farmer's own
-      // expense per kilo - which is theirs alone, so it is dropped here.
-      { $project: { ratings: 0, orders: 0, expensePerKg: 0 } },
+      // expense - which is theirs alone, so it is dropped here.
+      { $project: { ratings: 0, orders: 0, totalExpense: 0, initialQuantity: 0 } },
     ]);
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
@@ -327,8 +332,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
         },
       },
       { $sort: { discountPct: -1, createdAt: -1 } },
-      // The farmer's own expense per kilo isn't for buyers (see above).
-      { $project: { expensePerKg: 0 } },
+      // The farmer's own expense isn't for buyers (see above).
+      { $project: { totalExpense: 0, initialQuantity: 0 } },
     ]);
 
     await Product.populate(products, { path: "farmer", select: FARMER_FIELDS });
@@ -348,7 +353,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
 // @access  Public
 const getProductById = asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id)
-    .select("+expensePerKg")
+    .select("+totalExpense +initialQuantity")
     .populate("farmer", FARMER_FIELDS)
     // So the edit form can show which catalogue product the listing is of,
     // rather than having to look it up again by name.
@@ -384,21 +389,21 @@ const getProductById = asyncHandler(async (req, res) => {
 
   // What the listing cost to produce is the farmer's own business: its owner
   // gets it back (their editor fills the box from here), nobody else does.
-  const { expensePerKg, ...listing } = product.toObject();
+  const { totalExpense, initialQuantity, ...listing } = product.toObject();
   const isOwner = Boolean(req.user && product.farmer?._id?.equals(req.user._id));
 
   res.json({
     ...listing,
-    ...(isOwner ? { expensePerKg } : {}),
+    ...(isOwner ? { totalExpense, initialQuantity } : {}),
     sold: sales[0]?.totalSold || 0,
     rating: ratingStats[0]?.avg || 0,
     ratingCount: ratingStats[0]?.count || 0,
   });
 });
 
-// Only ever the owner's, so their expense per kilo comes with it.
+// Only ever the owner's, so their expense comes with it.
 const findOwnedProduct = async (id, farmerId) => {
-  const product = await Product.findById(id).select("+expensePerKg");
+  const product = await Product.findById(id).select("+totalExpense +initialQuantity");
   if (!product) return { error: { status: 404, message: "Product not found" } };
   if (product.farmer.toString() !== farmerId.toString()) {
     return { error: { status: 403, message: "You do not own this product" } };
@@ -454,7 +459,14 @@ const updateProduct = asyncHandler(async (req, res) => {
   }
   if (numbers.stock !== undefined) product.stock = numbers.stock;
   if (numbers.price !== undefined) product.price = numbers.price;
-  if (numbers.expensePerKg !== undefined) product.expensePerKg = numbers.expensePerKg;
+  if (numbers.totalExpense !== undefined) {
+    product.totalExpense = numbers.totalExpense;
+    // A listing from before expenses were recorded gets its batch size now:
+    // its stock plus what its orders have taken.
+    if (product.initialQuantity === null || product.initialQuantity === undefined) {
+      product.initialQuantity = await batchQuantity(product);
+    }
+  }
   if (description !== undefined) product.description = description;
   if (productType !== undefined) product.productType = productType;
   // A blank field from the form means "clear the sale", not "leave it alone" -
@@ -583,7 +595,7 @@ async function profitRowsFor(farmer, products) {
 // @access  Private (farmer)
 const getMyProfit = asyncHandler(async (req, res) => {
   const products = await Product.find({ farmer: req.user._id })
-    .select("+expensePerKg")
+    .select("+totalExpense +initialQuantity")
     .sort({ createdAt: -1 })
     .lean();
   const rows = await profitRowsFor(req.user, products);
@@ -642,7 +654,7 @@ const getTopSearched = asyncHandler(async (req, res) => {
 // @access  Private (farmer)
 const getMyDemand = asyncHandler(async (req, res) => {
   const [products, interest] = await Promise.all([
-    Product.find({ farmer: req.user._id }).select("title stock").lean(),
+    Product.find({ farmer: req.user._id }).select("title stock category").lean(),
     ProductInterest.find({ farmer: req.user._id }).select("product searches views").lean(),
   ]);
   const byProduct = new Map(interest.map((row) => [row.product.toString(), row]));
@@ -651,7 +663,7 @@ const getMyDemand = asyncHandler(async (req, res) => {
       const seen = byProduct.get(p._id.toString());
       const searches = seen?.searches || 0;
       const views = seen?.views || 0;
-      return { _id: p._id, title: p.title, stock: p.stock, searches, views, demand: searches + views };
+      return { _id: p._id, title: p.title, stock: p.stock, category: p.category, searches, views, demand: searches + views };
     })
   );
 });

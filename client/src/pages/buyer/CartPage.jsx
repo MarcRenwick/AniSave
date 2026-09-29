@@ -7,6 +7,7 @@ import { SERVER_URL } from "../../services/api";
 import ProductImage from "../../components/products/ProductImage";
 import RemoveCartItemModal from "../../components/buyer/RemoveCartItemModal";
 import useScrollReveal from "../../hooks/useScrollReveal";
+import { amountOf, perUnit, totalAmounts, unitOf, unitWord, unitWords } from "../../utils/units";
 
 const peso = (amount) => `₱ ${Number(amount || 0).toLocaleString()}`;
 
@@ -44,7 +45,7 @@ function QuantityBox({ item, onChange }) {
         type="button"
         onClick={() => step(-1)}
         disabled={item.quantity <= 1}
-        aria-label={`One kilo less of ${item.title}`}
+        aria-label={`One ${unitWord(unitOf(item))} less of ${item.title}`}
         className="h-8 w-8 rounded-md border border-gray-300 text-lg leading-none text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
       >
         −
@@ -52,7 +53,7 @@ function QuantityBox({ item, onChange }) {
       <input
         type="text"
         inputMode="numeric"
-        aria-label={`Kilos of ${item.title}`}
+        aria-label={`${unitWords(unitOf(item))} of ${item.title}`}
         value={typing ? draft : String(item.quantity)}
         onChange={(e) => {
           setTyping(true);
@@ -71,7 +72,7 @@ function QuantityBox({ item, onChange }) {
         type="button"
         onClick={() => step(1)}
         disabled={item.quantity >= item.stock}
-        aria-label={`One kilo more of ${item.title}`}
+        aria-label={`One ${unitWord(unitOf(item))} more of ${item.title}`}
         className="h-8 w-8 rounded-md border border-gray-300 text-lg leading-none text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
       >
         +
@@ -122,7 +123,8 @@ export default function CartPage() {
   // What checking out now would cost - the ticked rows only, since those are
   // the ones that go to the checkout.
   const totalExpense = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const totalKilos = selectedItems.reduce((sum, i) => sum + i.quantity, 0);
+  // Kilos and trays each added up on their own.
+  const totalAmount = totalAmounts(selectedItems);
 
   const handleProceedToCheckout = () => {
     navigate("/buyer/checkout", { state: { items: selectedItems, fromCart: true } });
@@ -229,7 +231,7 @@ export default function CartPage() {
                           >
                             {item.title}
                           </Link>
-                          <p className="text-xs text-gray-500">{item.stock} kg in stock</p>
+                          <p className="text-xs text-gray-500">{amountOf(item.stock, unitOf(item))} in stock</p>
                         </div>
                       </div>
                     </td>
@@ -238,6 +240,7 @@ export default function CartPage() {
                       <span className="text-base font-semibold text-gray-900">
                         {peso(item.price)}
                       </span>
+                      <span className="text-sm text-gray-500"> {perUnit(unitOf(item))}</span>
                       {/* A listing bought on Flash Sale still says what it
                           normally goes for. */}
                       {item.originalPrice > item.price && (
@@ -315,7 +318,7 @@ export default function CartPage() {
                           >
                             {item.title}
                           </Link>
-                          <p className="text-xs text-gray-500">{item.stock} kg in stock</p>
+                          <p className="text-xs text-gray-500">{amountOf(item.stock, unitOf(item))} in stock</p>
                         </div>
                         <button
                           type="button"
@@ -331,7 +334,7 @@ export default function CartPage() {
                         {item.originalPrice > item.price && (
                           <span className="ml-2 text-xs text-gray-400 line-through">{peso(item.originalPrice)}</span>
                         )}
-                        <span className="text-gray-500"> / kg</span>
+                        <span className="text-gray-500"> {perUnit(unitOf(item))}</span>
                       </p>
                       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                         <QuantityBox
@@ -356,7 +359,7 @@ export default function CartPage() {
               <p className="text-3xl font-bold text-[#2f8f66]">{peso(totalExpense)}</p>
               <p className="mt-1 text-xs text-gray-500">
                 {selectedItems.length} of {items.length} item{items.length === 1 ? "" : "s"} ticked ·{" "}
-                {totalKilos} kg
+                {totalAmount}
               </p>
             </div>
 

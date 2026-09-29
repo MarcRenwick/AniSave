@@ -21,6 +21,7 @@ import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getOrder, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
 import { BUYER_STEPS } from "../../utils/orderStatus";
+import { amountOf, unitOf, unitWord } from "../../utils/units";
 
 // What the banner at the top says for each status, in the buyer's words.
 const BANNERS = {
@@ -188,8 +189,8 @@ export default function OrderDetail() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-gray-900">{order.productTitle}</p>
                   <p className="text-sm text-gray-500">
-                    Quantity: {order.quantity}
-                    {order.pricePerKilo ? ` · ₱${order.pricePerKilo} per kg` : ""}
+                    Quantity: {amountOf(order.quantity, unitOf(order))}
+                    {order.pricePerKilo ? ` · ₱${order.pricePerKilo} per ${unitWord(unitOf(order))}` : ""}
                   </p>
                 </div>
               </div>

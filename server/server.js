@@ -8,6 +8,7 @@ const helmet = require("helmet");
 const connectDB = require("./config/db");
 const { UPLOAD_DIR, sendStoredFile } = require("./utils/fileUtils");
 const { ensureCropCatalogue } = require("./utils/cropCatalogue");
+const { migrateExpenses } = require("./utils/expenseMigration");
 const { describeEmailRoute } = require("./utils/sendEmail");
 const { apiLimiter } = require("./middleware/rateLimiters");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
@@ -50,7 +51,16 @@ connectDB()
       );
     }
   })
-  .catch((err) => console.error(`Could not write the crop catalogue: ${err.message}`));
+  .catch((err) => console.error(`Could not write the crop catalogue: ${err.message}`))
+  // Listings from before expenses were entered as a total, and egg orders
+  // from before orders recorded their unit. Does nothing once done.
+  .then(() => migrateExpenses())
+  .then(({ products, eggOrders }) => {
+    if (products.length || eggOrders) {
+      console.log(`Migrated ${products.length} listing(s) to a total expense, and ${eggOrders} egg order(s) to trays.`);
+    }
+  })
+  .catch((err) => console.error(`Could not migrate listings' expenses: ${err.message}`));
 
 const app = express();
 

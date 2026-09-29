@@ -1,4 +1,5 @@
 import Modal from "../Modal";
+import { amountOf, unitOf } from "../../utils/units";
 
 export default function CancelOrderModal({ order, onClose, onConfirm, cancelling, error }) {
   return (
@@ -6,7 +7,7 @@ export default function CancelOrderModal({ order, onClose, onConfirm, cancelling
       <p className="text-sm text-gray-600">
         Are you sure you want to cancel your order of{" "}
         <span className="font-medium">
-          {order.quantity}kg {order.productTitle}
+          {amountOf(order.quantity, unitOf(order))} {order.productTitle}
         </span>{" "}
         (₱{order.total})? The reserved stock will be released back to the farmer.
       </p>

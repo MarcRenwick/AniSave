@@ -21,7 +21,9 @@ export default function ProductShareChart({ data, range }) {
     if (rest.length) {
       slices.push({ name: `Other (${rest.length})`, kg: rest.reduce((sum, p) => sum + p.kg, 0), color: OTHER_COLOR });
     }
-    return { slices, total, count: sold.length };
+    // Eggs are sold by the tray, so they can't be a share of the kilos.
+    const trays = data.products.reduce((sum, p) => sum + (p.trays || 0), 0);
+    return { slices, total, count: sold.length, trays };
   }, [data]);
 
   const subtitle = `Share of kg sold by product · ${range.rangeLabel}`;
@@ -90,6 +92,11 @@ export default function ProductShareChart({ data, range }) {
           ))}
         </ul>
       </div>
+      {share.trays > 0 && (
+        <p className="text-xs" style={{ color: COLORS.muted }} data-testid="share-trays">
+          Plus {share.trays} tray{share.trays === 1 ? "" : "s"} of eggs, which are sold by the tray and so aren&apos;t in the kilos above.
+        </p>
+      )}
     </div>
   );
 }

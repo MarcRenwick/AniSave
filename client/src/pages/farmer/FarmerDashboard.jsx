@@ -20,6 +20,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit, SERVER_URL } from "../../services/api";
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 import { money } from "../../utils/profit";
+import { amountOf, totalAmounts, unitOf } from "../../utils/units";
 
 // The Analytical Demands card draws its charts with Recharts, which is large -
 // so it is fetched when a farmer opens the dashboard, not with every page.
@@ -126,7 +127,9 @@ export default function FarmerDashboard() {
     () => products.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD),
     [products]
   );
-  const totalStockKg = useMemo(() => products.reduce((sum, p) => sum + p.stock, 0), [products]);
+  // Kilos and trays (eggs) are counted apart - a tray isn't a kilo.
+  const totalStockKg = useMemo(() => products.filter((p) => unitOf(p) !== "tray").reduce((sum, p) => sum + p.stock, 0), [products]);
+  const totalStockTrays = useMemo(() => products.filter((p) => unitOf(p) === "tray").reduce((sum, p) => sum + p.stock, 0), [products]);
 
   // A buyer placing an order doesn't move any produce yet - the farmer still
   // has to accept it, and it can still be rejected or cancelled after that.
@@ -181,7 +184,7 @@ export default function FarmerDashboard() {
     const sold = completedOrders.filter((o) => isToday(o.doneAt || o.createdAt));
     return {
       revenue: sold.reduce((sum, o) => sum + o.total, 0),
-      kg: Math.round(sold.reduce((sum, o) => sum + o.quantity, 0) * 100) / 100,
+      amount: totalAmounts(sold),
       orders: sold.length,
     };
   }, [completedOrders]);
@@ -234,7 +237,7 @@ export default function FarmerDashboard() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard icon={Clock} label="Today's sales" tone="green" testId="stat-today">
             <Figure>{money(todaySales.revenue)}</Figure>
-            <CaptionRow pill={`${todaySales.kg} kg · ${plural(todaySales.orders, "order")}`} testId="today-pill">
+            <CaptionRow pill={`${todaySales.amount} · ${plural(todaySales.orders, "order")}`} testId="today-pill">
               <Caption tone="mt-0 text-gray-600">Earned so far today</Caption>
             </CaptionRow>
             <Sparkline values={dailyRevenue.lastWeek} color="#1F7A4D" label="Sales over the last 7 days" testId="today-sparkline" />
@@ -278,7 +281,9 @@ export default function FarmerDashboard() {
             </Figure>
             {profit && (
               <Caption tone="text-gray-600">
-                {profit.actual.soldKg > 0 ? `From ${profit.actual.soldKg} kg sold` : "No completed sales yet"}
+                {profit.actual.orders > 0
+                  ? `From ${[profit.actual.soldKg > 0 && `${profit.actual.soldKg} kg`, profit.actual.soldTrays > 0 && amountOf(profit.actual.soldTrays, "tray")].filter(Boolean).join(" and ")} sold`
+                  : "No completed sales yet"}
                 {profit.estimated.products > 0 && ` · Est. ${money(profit.estimated.profit)} on stock`}
               </Caption>
             )}
@@ -291,7 +296,10 @@ export default function FarmerDashboard() {
 
           <StatCard icon={Package} label="Stock" tone="purple" link={{ to: "/farmer/products", label: "Manage" }} testId="stat-stock">
             <Figure>{totalStockKg.toLocaleString()} kg</Figure>
-            <Caption tone="text-gray-600">Across {plural(products.length, "product")}</Caption>
+            <Caption tone="text-gray-600">
+              Across {plural(products.length, "product")}
+              {totalStockTrays > 0 && ` · plus ${amountOf(totalStockTrays, "tray")} of eggs`}
+            </Caption>
             <StockBar counts={stockSplit} />
             {lowStock.length > 0 && (
               <Warning to="/farmer/products" action="View">
@@ -416,7 +424,7 @@ export default function FarmerDashboard() {
                       <div className="min-w-0 text-sm">
                         <p className="truncate font-medium text-gray-800">{p.title}</p>
                         <p className="text-xs text-gray-500">
-                          {p.stock} kg left · {p.everOrdered ? `no orders in ${p.idleDays} days` : `no orders yet (listed ${p.idleDays} days ago)`}
+                          {amountOf(p.stock, unitOf(p))} left · {p.everOrdered ? `no orders in ${p.idleDays} days` : `no orders yet (listed ${p.idleDays} days ago)`}
                         </p>
                       </div>
                       <button

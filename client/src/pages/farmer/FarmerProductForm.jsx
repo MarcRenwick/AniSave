@@ -15,6 +15,7 @@ import PriceTag from "../../components/products/PriceTag";
 import Avatar from "../../components/Avatar";
 import { categoryLabel as categoryLabelFor } from "../../utils/categories";
 import { estimate, money, profitTone } from "../../utils/profit";
+import { amountOf, perUnit, unitOf, unitWord, unitWords } from "../../utils/units";
 
 const MAX_PHOTOS = 5;
 // The same limit the server holds a description to.
@@ -33,7 +34,7 @@ const priceOnly = (value) => {
   return rest.length > 0 ? `${whole}.${rest.join("").slice(0, 2)}` : whole;
 };
 
-const CLEAN = { stock: digitsOnly, price: priceOnly, salePrice: priceOnly, expensePerKg: priceOnly };
+const CLEAN = { stock: digitsOnly, price: priceOnly, salePrice: priceOnly, totalExpense: priceOnly };
 
 // Only whole pesos are ever shown elsewhere in the app, so a recommendation
 // reads the same way.
@@ -189,7 +190,10 @@ function Notice({ tone = "gray", children }) {
 // the expense on them and, at the recommended price, the income and profit.
 // Only ever an estimate, and only ever at the recommended price: the farmer's
 // own selling price is theirs to set and is not used here.
-function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, onUse }) {
+// `costPerUnit` is the cost of one kilo (or tray): the total expense over the
+// batch it is for.
+function PriceGuide({ crop, recommendation, checking, quantity, costPerUnit, onUse }) {
+  const unit = unitOf(crop);
   if (!crop) {
     return <Notice>Choose your product above to see its price guide for your municipality.</Notice>;
   }
@@ -248,7 +252,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, on
   const figures =
     kilos === null
       ? null
-      : estimate({ quantity: kilos, expensePerKg: Number(expensePerKg || 0), marketPrice: price });
+      : estimate({ quantity: kilos, costPerUnit: costPerUnit ?? 0, marketPrice: price });
 
   return (
     <div className="overflow-hidden rounded-xl border border-green-200 bg-white" data-testid="price-guide">
@@ -269,7 +273,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, on
           <div>
             <p className="text-xs font-medium text-green-100">Recommended selling price</p>
             <p className="mt-1 text-3xl font-bold tracking-tight" data-testid="recommended-price">
-              {peso(price)} <span className="text-base font-semibold text-green-100">/ kg</span>
+              {peso(price)} <span className="text-base font-semibold text-green-100">{perUnit(unit)}</span>
             </p>
           </div>
           <button
@@ -278,7 +282,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, on
             className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-[#1f5c42] transition hover:bg-green-50"
           >
             <Check className="h-4 w-4" />
-            Use {peso(price)} / kg
+            Use {peso(price)} {perUnit(unit)}
           </button>
         </div>
 
@@ -289,23 +293,23 @@ function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, on
             <p className="text-xs text-gray-500">
               {recommendation.pricedAs ? `Latest market price (${recommendation.pricedAs})` : "Latest market price"}
             </p>
-            <p className="mt-0.5 text-lg font-bold text-gray-900">{peso(price)} / kg</p>
+            <p className="mt-0.5 text-lg font-bold text-gray-900">{peso(price)} {perUnit(unit)}</p>
           </div>
 
           <div className="rounded-xl bg-gray-50 px-4 py-3" data-testid="profit-estimate">
             {figures === null ? (
               <p className="text-xs text-gray-500">
-                Enter your kilos above to see what they would bring in at this price.
+                Enter your {unitWords(unit)} above to see what they would bring in at this price.
               </p>
             ) : (
               <>
                 <p className="text-xs text-gray-500">
-                  If you <span className="font-semibold text-[#2f8f66]">sell all</span> {kilos} kg at {peso(price)}
+                  If you <span className="font-semibold text-[#2f8f66]">sell all</span> {amountOf(kilos, unit)} at {peso(price)}
                 </p>
                 <p className="mt-0.5 text-lg font-bold text-gray-900">
                   {money(figures.income)} <span className="text-xs font-medium text-gray-500">estimated income</span>
                 </p>
-                {expensePerKg !== "" && (
+                {costPerUnit !== null && (
                   <div className="mt-2 space-y-0.5 border-t border-gray-200 pt-2 text-xs">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-gray-500">Total expense</span>
@@ -331,23 +335,25 @@ function PriceGuide({ crop, recommendation, checking, quantity, expensePerKg, on
   );
 }
 
-// Under the selling price: what each kilo leaves the farmer once their own
-// cost is taken off - at their price, not the recommended one.
-function MarginHint({ price, expensePerKg }) {
+// Under the selling price: what each kilo (or tray) leaves the farmer once
+// their own cost is taken off - at their price, not the recommended one. The
+// cost of one is the total expense over the batch.
+function MarginHint({ price, costPerUnit, unit }) {
+  const each = unitWord(unit);
   const hint = (text, tone = "text-gray-500") => (
     <p className={`mt-1.5 text-xs ${tone}`} data-testid="price-margin">
       {text}
     </p>
   );
-  if (expensePerKg === "") return hint("Add your cost per kg above to see your profit per kilo here.");
-  if (price === "" || Number(price) === 0) return hint("Type your price to see your profit per kilo.");
+  if (costPerUnit === null) return hint(`Add your total expense and ${unitWords(unit)} above to see your profit per ${each} here.`);
+  if (price === "" || Number(price) === 0) return hint(`Type your price to see your profit per ${each}.`);
 
-  const margin = Math.round((Number(price) - Number(expensePerKg)) * 100) / 100;
+  const margin = Math.round((Number(price) - costPerUnit) * 100) / 100;
   if (margin === 0) return hint("You break even at this price - it only covers your cost.");
   if (margin < 0) {
-    return hint(`You lose ${money(-margin)} per kilo at this price - it's below your cost.`, "font-medium text-red-600");
+    return hint(`You lose ${money(-margin)} per ${each} at this price - it's below your cost.`, "font-medium text-red-600");
   }
-  return hint(`You make ${money(margin)} per kilo at this price, after your cost.`, "font-medium text-[#2f8f66]");
+  return hint(`You make ${money(margin)} per ${each} at this price, after your cost.`, "font-medium text-[#2f8f66]");
 }
 
 // The six things a listing needs, ticked off as they are filled in.
@@ -459,14 +465,14 @@ function Preview({ crop, form, photos, shown, onPickPhoto, seller, town }) {
           </h3>
           <div className="mt-0.5">
             {priced ? (
-              <PriceTag product={asProduct} size="lg" suffix=" / kg" />
+              <PriceTag product={asProduct} size="lg" suffix={` ${perUnit(unitOf(crop))}`} />
             ) : (
-              <span className="text-lg font-semibold text-gray-300">₱ — / kg</span>
+              <span className="text-lg font-semibold text-gray-300">₱ — {perUnit(unitOf(crop))}</span>
             )}
           </div>
           <p className="mt-1 text-xs text-gray-500">
             Listed just now · {town}
-            {form.stock !== "" && ` · ${form.stock} kg available`}
+            {form.stock !== "" && ` · ${amountOf(form.stock, unitOf(crop))} available`}
           </p>
         </div>
 
@@ -499,7 +505,7 @@ function Preview({ crop, form, photos, shown, onPickPhoto, seller, town }) {
 const emptyForm = {
   stock: "",
   price: "",
-  expensePerKg: "",
+  totalExpense: "",
   salePrice: "",
   productType: "sale",
   description: "",
@@ -535,6 +541,10 @@ export default function FarmerProductForm() {
   // The suggested price for the chosen product, from the farmer's own
   // municipal market.
   const [recommendation, setRecommendation] = useState(null);
+  // When editing: how many kilos (or trays) the listing's total expense is
+  // for - its stock when it was listed. The cost of one is the expense over
+  // this, not over the stock left.
+  const [initialQuantity, setInitialQuantity] = useState(null);
   const fileRef = useRef(null);
   const gridRef = useRef(null);
   const drag = useRef(null);
@@ -553,11 +563,12 @@ export default function FarmerProductForm() {
           price: String(data.price ?? ""),
           // Listings from before expenses were asked for have none, so the
           // box starts empty and has to be filled in to save.
-          expensePerKg: data.expensePerKg == null ? "" : String(data.expensePerKg),
+          totalExpense: data.totalExpense == null ? "" : String(data.totalExpense),
           salePrice: data.salePrice == null ? "" : String(data.salePrice),
           productType: data.productType || "sale",
           description: data.description || "",
         });
+        setInitialQuantity(data.initialQuantity ?? null);
         setPhotos(
           productImages(data)
             .slice(0, MAX_PHOTOS)
@@ -681,6 +692,10 @@ export default function FarmerProductForm() {
       setError("Add at least one photo of the product.");
       return;
     }
+    if (form.totalExpense === "") {
+      setError(`Enter the total expense for all the ${unitWords(unit)} you're listing.`);
+      return;
+    }
     if (form.salePrice !== "" && Number(form.salePrice) >= Number(form.price)) {
       setError("Sale price must be less than the regular price.");
       return;
@@ -721,18 +736,25 @@ export default function FarmerProductForm() {
   const town = user?.address?.city || user?.location || "your municipality";
   const priced = form.price !== "" && Number(form.price) > 0;
   const described = form.description.trim() !== "";
-  const kilosAndCost = form.stock !== "" && form.expensePerKg !== "";
+  const kilosAndCost = form.stock !== "" && form.totalExpense !== "";
+  // Eggs are counted in trays, everything else in kilos.
+  const unit = unitOf(crop);
+  const Units = unitWords(unit).charAt(0).toUpperCase() + unitWords(unit).slice(1);
+  // The batch the total expense is for: what is listed now for a new listing,
+  // or what it was first listed with.
+  const batch = isEdit && initialQuantity > 0 ? initialQuantity : Number(form.stock);
+  const costPerUnit = form.totalExpense !== "" && batch > 0 ? Number(form.totalExpense) / batch : null;
 
   const checklist = [
     { key: "photos", done: photos.length > 0, text: photos.length > 0 ? `${plural(photos.length, "photo")} added` : "At least one photo" },
     { key: "product", done: Boolean(crop), text: crop ? `Product: ${crop.name}` : "Product" },
-    { key: "stock", done: form.stock !== "", text: form.stock !== "" ? `${form.stock} kg available` : "Kilos available" },
+    { key: "stock", done: form.stock !== "", text: form.stock !== "" ? `${amountOf(form.stock, unit)} available` : `${Units} available` },
     {
       key: "cost",
-      done: form.expensePerKg !== "",
-      text: form.expensePerKg !== "" ? `Your cost: ${money(Number(form.expensePerKg))} / kg` : "Your cost per kg",
+      done: form.totalExpense !== "",
+      text: form.totalExpense !== "" ? `Total expense: ${money(Number(form.totalExpense))}` : "Total expense",
     },
-    { key: "price", done: priced, text: priced ? `Selling at ${money(Number(form.price))} / kg` : "Selling price" },
+    { key: "price", done: priced, text: priced ? `Selling at ${money(Number(form.price))} ${perUnit(unit)}` : "Selling price" },
     { key: "description", done: described, text: described ? "Description added" : "Description" },
   ];
 
@@ -930,7 +952,7 @@ export default function FarmerProductForm() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <Label htmlFor="stock" required>
-                      Kilos available
+                      {Units} available
                     </Label>
                     <AddonInput
                       id="stock"
@@ -941,12 +963,12 @@ export default function FarmerProductForm() {
                       value={form.stock}
                       onChange={handleChange}
                       placeholder="0"
-                      suffix="kg"
+                      suffix={unit === "tray" ? "trays" : "kg"}
                     />
                   </div>
                   <div>
                     <Label
-                      htmlFor="expensePerKg"
+                      htmlFor="totalExpense"
                       required
                       extra={
                         <Pill>
@@ -955,32 +977,34 @@ export default function FarmerProductForm() {
                         </Pill>
                       }
                     >
-                      Your cost per kg
+                      Total Expense (₱)
                     </Label>
                     <AddonInput
-                      id="expensePerKg"
-                      name="expensePerKg"
+                      id="totalExpense"
+                      name="totalExpense"
                       type="text"
                       inputMode="decimal"
                       required
-                      value={form.expensePerKg}
+                      value={form.totalExpense}
                       onChange={handleChange}
                       placeholder="0.00"
                       prefix="₱"
-                      suffix="/ kg"
                     />
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Your cost = seeds, fertilizer, labor, transport for one kilo. Only you see it; buyers
-                  never do.
+                  Total expense = everything all these {unitWords(unit)} cost you: seeds, fertilizer, labor,
+                  transport. Only you see it; buyers never do.
                 </p>
-                {kilosAndCost && (
-                  <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600" data-testid="total-expense">
-                    Total expense: {form.stock} kg × {money(Number(form.expensePerKg))} ={" "}
+                {costPerUnit !== null && (
+                  <p className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600" data-testid="cost-per-unit">
+                    That&apos;s {money(Number(form.totalExpense))} ÷ {amountOf(batch, unit)} ={" "}
                     <span className="font-semibold text-gray-900">
-                      {money(estimate({ quantity: Number(form.stock), expensePerKg: Number(form.expensePerKg) }).expense)}
+                      {money(Math.round(costPerUnit * 100) / 100)} per {unitWord(unit)}
                     </span>
+                    {isEdit && initialQuantity > 0 && Number(form.stock) !== initialQuantity && (
+                      <> - the {amountOf(initialQuantity, unit)} you first listed, not the stock left</>
+                    )}
                   </p>
                 )}
               </FormSection>
@@ -991,7 +1015,7 @@ export default function FarmerProductForm() {
                   recommendation={priceHint}
                   checking={checkingPrice}
                   quantity={form.stock}
-                  expensePerKg={form.expensePerKg}
+                  costPerUnit={costPerUnit}
                   onUse={(amount) => setForm((prev) => ({ ...prev, price: String(Math.round(amount)) }))}
                 />
                 <div>
@@ -1009,12 +1033,12 @@ export default function FarmerProductForm() {
                     placeholder={
                       priceHint?.available
                         ? `Type a price or tap "Use ${peso(priceHint.pricePerKilo)}"`
-                        : "Type your price per kilo"
+                        : `Type your price per ${unitWord(unit)}`
                     }
                     prefix="₱"
-                    suffix="/ kg"
+                    suffix={perUnit(unit)}
                   />
-                  <MarginHint price={form.price} expensePerKg={form.expensePerKg} />
+                  <MarginHint price={form.price} costPerUnit={costPerUnit} unit={unit} />
                 </div>
               </FormSection>
 
@@ -1098,7 +1122,7 @@ export default function FarmerProductForm() {
                     onChange={handleChange}
                     placeholder="Leave blank for no sale"
                     prefix="₱"
-                    suffix="/ kg"
+                    suffix={perUnit(unit)}
                   />
                   <p className="mt-1.5 text-xs text-gray-500">
                     A lower price for old stock. It stays on until you clear it.

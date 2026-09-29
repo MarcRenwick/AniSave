@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Modal from "../Modal";
 import QuantityInput from "./QuantityInput";
+import { unitOf, unitWords } from "../../utils/units";
 
 export default function AddToCartModal({ product, onClose, onConfirm }) {
   const [quantity, setQuantity] = useState(1);
@@ -11,16 +12,17 @@ export default function AddToCartModal({ product, onClose, onConfirm }) {
   return (
     <Modal title="Add to Cart" onClose={onClose}>
       <p className="text-sm text-gray-600">
-        How many kilos of <span className="font-medium">{product.title}</span> would you like to add?
+        How many {unitWords(unitOf(product))} of <span className="font-medium">{product.title}</span> would you like to add?
       </p>
 
       <QuantityInput
         value={quantity}
         onChange={setQuantity}
         max={product.stock}
+        unit={unitOf(product)}
         onValidChange={setQuantityValid}
       />
-      <p className="mt-2 text-center text-xs text-gray-400">{product.stock} kilos available</p>
+      <p className="mt-2 text-center text-xs text-gray-400">{product.stock} {unitWords(unitOf(product))} available</p>
 
       <div className="mt-5 flex gap-3">
         <button

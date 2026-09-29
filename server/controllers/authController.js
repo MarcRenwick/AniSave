@@ -914,14 +914,14 @@ const exportMyData = asyncHandler(async (req, res) => {
   const me = req.user;
   const [orders, ratings, reports, reviewReports, products, blockedShops, conversations] = await Promise.all([
     Order.find({ $or: [{ buyer: me._id }, { farmer: me._id }] })
-      .select("productTitle pricePerKilo quantity total status createdAt acceptedAt readyAt doneAt cancelledAt")
+      .select("productTitle pricePerKilo quantity unit total status createdAt acceptedAt readyAt doneAt cancelledAt")
       .lean(),
     Rating.find({ buyer: me._id }).select("stars comment createdAt").lean(),
     // Only the reports this person sent - what others reported about them isn't theirs to export.
     Report.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     ReviewReport.find({ reporter: me._id }).select("reason description status createdAt").lean(),
     me.role === "farmer"
-      ? Product.find({ farmer: me._id }).select("title category productType price salePrice expensePerKg stock location description createdAt").lean()
+      ? Product.find({ farmer: me._id }).select("title category productType price salePrice totalExpense initialQuantity stock location description createdAt").lean()
       : [],
     // Who a buyer has blocked is held about them, so it is theirs to take with
     // them - by name, since an account id means nothing outside this database.

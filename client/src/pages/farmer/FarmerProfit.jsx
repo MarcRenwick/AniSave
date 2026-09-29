@@ -5,12 +5,17 @@ import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { getMyProfit, SERVER_URL } from "../../services/api";
 import { money } from "../../utils/profit";
+import { amountOf } from "../../utils/units";
 
 // White, rounded, a hairline border - the dashboard's card.
 const CARD = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-const kilos = (kg) => `${kg.toLocaleString()} kg`;
+// "12 kg", or "3 trays" for eggs.
+const kilos = (n, unit = "kg") => amountOf(n.toLocaleString(), unit);
+// Kilos and trays together, each counted on its own: "40 kg and 3 trays".
+const kilosAndTrays = (kg, trays = 0) =>
+  [kg > 0 || !trays ? kilos(kg) : null, trays > 0 ? kilos(trays, "tray") : null].filter(Boolean).join(" and ");
 
 // A profit in green, a loss in red; an estimate in blue, so it never reads
 // as money already made.
@@ -29,12 +34,14 @@ function Thumb({ row, size = "h-11 w-11" }) {
   );
 }
 
-// "99 kg in stock · 1 kg sold · ₱10/kg cost"
+// "99 kg in stock · 1 kg sold · ₱1,000 expense (₱10/kg)"
 const facts = (row, withCost = true) =>
   [
-    row.stock > 0 ? `${kilos(row.stock)} in stock` : "Out of stock",
-    row.actual.soldKg > 0 && `${kilos(row.actual.soldKg)} sold`,
-    withCost && row.expensePerKg !== null && `${money(row.expensePerKg)}/kg cost`,
+    row.stock > 0 ? `${kilos(row.stock, row.unit)} in stock` : "Out of stock",
+    row.actual.soldKg > 0 && `${kilos(row.actual.soldKg, row.unit)} sold`,
+    withCost &&
+      row.costPerUnit !== null &&
+      `${money(row.totalExpense)} expense (${money(row.costPerUnit)}/${row.unit === "tray" ? "tray" : "kg"})`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -88,11 +95,11 @@ const NO_STOCK = "Out of stock - nothing left to estimate";
 
 // Which price the stock was valued at: the market's, or - with none recorded
 // in the farmer's municipality - their own selling price.
-function PriceTag({ estimated }) {
+function PriceTag({ estimated, unit }) {
   const market = estimated.basis === "market";
   return (
     <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] text-gray-500" data-testid="estimate-basis">
-      {money(estimated.pricePerKg)}/kg
+      {money(estimated.pricePerKg)}/{unit === "tray" ? "tray" : "kg"}
       <span
         className={`rounded-full px-1.5 py-px font-semibold ring-1 ${
           market ? "bg-blue-50 text-blue-800 ring-blue-100" : "bg-gray-100 text-gray-600 ring-gray-200"
@@ -147,7 +154,7 @@ function TableRow({ row }) {
           <td className={`${cell} border-l border-gray-100 text-gray-700`}>
             {money(estimated.income)}
             <div className="mt-0.5">
-              <PriceTag estimated={estimated} />
+              <PriceTag estimated={estimated} unit={row.unit} />
             </div>
           </td>
           <td className={`${cell} text-gray-700`}>{money(estimated.expense)}</td>
@@ -188,13 +195,13 @@ function MobileRow({ row }) {
     <li className="space-y-2.5 px-5 py-4" data-testid="profit-row" data-product={row._id}>
       <ProductName row={row} />
       {line("Actual sales", "text-[#2f8f66]", actual.soldKg === 0 ? null : actual, actualTone, NO_SALES)}
-      {line("Estimated on stock", "text-blue-800", estimated.quantity === 0 ? null : estimated, estimateTone, NO_STOCK, <PriceTag estimated={estimated} />)}
+      {line("Estimated on stock", "text-blue-800", estimated.quantity === 0 ? null : estimated, estimateTone, NO_STOCK, <PriceTag estimated={estimated} unit={row.unit} />)}
     </li>
   );
 }
 
 // The farmer's expense, income and profit: the two totals, each product's
-// figures, then the products still missing a cost per kg. Everything is
+// figures, then the products still missing a total expense. Everything is
 // worked out by the server from what is stored (server/utils/profit.js).
 export default function FarmerProfit() {
   const [data, setData] = useState(null);
@@ -210,8 +217,8 @@ export default function FarmerProfit() {
 
   const totals = data?.totals;
   const rows = data?.products || [];
-  const costed = rows.filter((row) => row.expensePerKg !== null);
-  const needCost = rows.filter((row) => row.expensePerKg === null);
+  const costed = rows.filter((row) => row.costPerUnit !== null);
+  const needCost = rows.filter((row) => row.costPerUnit === null);
   const municipality = rows.find((row) => row.recommendation.municipality)?.recommendation.municipality;
 
   return (
@@ -241,8 +248,8 @@ export default function FarmerProfit() {
                 iconClass="bg-green-50 text-[#2f8f66] ring-1 ring-green-100"
                 title="Actual sales"
                 note={
-                  totals.actual.soldKg > 0
-                    ? `Completed orders · ${kilos(totals.actual.soldKg)} sold in ${plural(totals.actual.orders, "order")}`
+                  totals.actual.orders > 0
+                    ? `Completed orders · ${kilosAndTrays(totals.actual.soldKg, totals.actual.soldTrays)} sold in ${plural(totals.actual.orders, "order")}`
                     : "Completed orders · no completed sales yet"
                 }
               >
@@ -261,10 +268,10 @@ export default function FarmerProfit() {
                 title="Estimated on stock"
                 note={
                   totals.estimated.ownCount === 0
-                    ? `If you sell the ${kilos(totals.estimated.quantity)} left, at ${
+                    ? `If you sell the ${kilosAndTrays(totals.estimated.quantity, totals.estimated.trays)} left, at ${
                         municipality ? `${municipality}'s` : "your municipality's"
                       } recommended price`
-                    : `If you sell the ${kilos(totals.estimated.quantity)} left`
+                    : `If you sell the ${kilosAndTrays(totals.estimated.quantity, totals.estimated.trays)} left`
                 }
               >
                 <Equation
@@ -288,14 +295,14 @@ export default function FarmerProfit() {
             <section className={CARD} data-testid="profit-products">
               <div className="px-5 pb-3 pt-5">
                 <h2 className="text-base font-semibold text-gray-900">Profit per product</h2>
-                <p className="text-xs text-gray-500">Products with an expense per kg set</p>
+                <p className="text-xs text-gray-500">Products with a total expense set</p>
               </div>
 
               {costed.length === 0 ? (
                 <p className="px-5 pb-5 text-sm text-gray-500">
                   {rows.length === 0
                     ? "No products yet. Add one from My Products to see its expense and profit here."
-                    : "None of your products has a cost per kg yet - add one below to see its figures."}
+                    : "None of your products has a total expense yet - add one below to see its figures."}
                 </p>
               ) : (
                 <>
@@ -346,7 +353,7 @@ export default function FarmerProfit() {
                   </span>
                   <div>
                     <h2 className="text-base font-semibold text-gray-900">
-                      {plural(needCost.length, "product")} need{needCost.length === 1 ? "s" : ""} your cost per kg
+                      {plural(needCost.length, "product")} need{needCost.length === 1 ? "s" : ""} a total expense
                     </h2>
                     <p className="text-xs text-gray-500">
                       {needCost.length === 1 ? "It isn't" : "They're not"} counted in the totals above until you add it.
@@ -370,7 +377,7 @@ export default function FarmerProfit() {
                         className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-2 text-xs font-semibold text-amber-800 ring-1 ring-amber-100 transition hover:bg-amber-100"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Add cost
+                        Add expense
                       </Link>
                     </li>
                   ))}
@@ -385,19 +392,25 @@ export default function FarmerProfit() {
               </summary>
               <div className="space-y-2 border-t border-gray-100 px-5 py-4 text-xs leading-relaxed text-gray-600">
                 <p>
+                  <span className="font-semibold text-gray-800">Your cost per kilo</span> is the total expense you
+                  entered for a product divided by the kilos you first listed (trays, for eggs) - never by the stock
+                  left, so it stays the same as the product sells.
+                </p>
+                <p>
                   <span className="font-semibold text-gray-800">Actual sales:</span> what buyers paid on completed
-                  orders, less your cost per kg on the kilos sold. Orders not picked up yet count in neither until
+                  orders, less your cost per kilo on the kilos sold. Orders not picked up yet count in neither until
                   they are completed.
                 </p>
                 <p>
                   <span className="font-semibold text-gray-800">Estimated on stock:</span> the kilos still in stock ×
-                  the recommended price for your municipality, less your cost per kg on them. Where no market price
+                  the recommended price for your municipality, less your cost per kilo on them - before anything has
+                  sold, that is the whole total expense. Where no market price
                   is recorded for a product in your municipality, your own selling price is used instead, and the
                   product says &quot;Your price&quot;.
                 </p>
                 <p>
-                  Only products with a cost per kg are added up - so each profit is exactly its income less its
-                  expense.
+                  Only products with a total expense are added up - so each profit is exactly its income less its
+                  expense. Kilos and trays are counted separately.
                 </p>
               </div>
             </details>

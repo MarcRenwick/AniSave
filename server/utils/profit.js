@@ -1,7 +1,8 @@
 const { effectivePrice } = require("./pricing");
+const { unitOf } = require("./units");
 
 // Expense, income and profit on a farmer's listings, worked out from what is
-// already stored - the listing's stock and expense per kilo, the latest market
+// already stored - the listing's stock and total expense, the latest market
 // price for the farmer's municipality, and their orders - rather than kept as
 // numbers of their own. Nothing here can go stale when stock sells, the farmer
 // restocks, or an administrator records a new market price.
@@ -15,7 +16,12 @@ const { effectivePrice } = require("./pricing");
 //   - sold, in a completed order: ACTUAL income is what the buyers paid.
 //   - in an order a buyer hasn't picked up yet: neither, until it is. These
 //     kilos are reported so the gap between the two is explained.
-// Expense is always the farmer's expense per kilo times the kilos in question.
+// Expense is always the cost of one kilo times the kilos in question, and the
+// cost of one kilo is the listing's total expense divided by the batch it was
+// for (initialQuantity) - never by the stock left, which falls as it sells. So
+// before anything sells, the estimate is (stock x price) - total expense, and
+// a sale's profit is kilos sold x (price - total expense / initial quantity).
+// Eggs work the same way by the tray.
 
 // Pesos to the centavo, so 0.1 + 0.2 never shows as 0.30000000000000004.
 const money = (amount) => Math.round(amount * 100) / 100;
@@ -23,18 +29,24 @@ const money = (amount) => Math.round(amount * 100) / 100;
 // One listing's figures. `recommendation` is the answer the Recommended Price
 // feature gives for its crop (controllers/marketPriceController.js), and
 // `sales` its orders added up (see salesByProduct below).
+// The cost of one kilo (or tray), or null without an expense to go on.
+const costPerUnit = (product) =>
+  typeof product.totalExpense === "number" && product.initialQuantity > 0
+    ? product.totalExpense / product.initialQuantity
+    : null;
+
 function productProfit(product, recommendation, sales = {}) {
-  const expensePerKg = product.expensePerKg ?? null;
+  const unitCost = costPerUnit(product);
   const marketPrice = recommendation?.available ? recommendation.pricePerKilo : null;
   const soldKg = sales.soldKg || 0;
   const income = money(sales.income || 0);
 
-  const stockExpense = expensePerKg === null ? null : money(product.stock * expensePerKg);
+  const stockExpense = unitCost === null ? null : money(product.stock * unitCost);
   const sellingPrice = effectivePrice(product);
   // What the stock is valued at: the market price, or the farmer's own.
   const estimatePrice = marketPrice ?? sellingPrice;
   const stockIncome = money(product.stock * estimatePrice);
-  const soldExpense = expensePerKg === null ? null : money(soldKg * expensePerKg);
+  const soldExpense = unitCost === null ? null : money(soldKg * unitCost);
 
   return {
     _id: product._id,
@@ -46,7 +58,12 @@ function productProfit(product, recommendation, sales = {}) {
     salePrice: product.salePrice ?? null,
     // What a buyer pays right now - the Flash Sale price while one is running.
     sellingPrice,
-    expensePerKg,
+    // What `stock` and the quantities below count in: "tray" for eggs.
+    unit: unitOf(product.category),
+    totalExpense: product.totalExpense ?? null,
+    initialQuantity: product.initialQuantity ?? null,
+    // The cost of one kilo (or tray): totalExpense / initialQuantity.
+    costPerUnit: unitCost === null ? null : money(unitCost),
     recommendation: recommendation || { available: false, reason: "no-product" },
     estimated: {
       quantity: product.stock,
@@ -67,7 +84,7 @@ function productProfit(product, recommendation, sales = {}) {
   };
 }
 
-// The totals across listings. Only listings with an expense per kilo are
+// The totals across listings. Only listings with an expense are
 // added up - without one there is no expense or profit to add - so each total
 // profit is exactly its total income less its total expense, and the listings
 // left out are counted so the page can say so. The estimate takes every such
@@ -83,10 +100,15 @@ function profitTotals(rows) {
   const actualExpense = sum(actual, (row) => row.actual.expense);
   const actualIncome = sum(actual, (row) => row.actual.income);
 
+  // Kilos and trays are counted apart; a tray isn't a kilo.
+  const kilos = (list, pick) => list.filter((row) => row.unit !== "tray").reduce((total, row) => total + pick(row), 0);
+  const trays = (list, pick) => list.filter((row) => row.unit === "tray").reduce((total, row) => total + pick(row), 0);
+
   return {
     estimated: {
       products: estimated.length,
-      quantity: estimated.reduce((total, row) => total + row.estimated.quantity, 0),
+      quantity: kilos(estimated, (row) => row.estimated.quantity),
+      trays: trays(estimated, (row) => row.estimated.quantity),
       expense: estimatedExpense,
       income: estimatedIncome,
       profit: money(estimatedIncome - estimatedExpense),
@@ -95,13 +117,14 @@ function profitTotals(rows) {
     },
     actual: {
       products: actual.filter((row) => row.actual.soldKg > 0).length,
-      soldKg: actual.reduce((total, row) => total + row.actual.soldKg, 0),
+      soldKg: kilos(actual, (row) => row.actual.soldKg),
+      soldTrays: trays(actual, (row) => row.actual.soldKg),
       orders: actual.reduce((total, row) => total + row.actual.orders, 0),
       expense: actualExpense,
       income: actualIncome,
       profit: money(actualIncome - actualExpense),
     },
-    missingExpense: rows.filter((row) => row.expensePerKg === null).length,
+    missingExpense: rows.filter((row) => row.costPerUnit === null).length,
   };
 }
 

@@ -13,6 +13,7 @@ import {
   orderNumber,
   previousStatusOf,
 } from "../../utils/orderStatus";
+import { amountOf, unitOf, unitWord } from "../../utils/units";
 
 // The farmer's side of an order, inside the farmer portal: who the customer
 // is, what they ordered, and - beside it - how far along it is and the next
@@ -145,8 +146,8 @@ export default function FarmerOrderDetail() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-gray-900">{order.productTitle}</p>
                     <p className="text-sm text-gray-500">
-                      Quantity: {order.quantity}
-                      {order.pricePerKilo ? ` · ₱${order.pricePerKilo} per kg` : ""}
+                      Quantity: {amountOf(order.quantity, unitOf(order))}
+                      {order.pricePerKilo ? ` · ₱${order.pricePerKilo} per ${unitWord(unitOf(order))}` : ""}
                     </p>
                   </div>
                 </div>
