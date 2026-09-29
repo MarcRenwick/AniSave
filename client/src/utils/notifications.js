@@ -12,17 +12,11 @@ export const categoryLabels = {
 
 export const LOW_STOCK_THRESHOLD = 10;
 
-// What the low-stock line counts in: kilos, trays (eggs), or both.
-function lowStockUnits(products) {
-  const units = new Set(products.map((p) => unitOf(p)));
-  if (units.size > 1) return "kg or trays";
-  return units.has("tray") ? "trays" : "kg";
-}
-
 // Each notification also says where it leads and what to call that - the
-// dashboard's list puts a button on every one - and, for an order, the part of
-// the sentence worth emphasising ("2 kg of Tomato"), and the photo of the
-// product it is about (the first one, when it names several), if it has one.
+// dashboard's list puts a button on every one, and pressing one anywhere else
+// opens it - and, for an order, the part of the sentence worth emphasising
+// ("2 kg of Tomato"), and the photo of the product it is about, if it has one.
+// A stock alert is one per product, so each leads to that product's page.
 export function deriveNotifications(products, orders) {
   const list = [];
 
@@ -45,39 +39,39 @@ export function deriveNotifications(products, orders) {
       });
     });
 
-  const outOfStock = products.filter((p) => p.stock === 0);
-  if (outOfStock.length > 0) {
-    list.push({
-      id: "out-of-stock",
-      kind: "out-of-stock",
-      image: outOfStock.find((p) => p.image)?.image || null,
-      category: "system",
-      to: "/farmer/products",
-      action: "Restock",
-      icon: TrendingDown,
-      color: "bg-red-500",
-      title: "Out of Stock",
-      description: `${outOfStock.map((p) => p.title).join(", ")} ${
-        outOfStock.length > 1 ? "are" : "is"
-      } out of stock`,
+  products
+    .filter((p) => p.stock === 0)
+    .forEach((product) => {
+      list.push({
+        id: `out-of-stock-${product._id}`,
+        kind: "out-of-stock",
+        image: product.image || null,
+        category: "system",
+        to: `/farmer/products/${product._id}`,
+        action: "Restock",
+        icon: TrendingDown,
+        color: "bg-red-500",
+        title: "Out of Stock",
+        description: `${product.title} is out of stock`,
+      });
     });
-  }
 
-  const lowStock = products.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
-  if (lowStock.length > 0) {
-    list.push({
-      id: "low-stock",
-      kind: "low-stock",
-      image: lowStock.find((p) => p.image)?.image || null,
-      category: "system",
-      to: "/farmer/products",
-      action: "Restock",
-      icon: AlertTriangle,
-      color: "bg-yellow-500",
-      title: "Low Stock",
-      description: `${lowStock.map((p) => p.title).join(", ")} running low (under ${LOW_STOCK_THRESHOLD} ${lowStockUnits(lowStock)})`,
+  products
+    .filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD)
+    .forEach((product) => {
+      list.push({
+        id: `low-stock-${product._id}`,
+        kind: "low-stock",
+        image: product.image || null,
+        category: "system",
+        to: `/farmer/products/${product._id}`,
+        action: "Restock",
+        icon: AlertTriangle,
+        color: "bg-yellow-500",
+        title: "Low Stock",
+        description: `${product.title} is running low (${amountOf(product.stock, unitOf(product))} left)`,
+      });
     });
-  }
 
   return list;
 }

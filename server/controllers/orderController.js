@@ -5,6 +5,7 @@ const Rating = require("../models/Rating");
 const { effectivePrice } = require("../utils/pricing");
 const { hasBlocked } = require("../utils/blocks");
 const { unitOf, amountOf } = require("../utils/units");
+const { postOrderUpdate, retractOrderUpdate } = require("./chatController");
 
 // Every reply about a single order sends the whole order: the buyer, the
 // farmer and the product it is for, not just their ids. A status change that
@@ -317,6 +318,9 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     }
   }
 
+  // The buyer finds where their order stands in their chat with the farmer.
+  await postOrderUpdate(order, req.user);
+
   res.json(await withDetails(order._id));
 });
 
@@ -376,6 +380,7 @@ const undoOrderStatus = asyncHandler(async (req, res) => {
   order.status = previous;
   order[TIMESTAMP_FIELD[undone]] = undefined;
   await order.save();
+  await retractOrderUpdate(order, undone, req.user);
 
   res.json(await withDetails(order._id));
 });

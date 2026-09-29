@@ -4,6 +4,7 @@ const asyncHandler = require("express-async-handler");
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
 const User = require("../models/User");
 const validate = require("../utils/validate");
 const { hasBlocked } = require("../utils/blocks");
@@ -28,12 +29,20 @@ const otherSideOf = (side) => (side === "buyer" ? "farmer" : "buyer");
 // A person in a conversation, whether it has been populated or not.
 const idOf = (person) => person?._id ?? person;
 
+// An order card as it is sent: its fields as plain values (from a saved
+// message as much as from one read back), with the order's id as its own.
+const orderCardView = (card) => {
+  const plain = typeof card.toObject === "function" ? card.toObject() : card;
+  return { ...plain, _id: plain.order };
+};
+
 const messageView = (message) => ({
   _id: message._id,
   conversation: message.conversation,
   sender: message.sender,
   text: message.text || "",
   image: message.image || null,
+  order: message.orderUpdate && !message.deletedAt ? orderCardView(message.orderUpdate) : null,
   deleted: Boolean(message.deletedAt),
   createdAt: message.createdAt,
 });
@@ -319,13 +328,21 @@ const sendMessage = asyncHandler(async (req, res) => {
     throw err;
   }
 
-  const mySide = req.user.role;
+  res.status(201).json(await deliver(message, req.conversation._id, req.user));
+});
+
+// A message just saved, made the conversation's newest and passed on:
+// counted as unread for the other person, and sent straight to both people's
+// open tabs - the other person's so it appears without a refresh, and the
+// sender's own other tabs too.
+async function deliver(message, conversationId, sender) {
+  const mySide = sender.role;
   const otherSide = otherSideOf(mySide);
   const updated = await Conversation.findByIdAndUpdate(
-    req.conversation._id,
+    conversationId,
     {
       $set: {
-        lastMessage: { text: message.text, image: Boolean(image), sender: req.user._id, createdAt: message.createdAt },
+        lastMessage: { text: message.text, image: Boolean(message.image), sender: sender._id, createdAt: message.createdAt },
         lastMessageAt: message.createdAt,
         // Replying means they have read what came before it.
         [`${mySide}Unread`]: 0,
@@ -335,20 +352,17 @@ const sendMessage = asyncHandler(async (req, res) => {
     { new: true }
   ).populate("buyer farmer", PERSON);
 
-  // Straight to both people's open tabs - the other person's so it appears
-  // without a refresh, and this person's own other tabs too.
   const otherId = updated[otherSide]._id;
   const view = messageView(message);
-  const [myTotal, otherTotal] = await Promise.all([unreadTotal(req.user._id, mySide), unreadTotal(otherId, otherSide)]);
+  const [myTotal, otherTotal] = await Promise.all([unreadTotal(sender._id, mySide), unreadTotal(otherId, otherSide)]);
   emitToUser(otherId, "chat:message", { message: view, conversation: viewFor(updated, otherId), unreadTotal: otherTotal });
-  emitToUser(req.user._id, "chat:message", {
+  emitToUser(sender._id, "chat:message", {
     message: view,
-    conversation: viewFor(updated, req.user._id),
+    conversation: viewFor(updated, sender._id),
     unreadTotal: myTotal,
   });
-
-  res.status(201).json({ message: view, conversation: viewFor(updated, req.user._id) });
-});
+  return { message: view, conversation: viewFor(updated, sender._id) };
+}
 
 // @desc    Delete one of your own messages for both people. "This message was
 //          deleted" stays in its place, for both.
@@ -361,8 +375,18 @@ const unsendMessage = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("You can only delete your own messages for everyone.");
   }
+  res.json(await deleteForEveryone(conversation, message, req.user._id));
+});
+
+// Deletes a message for both people - "This message was deleted" stays in its
+// place - and tells both people's open tabs (the other person's only if they
+// still had it). `byId` is the sender, who is deleting it.
+async function deleteForEveryone(conversation, message, byId) {
   if (!message.deletedAt) {
-    await Message.updateOne({ _id: message._id }, { $set: { deletedAt: new Date() }, $unset: { text: "", image: "" } });
+    await Message.updateOne(
+      { _id: message._id },
+      { $set: { deletedAt: new Date() }, $unset: { text: "", image: "", orderUpdate: "" } }
+    );
     await Conversation.updateOne(
       { _id: conversation._id, ...isLastMessage(message) },
       { $set: { "lastMessage.text": "", "lastMessage.image": false, "lastMessage.deleted": true } }
@@ -378,17 +402,93 @@ const unsendMessage = asyncHandler(async (req, res) => {
     message: view,
     conversation: conversationView,
   });
-  const mine = await listViewFor(updated, req.user._id);
-  emitToUser(req.user._id, "chat:deleted", event(mine));
+  const mySide = String(idOf(updated.buyer)) === String(byId) ? "buyer" : "farmer";
+  const mine = await listViewFor(updated, byId);
+  emitToUser(byId, "chat:deleted", event(mine));
   // The other person's open tabs too - unless they had already deleted it.
-  const otherSide = otherSideOf(req.user.role);
+  const otherSide = otherSideOf(mySide);
   const other = updated[otherSide];
   if (other && stillHas(deleted, updated, otherSide)) {
     emitToUser(other._id, "chat:deleted", event(await listViewFor(updated, other._id)));
   }
+  return { message: view, conversation: mine };
+}
 
-  res.json({ message: view, conversation: mine });
-});
+// Order-progress cards. When a farmer moves an order on, the buyer finds a
+// card in their conversation saying where it stands - sent as the farmer, but
+// written by the app from the order itself, so the farmer has nothing to type
+// or photograph. (Declining an order sends none.)
+const ORDER_UPDATE_TEXT = {
+  processing: "accepted and being prepared",
+  ready: "is ready for pickup",
+  done: "picked up - order done",
+};
+const orderNumber = (order) => `#${String(order._id).slice(-8).toUpperCase()}`;
+
+// Sends the card for where this order is now, as `farmer` (the signed-in
+// farmer who moved it). Not when they can't message each other - the buyer
+// blocked the shop, or an account is banned or gone. It never stands in the
+// way of the status change itself: a card that can't be sent is logged and
+// left out.
+async function postOrderUpdate(order, farmer) {
+  if (!ORDER_UPDATE_TEXT[order.status]) return null;
+  try {
+    const buyer = await User.findById(order.buyer).select("role isBanned blockedUsers");
+    if (!buyer || buyer.isBanned || farmer.isBanned || hasBlocked(buyer, farmer._id)) return null;
+
+    const pair = { buyer: buyer._id, farmer: farmer._id };
+    let conversation;
+    try {
+      conversation = await Conversation.findOneAndUpdate(pair, { $setOnInsert: pair }, { upsert: true, new: true });
+    } catch (err) {
+      if (err.code !== 11000) throw err;
+      conversation = await Conversation.findOne(pair);
+    }
+
+    const product = await Product.findById(order.product).select("image").lean();
+    const message = await Message.create({
+      conversation: conversation._id,
+      sender: farmer._id,
+      text: `Order ${orderNumber(order)} ${ORDER_UPDATE_TEXT[order.status]}`,
+      orderUpdate: {
+        order: order._id,
+        status: order.status,
+        productTitle: order.productTitle,
+        image: product?.image || null,
+        quantity: order.quantity,
+        unit: order.unit || "kg",
+        total: order.total,
+        placedAt: order.createdAt,
+        acceptedAt: order.acceptedAt,
+        readyAt: order.readyAt,
+        doneAt: order.doneAt,
+      },
+    });
+    return (await deliver(message, conversation._id, farmer)).message;
+  } catch (err) {
+    console.error("Could not send the order update to the buyer's chat:", err.message);
+    return null;
+  }
+}
+
+// Takes back the card a status change sent, when the farmer undoes that
+// change: the step never happened, so the buyer shouldn't be told it did.
+// It is deleted for everyone, the same as a message the farmer unsent.
+async function retractOrderUpdate(order, undoneStatus, farmer) {
+  try {
+    const message = await Message.findOne({
+      "orderUpdate.order": order._id,
+      "orderUpdate.status": undoneStatus,
+      sender: farmer._id,
+      deletedAt: null,
+    }).sort({ createdAt: -1 });
+    if (!message) return;
+    const conversation = await Conversation.findById(message.conversation).populate("buyer farmer", PERSON);
+    if (conversation) await deleteForEveryone(conversation, message, farmer._id);
+  } catch (err) {
+    console.error("Could not take back the order update in the buyer's chat:", err.message);
+  }
+}
 
 // @desc    Delete one message (either person's) for the signed-in person only
 // @route   DELETE /api/chats/:id/messages/:messageId
@@ -546,4 +646,6 @@ module.exports = {
   deleteConversation,
   getConversationOrders,
   getChatImage,
+  postOrderUpdate,
+  retractOrderUpdate,
 };

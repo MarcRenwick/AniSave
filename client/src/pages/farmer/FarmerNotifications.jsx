@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
@@ -54,7 +55,12 @@ export default function FarmerNotifications() {
             {!loading && visible.length > 0 && (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {visible.map((note) => (
-                  <div key={note.id} className="overflow-hidden rounded-lg border border-gray-200">
+                  <Link
+                    key={note.id}
+                    to={note.to}
+                    className="block overflow-hidden rounded-lg border border-gray-200 transition hover:border-[#2f8f66] hover:shadow-md"
+                    data-testid="notification-card"
+                  >
                     <div className={`px-3 py-1.5 text-sm font-semibold text-white ${note.color}`}>
                       {note.title}
                     </div>
@@ -63,8 +69,9 @@ export default function FarmerNotifications() {
                         <note.icon className="h-5 w-5" />
                       </span>
                       <p className="text-xs text-gray-600">{note.description}</p>
+                      <span className="text-xs font-semibold text-[#2f8f66]">{note.action} →</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

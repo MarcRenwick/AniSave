@@ -36,9 +36,10 @@ export default function FarmerTopBar({ children, showActions = true }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
 
-  const goToNotifications = () => {
+  // Each notification opens what it is about: the order, or the product.
+  const openNote = (note) => {
     setOpen(false);
-    navigate("/farmer/notifications");
+    navigate(note.to || "/farmer/notifications");
   };
 
   const count = notifications.length;
@@ -106,7 +107,8 @@ export default function FarmerTopBar({ children, showActions = true }) {
                   <button
                     key={note.id}
                     type="button"
-                    onClick={goToNotifications}
+                    onClick={() => openNote(note)}
+                    data-testid="bell-note"
                     className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-gray-50"
                   >
                     <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ${note.color}`}>
@@ -119,6 +121,13 @@ export default function FarmerTopBar({ children, showActions = true }) {
                   </button>
                 ))}
               </div>
+              <Link
+                to="/farmer/notifications"
+                onClick={() => setOpen(false)}
+                className="block border-t border-gray-100 px-4 py-2.5 text-center text-xs font-semibold text-[#2f8f66] hover:bg-gray-50"
+              >
+                See all notifications
+              </Link>
             </div>
           )}
         </div>

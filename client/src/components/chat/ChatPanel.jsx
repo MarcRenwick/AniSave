@@ -5,6 +5,7 @@ import { ArrowLeft, Ban, Check, CheckCheck, Image as ImageIcon, ImagePlus, Messa
 import Avatar from "../Avatar";
 import Modal from "../Modal";
 import ChatOrders from "./ChatOrders";
+import OrderUpdateCard from "./OrderUpdateCard";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
 import { useDocumentUrl } from "../../utils/documents";
@@ -714,7 +715,14 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
               </button>
             </div>
 
-            {isBuyer && other._id && <ChatOrders key={id} conversationId={id} reloadKey={reconnects} />}
+            {/* Asked again when an order card arrives: the order has moved on. */}
+            {isBuyer && other._id && (
+              <ChatOrders
+                key={id}
+                conversationId={id}
+                reloadKey={`${reconnects}-${thread.messages.filter((m) => m.order).length}`}
+              />
+            )}
 
             <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50 px-5 py-4" data-testid="chat-messages">
               {thread.messages.length === 0 && (
@@ -744,6 +752,8 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                           <Ban className="h-3.5 w-3.5 shrink-0" />
                           {mine ? "You deleted this message" : "This message was deleted"}
                         </div>
+                      ) : m.order ? (
+                        <OrderUpdateCard order={m.order} isBuyer={isBuyer} />
                       ) : (
                         <div
                           className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl text-sm ${m.image ? "p-1" : "px-4 py-2"} ${
