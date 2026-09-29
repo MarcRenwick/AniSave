@@ -43,14 +43,14 @@ function PerKilo({ label, children }) {
   );
 }
 
-// Where every listed kilo is, as one bar: sold, waiting to be picked up, and
-// still in stock.
+// Where every listed kilo is, as one bar: sold (completed orders), then the
+// stock - ordered but not completed yet, and not ordered yet.
 function StockBar({ stock, unit }) {
   const { soldKg, pendingKg, inStockKg, listedKg } = stock;
   const parts = [
     { key: "sold", label: "Sold", kg: soldKg, className: "bg-[#1f5c42]" },
-    { key: "pending", label: "Awaiting pick-up", kg: pendingKg, className: "bg-amber-400" },
-    { key: "stock", label: "In stock", kg: inStockKg, className: "bg-green-200" },
+    { key: "pending", label: "Ordered, not done yet", kg: pendingKg, className: "bg-amber-400" },
+    { key: "stock", label: "Not ordered yet", kg: inStockKg, className: "bg-green-200" },
   ];
   return (
     <div data-testid="stock-bar">

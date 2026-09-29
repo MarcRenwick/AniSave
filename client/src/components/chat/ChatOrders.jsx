@@ -35,8 +35,9 @@ function OrderRow({ order, caption }) {
 }
 
 // Like the order card in a Shopee chat: a buyer sees what they have ordered
-// from this farmer without leaving the conversation - the newest order, with
-// the rest one press away. Each one opens that order's page.
+// from this farmer and are still waiting on without leaving the conversation -
+// the newest order, with the rest one press away. Each one opens that order's
+// page. A completed or cancelled order drops out (the server leaves it out).
 export default function ChatOrders({ conversationId, reloadKey }) {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState(false);

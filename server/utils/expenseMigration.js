@@ -1,5 +1,6 @@
 const Product = require("../models/Product");
 const Order = require("../models/Order");
+const { HELD_STOCK_BEFORE } = Order;
 
 // Brings listings and orders made before two changes up to date:
 //
@@ -16,14 +17,18 @@ const Order = require("../models/Order");
 // initialQuantity, and an order only while it has no unit. Run at server
 // startup (see server.js), and by scripts/migrateExpenses.js.
 
-// Orders in these states took stock off the listing and haven't given it back.
-const HOLDING_STOCK = ["new", "processing", "ready", "done"];
+// Orders that took stock off the listing and haven't given it back: marked
+// so (stock is taken on completion), or - from before that - in a status
+// that had taken it.
+const TOOK_STOCK = {
+  $or: [{ stockTaken: true }, { stockTaken: { $exists: false }, status: { $in: HELD_STOCK_BEFORE } }],
+};
 const money = (amount) => Math.round(amount * 100) / 100;
 
 // How many kilos (or trays) each listing's orders took off it.
 async function takenByOrders(productIds) {
   const rows = await Order.aggregate([
-    { $match: { product: { $in: productIds }, status: { $in: HOLDING_STOCK } } },
+    { $match: { product: { $in: productIds }, ...TOOK_STOCK } },
     { $group: { _id: "$product", quantity: { $sum: "$quantity" } } },
   ]);
   return new Map(rows.map((row) => [row._id.toString(), row.quantity]));

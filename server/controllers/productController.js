@@ -263,7 +263,7 @@ const getAllProducts = asyncHandler(async (req, res) => {
           from: "orders",
           let: { productId: "$_id" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$product", "$$productId"] }, status: { $ne: "cancelled" } } },
+            { $match: { $expr: { $eq: ["$product", "$$productId"] }, status: "done" } },
           ],
           as: "orders",
         },
@@ -366,9 +366,10 @@ const getProductById = asyncHandler(async (req, res) => {
     throw new Error("Product not found");
   }
 
-  // A cancelled order never left the farm, so it doesn't count as sold.
+  // Only a completed order is a sale: one still waiting, being prepared or
+  // ready hasn't left the farm yet, and a cancelled one never will.
   const sales = await Order.aggregate([
-    { $match: { product: product._id, status: { $ne: "cancelled" } } },
+    { $match: { product: product._id, status: "done" } },
     { $group: { _id: null, totalSold: { $sum: "$quantity" } } },
   ]);
 

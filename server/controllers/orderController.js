@@ -1,5 +1,6 @@
 const asyncHandler = require("express-async-handler");
 const Order = require("../models/Order");
+const { tookStock, PROMISED } = Order;
 const Product = require("../models/Product");
 const Rating = require("../models/Rating");
 const { effectivePrice } = require("../utils/pricing");
@@ -63,9 +64,18 @@ const createOrder = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("Eggs are sold by the whole tray");
   }
-  if (!isPreOrder && product.stock < quantity) {
-    res.status(400);
-    throw new Error(`Only ${amountOf(product.stock, unit)} of ${product.title} left in stock`);
+  // Stock only goes down when an order is completed, so what can still be
+  // ordered is the stock less what the farmer has already accepted.
+  if (!isPreOrder) {
+    const free = product.stock - (await promisedOf(product._id));
+    if (free < quantity) {
+      res.status(400);
+      throw new Error(
+        free <= 0
+          ? `${product.title} is all promised to other buyers right now`
+          : `Only ${amountOf(free, unit)} of ${product.title} left in stock`
+      );
+    }
   }
 
   // Charges whatever price is live on the product right now - the sale price
@@ -85,14 +95,9 @@ const createOrder = asyncHandler(async (req, res) => {
     total,
     status: isPreOrder ? "preorder" : "new",
     openedAs: isPreOrder ? "preorder" : "new",
+    // Taken off the stock when the order is completed, not before.
+    stockTaken: false,
   });
-
-  // A pre-order reserves nothing - there is no stock to hold yet, so it is
-  // taken from the farmer when they accept instead.
-  if (!isPreOrder) {
-    product.stock -= quantity;
-    await product.save();
-  }
 
   res.status(201).json(order);
 });
@@ -245,6 +250,35 @@ const getBuyerOrders = asyncHandler(async (req, res) => {
   res.json(orders.map((o) => ({ ...o.toObject(), rated: ratedIds.has(o._id.toString()) })));
 });
 
+// How much of a product the farmer has accepted orders for that aren't
+// completed yet - still in their stock, but promised. (`except` leaves one
+// order out: the one being accepted.)
+async function promisedOf(productId, except = null) {
+  const [row] = await Order.aggregate([
+    { $match: { product: productId, ...PROMISED, ...(except ? { _id: { $ne: except } } : {}) } },
+    { $group: { _id: null, quantity: { $sum: "$quantity" } } },
+  ]);
+  return row?.quantity || 0;
+}
+
+// Takes a completed order's quantity off its product's stock - never below
+// zero - once.
+async function takeStock(order) {
+  if (tookStock(order)) return;
+  await Product.updateOne({ _id: order.product }, [
+    { $set: { stock: { $max: [0, { $subtract: ["$stock", order.quantity] }] } } },
+  ]);
+  order.stockTaken = true;
+}
+
+// Gives an order's stock back, for one that took it before stock was only
+// taken on completion.
+async function giveStockBack(order) {
+  if (!tookStock(order)) return;
+  await Product.updateOne({ _id: order.product }, { $inc: { stock: order.quantity } });
+  order.stockTaken = false;
+}
+
 // Which status a farmer may move an order into, from its current status.
 const ALLOWED_TRANSITIONS = {
   new: ["processing", "cancelled"],
@@ -286,37 +320,35 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     throw new Error(`This order is '${from}' and cannot be moved to '${status}'`);
   }
 
-  // Accepting a pre-order is the point where stock is finally taken, so it
-  // can only go ahead if the farmer has restocked enough of it by now.
-  if (from === "preorder" && status === "processing") {
+  // Accepting promises the order's kilos to this buyer, so there has to be
+  // that much in stock that isn't already promised to someone else - for a
+  // pre-order, that means the farmer has restocked enough of it by now.
+  // (Stock itself only goes down when the order is completed.)
+  if (status === "processing" && !tookStock(order)) {
     const product = await Product.findById(order.product);
     if (!product) {
       res.status(404);
-      throw new Error("That product no longer exists, so this pre-order can't be accepted");
+      throw new Error("That product no longer exists, so this order can't be accepted");
     }
-    if (product.stock < order.quantity) {
+    const free = product.stock - (await promisedOf(product._id, order._id));
+    if (free < order.quantity) {
       res.status(400);
       throw new Error(
-        `You need ${amountOf(order.quantity, order.unit)} in stock to accept this pre-order - you have ${amountOf(product.stock, order.unit)}`
+        `You need ${amountOf(order.quantity, order.unit)} in stock to accept this ${from === "preorder" ? "pre-order" : "order"} - you have ${amountOf(Math.max(free, 0), order.unit)}${
+          free < product.stock ? " not already promised to other accepted orders" : ""
+        }`
       );
     }
-    product.stock -= order.quantity;
-    await product.save();
   }
+
+  // Completed: the kilos have left the farm, so now they come off the stock.
+  if (status === "done") await takeStock(order);
+  // An order from before that rule gives back what it took when declined.
+  if (status === "cancelled") await giveStockBack(order);
 
   order.status = status;
   order[TIMESTAMP_FIELD[status]] = Date.now();
   await order.save();
-
-  // Only an order that actually held stock gives it back. A pre-order the
-  // farmer declines never took any.
-  if (status === "cancelled" && from === "new") {
-    const product = await Product.findById(order.product);
-    if (product) {
-      product.stock += order.quantity;
-      await product.save();
-    }
-  }
 
   // The buyer finds where their order stands in their chat with the farmer.
   await postOrderUpdate(order, req.user);
@@ -342,7 +374,7 @@ const NOTHING_TO_UNDO = {
 };
 
 // @desc    Take back the last status change on a farmer's own order, so an
-//          accidental Accept, Prepare or Ready goes back one step
+//          accidental Accept or Ready goes back one step
 // @route   PATCH /api/orders/:id/undo
 // @access  Private (farmer, owner only)
 const undoOrderStatus = asyncHandler(async (req, res) => {
@@ -364,15 +396,10 @@ const undoOrderStatus = asyncHandler(async (req, res) => {
     );
   }
 
-  // Accepting a pre-order is the one step that takes stock off the farmer, so
-  // undoing it is the one that gives it back.
-  if (previous === "preorder") {
-    const product = await Product.findById(order.product);
-    if (product) {
-      product.stock += order.quantity;
-      await product.save();
-    }
-  }
+  // Nothing here changes the stock - only completing an order does - except
+  // for a pre-order accepted before that rule, which took its stock when
+  // accepted and gives it back.
+  if (previous === "preorder") await giveStockBack(order);
 
   // The stage being undone never happened, so its timestamp goes with it -
   // otherwise the tracker would still show the moment an order became ready.
@@ -403,20 +430,12 @@ const cancelOrder = asyncHandler(async (req, res) => {
     throw new Error("This order has already been accepted by the farmer and can no longer be cancelled");
   }
 
-  const heldStock = order.status === "new";
-
+  // Nothing was taken off the stock yet - except by an order placed before
+  // stock was only taken on completion, which gives it back.
+  await giveStockBack(order);
   order.status = "cancelled";
   order.cancelledAt = Date.now();
   await order.save();
-
-  // A pre-order never took stock off the farmer, so there is none to give back.
-  if (heldStock) {
-    const product = await Product.findById(order.product);
-    if (product) {
-      product.stock += order.quantity;
-      await product.save();
-    }
-  }
 
   res.json(await withDetails(order._id));
 });

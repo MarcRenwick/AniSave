@@ -53,11 +53,13 @@ export function productFinancials(row) {
     marketPrice,
     municipality: recommendation?.municipality || null,
     actual,
+    // Stock only goes down when an order is completed, so kilos ordered but
+    // not completed yet are still part of it.
     stock: {
       soldKg: actual.soldKg,
-      pendingKg,
-      inStockKg: stock,
-      listedKg: actual.soldKg + pendingKg + stock,
+      pendingKg: Math.min(pendingKg, stock),
+      inStockKg: Math.max(stock - pendingKg, 0),
+      listedKg: actual.soldKg + stock,
     },
     remaining: {
       basis: marketPrice === null ? "selling" : "market",

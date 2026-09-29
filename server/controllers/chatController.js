@@ -529,13 +529,15 @@ const deleteConversation = asyncHandler(async (req, res) => {
   res.json({ unreadTotal: total });
 });
 
-// @desc    What the buyer has ordered from the farmer in this conversation, newest first
+// @desc    What the buyer has ordered from the farmer in this conversation and
+//          is still waiting on, newest first - a completed or cancelled order
+//          drops out (My Orders keeps them all)
 // @route   GET /api/chats/:id/orders
 // @access  Private (the buyer in it)
 const getConversationOrders = asyncHandler(async (req, res) => {
   const conversation = await findMine(req, res);
   if (!conversation.farmer) return res.json({ orders: [], total: 0 });
-  const mine = { buyer: req.user._id, farmer: conversation.farmer._id };
+  const mine = { buyer: req.user._id, farmer: conversation.farmer._id, status: { $nin: ["done", "cancelled"] } };
   const [orders, total] = await Promise.all([
     Order.find(mine).sort({ createdAt: -1 }).limit(ORDER_LIMIT).populate("product", "image").lean(),
     Order.countDocuments(mine),

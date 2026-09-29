@@ -9,6 +9,7 @@ const connectDB = require("./config/db");
 const { UPLOAD_DIR, sendStoredFile } = require("./utils/fileUtils");
 const { ensureCropCatalogue } = require("./utils/cropCatalogue");
 const { migrateExpenses } = require("./utils/expenseMigration");
+const { migrateStock } = require("./utils/stockMigration");
 const { describeEmailRoute } = require("./utils/sendEmail");
 const { apiLimiter } = require("./middleware/rateLimiters");
 const { notFound, errorHandler } = require("./middleware/errorMiddleware");
@@ -60,7 +61,14 @@ connectDB()
       console.log(`Migrated ${products.length} listing(s) to a total expense, and ${eggOrders} egg order(s) to trays.`);
     }
   })
-  .catch((err) => console.error(`Could not migrate listings' expenses: ${err.message}`));
+  .catch((err) => console.error(`Could not migrate listings' expenses: ${err.message}`))
+  // Orders from when stock was taken the moment an order was placed: what
+  // those not completed yet took goes back. Does nothing once done.
+  .then(() => migrateStock())
+  .then(({ returned, orders }) => {
+    if (orders) console.log(`Stock is now taken on completion: ${returned} order(s) gave their stock back, ${orders} marked.`);
+  })
+  .catch((err) => console.error(`Could not migrate orders' stock: ${err.message}`));
 
 const app = express();
 

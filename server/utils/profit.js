@@ -129,8 +129,9 @@ function profitTotals(rows) {
 }
 
 // The aggregation stages that add up a farmer's orders per listing: what has
-// been sold (completed orders) and what is still waiting to be picked up.
-// A pre-order the farmer hasn't accepted yet holds no stock, so it is neither.
+// been sold (completed orders) and what is ordered but not completed yet -
+// still part of the stock, since stock only goes down on completion. A
+// pre-order the farmer hasn't accepted yet is neither.
 const salesByProduct = (farmerId, productIds) => [
   { $match: { farmer: farmerId, product: { $in: productIds } } },
   {

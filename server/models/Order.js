@@ -59,6 +59,15 @@ const orderSchema = new mongoose.Schema(
       enum: ["new", "preorder"],
     },
 
+    // Whether this order's quantity has been taken off the product's stock.
+    // Stock goes down only when an order is completed - a waiting, accepted
+    // or ready order is still the farmer's stock - so this is false until
+    // then, and true after. Orders from before that rule (when stock was
+    // taken the moment an order was placed) have none; utils/stockMigration.js
+    // gives their stock back and fills it in, and tookStock() below reads it
+    // for them in the meantime.
+    stockTaken: { type: Boolean },
+
     // Real per-stage timestamps, set as the order progresses - "new" is
     // already covered by createdAt.
     acceptedAt: { type: Date },
@@ -73,4 +82,19 @@ const orderSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Statuses that, before stock was only taken on completion, had already
+// taken the order's quantity off the product.
+const HELD_STOCK_BEFORE = ["new", "processing", "ready", "done"];
+
+// Has this order's quantity been taken off the product's stock?
+const tookStock = (order) =>
+  typeof order.stockTaken === "boolean" ? order.stockTaken : HELD_STOCK_BEFORE.includes(order.status);
+
+// The orders still to be taken off a product's stock that the farmer has
+// already promised: accepted or ready, and not completed yet.
+const PROMISED = { status: { $in: ["processing", "ready"] }, stockTaken: false };
+
 module.exports = mongoose.model("Order", orderSchema);
+module.exports.tookStock = tookStock;
+module.exports.HELD_STOCK_BEFORE = HELD_STOCK_BEFORE;
+module.exports.PROMISED = PROMISED;
