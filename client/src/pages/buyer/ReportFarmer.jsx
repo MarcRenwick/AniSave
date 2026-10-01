@@ -90,7 +90,7 @@ export default function ReportFarmer() {
     <BuyerLayout>
       <div className="mx-auto max-w-2xl p-4 sm:p-8">
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-          <div className="relative flex items-center justify-center bg-[#2f8f66] px-4 py-3.5 text-white">
+          <div className="relative flex items-center justify-center bg-brand px-4 py-3.5 text-white">
             <button
               type="button"
               onClick={reason ? () => setReason("") : goToShop}
@@ -135,7 +135,7 @@ export default function ReportFarmer() {
                 <button
                   type="button"
                   onClick={() => setReason("")}
-                  className="text-xs font-medium text-[#2f8f66] hover:underline"
+                  className="text-xs font-medium text-brand hover:underline"
                 >
                   Change
                 </button>
@@ -144,7 +144,7 @@ export default function ReportFarmer() {
               <div>
                 <div className="flex items-center justify-between">
                   <label htmlFor="report-description" className="text-sm font-medium text-gray-700">
-                    Report Description<span className="text-red-600">*</span>
+                    Report Description<span className="text-tomato-700">*</span>
                   </label>
                   <span className="text-xs text-gray-500">
                     {description.length}/{MAX_REPORT_DESCRIPTION}
@@ -157,7 +157,7 @@ export default function ReportFarmer() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Please provide more details about your report"
-                  className="mt-1 w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+                  className="mt-1 w-full resize-none rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 />
               </div>
 
@@ -179,7 +179,7 @@ export default function ReportFarmer() {
                           type="button"
                           onClick={() => removeEvidence(i)}
                           aria-label={`Remove evidence ${i + 1}`}
-                          className="absolute -right-2 -top-2 rounded-full bg-red-600 p-0.5 text-white shadow"
+                          className="absolute -right-2 -top-2 rounded-full bg-tomato-600 p-0.5 text-white shadow"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -193,7 +193,7 @@ export default function ReportFarmer() {
                     type="button"
                     onClick={() => fileInput.current?.click()}
                     disabled={preparing}
-                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border-2 border-dashed border-gray-300 bg-white py-3 text-sm text-gray-500 transition hover:border-[#2f8f66] hover:text-[#2f8f66] disabled:opacity-60"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border-2 border-dashed border-gray-300 bg-white py-3 text-sm text-gray-500 transition hover:border-brand hover:text-brand disabled:opacity-60"
                   >
                     <Plus className="h-4 w-4" />
                     {preparing ? "Preparing..." : "Add file"}
@@ -204,15 +204,15 @@ export default function ReportFarmer() {
                 <p className="mt-1.5 text-xs text-gray-500">
                   Up to {MAX_REPORT_EVIDENCE} photos, 5 MB each (JPG, PNG, WebP or GIF).
                 </p>
-                {pickError && <p className="mt-1 text-xs text-red-600">{pickError}</p>}
+                {pickError && <p className="mt-1 text-xs text-tomato-700">{pickError}</p>}
               </div>
 
-              {error && <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+              {error && <div className="rounded-md bg-tomato-50 px-3 py-2 text-sm text-tomato-700">{error}</div>}
 
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="w-full rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:bg-gray-300"
+                className="w-full rounded-md bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-gray-300"
               >
                 {submitting ? "Submitting..." : "Submit"}
               </button>

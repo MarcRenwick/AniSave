@@ -20,6 +20,7 @@ import {
   UserRound,
 } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
+import { BUYER_PHOTOS } from "../../utils/buyerPhotos";
 import BuyerTopBar from "../../components/buyer/BuyerTopBar";
 import Avatar from "../../components/Avatar";
 import BlockedUsersModal from "../../components/buyer/settings/BlockedUsersModal";
@@ -39,7 +40,7 @@ import { totalAmounts } from "../../utils/units";
 function Stat({ icon: Icon, value, label }) {
   return (
     <div>
-      <Icon className="mx-auto h-4 w-4 text-[#2f8f66]" />
+      <Icon className="mx-auto h-4 w-4 text-brand" />
       <p className="mt-1 text-lg font-bold leading-none text-gray-900">{value}</p>
       <p className="mt-1 text-[11px] text-gray-500">{label}</p>
     </div>
@@ -52,20 +53,20 @@ function Group({ icon: Icon, title, blurb, danger = false, children }) {
   return (
     <section
       className={`rounded-2xl border p-5 shadow-sm ${
-        danger ? "border-red-200 bg-red-50/50" : "border-gray-200 bg-white"
+        danger ? "border-red-200 bg-tomato-50/50" : "border-gray-200 bg-white"
       }`}
       data-reveal
     >
       <div className="flex items-start gap-3">
         <span
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-            danger ? "bg-red-100 text-red-600" : "bg-green-100 text-[#2f8f66]"
+            danger ? "bg-tomato-100 text-tomato-700" : "bg-green-100 text-brand"
           }`}
         >
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h2 className={`text-base font-semibold ${danger ? "text-red-700" : "text-gray-900"}`}>
+          <h2 className={`text-base font-semibold ${danger ? "text-tomato-700" : "text-gray-900"}`}>
             {title}
           </h2>
           <p className="text-xs text-gray-500">{blurb}</p>
@@ -84,13 +85,13 @@ function Row({ icon: Icon, title, blurb, onClick, danger = false }) {
       onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-xl border bg-white px-4 py-3 text-left transition duration-150 ${
         danger
-          ? "border-red-200 hover:border-red-300 hover:bg-red-50"
-          : "border-gray-200 hover:border-[#2f8f66] hover:bg-green-50"
+          ? "border-red-200 hover:border-red-300 hover:bg-tomato-50"
+          : "border-gray-200 hover:border-brand hover:bg-green-50"
       }`}
     >
-      <Icon className={`h-5 w-5 shrink-0 ${danger ? "text-red-600" : "text-[#2f8f66]"}`} />
+      <Icon className={`h-5 w-5 shrink-0 ${danger ? "text-tomato-700" : "text-brand"}`} />
       <span className="min-w-0 flex-1">
-        <span className={`block text-sm font-semibold ${danger ? "text-red-700" : "text-gray-900"}`}>
+        <span className={`block text-sm font-semibold ${danger ? "text-tomato-700" : "text-gray-900"}`}>
           {title}
         </span>
         <span className="block text-xs text-gray-500">{blurb}</span>
@@ -152,7 +153,7 @@ export default function BuyerSettings() {
     <BuyerLayout>
       <BuyerTopBar>
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-brand">
             <Leaf className="h-5 w-5" />
           </span>
           <div className="min-w-0">
@@ -165,15 +166,25 @@ export default function BuyerSettings() {
       <div className="p-4 sm:p-8">
         <div className="grid items-start gap-6 lg:grid-cols-[21rem_minmax(0,1fr)]">
           {/* ------------------------------------------------ who you are */}
-          <aside className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm" data-reveal>
-            <div className="h-24 bg-gradient-to-br from-[#1f5c42] via-[#2f8f66] to-[#35a074]" />
+          <aside className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-paper shadow-soft" data-reveal>
+            {/* A market's produce for a cover. */}
+            <div className="relative h-28 overflow-hidden" data-testid="profile-cover">
+              <img
+                src={BUYER_PHOTOS.marketProduce.src}
+                srcSet={BUYER_PHOTOS.marketProduce.srcSet}
+                sizes="21rem"
+                alt=""
+                className="h-full w-full object-cover object-[45%_40%] motion-safe:animate-[harvest-header-in_1.2s_var(--ease-harvest)_both]"
+              />
+              <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-night/45 to-night/10" />
+            </div>
 
             <div className="-mt-12 flex flex-col items-center px-6 pb-6">
               <div className="relative">
                 <Avatar
                   src={user?.avatar}
                   alt={user?.name || "Profile photo"}
-                  className="h-24 w-24 rounded-full border-4 border-white bg-green-100 text-[#2f8f66]"
+                  className="h-24 w-24 rounded-full border-4 border-paper bg-forest-100 text-brand shadow-lift"
                   iconClass="h-12 w-12"
                 />
                 {/* Leads to the same dialog the photo is changed in. */}
@@ -181,19 +192,19 @@ export default function BuyerSettings() {
                   type="button"
                   onClick={() => setShowEdit(true)}
                   aria-label="Change your profile photo"
-                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[#2f8f66] text-white ring-2 ring-white hover:bg-[#267a56]"
+                  className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-brand text-white ring-2 ring-white hover:bg-brand-hover"
                 >
                   <Camera className="h-4 w-4" />
                 </button>
               </div>
 
               <h2 className="mt-3 text-center text-xl font-bold text-gray-900">{user?.name}</h2>
-              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-[#2f8f66]">
+              <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-brand">
                 <ShoppingBasket className="h-3.5 w-3.5" />
                 Buyer
               </span>
               <p className="mt-2 flex items-center gap-1 text-center text-sm text-gray-500">
-                <MapPin className="h-4 w-4 shrink-0 text-[#2f8f66]" />
+                <MapPin className="h-4 w-4 shrink-0 text-brand" />
                 {user?.location || "Location not set"}
               </p>
 
@@ -206,13 +217,13 @@ export default function BuyerSettings() {
               <button
                 type="button"
                 onClick={() => setShowEdit(true)}
-                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98]"
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-brand py-2.5 text-sm font-semibold text-white transition duration-150 hover:bg-brand-hover active:scale-[0.98]"
               >
                 <Pencil className="h-4 w-4" />
                 Edit Profile
               </button>
 
-              <p className="mt-5 flex items-center gap-1.5 text-center text-xs italic text-[#2f8f66]">
+              <p className="mt-5 flex items-center gap-1.5 text-center text-xs italic text-brand">
                 <Leaf className="h-3.5 w-3.5 shrink-0" />
                 Fresh food, straight from the farm.
               </p>

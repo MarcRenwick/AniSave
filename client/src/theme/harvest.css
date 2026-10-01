@@ -259,6 +259,16 @@
     transform: none;
   }
 
+  /* The buyer's market: cards and sections rise a little further and settle
+     a little slower, with a touch of scale - an unhurried place to browse. */
+  html.harvest .buyer-field .scroll-reveal {
+    transform: translateY(26px) scale(0.985);
+    transition-duration: 720ms;
+  }
+  html.harvest .buyer-field .scroll-reveal-visible {
+    transform: none;
+  }
+
   /* Modals: a softer backdrop and a card that rises in. */
   html.harvest .fixed.inset-0.bg-black\/40 {
     background-color: rgb(15 36 24 / 0.45);
@@ -432,8 +442,30 @@ html.lenis {
     animation-iteration-count: 1 !important;
     scroll-behavior: auto !important;
   }
-  html.harvest .scroll-reveal {
+  html.harvest .scroll-reveal,
+  html.harvest .buyer-field .scroll-reveal {
+    opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+/* A sweep of light across a price band (the buyer's Product Details), then a
+   long rest before the next. */
+@keyframes harvest-price-sweep {
+  0% {
+    transform: translateX(0) skewX(-18deg);
+  }
+  45%,
+  100% {
+    transform: translateX(460%) skewX(-18deg);
+  }
+}
+
+/* A page header's photo settling in from slightly closer. */
+@keyframes harvest-header-in {
+  from {
+    opacity: 0;
+    transform: scale(1.1);
   }
 }

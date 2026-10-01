@@ -19,3 +19,13 @@ as WebP at the widths the pages use (`<name>-<width>.webp`).
 | `auth/register-market-vegetables-*.webp` | Fresh vegetables at a market in Valenzuela, Metro Manila | Jeson Cabilic | https://www.pexels.com/photo/16248762/ |
 | `auth/role-farmer-carabao-*.webp` | A farmer leading a carabao laden with sacks, Philippines | Denniz Futalan | https://www.pexels.com/photo/13118956/ |
 | `auth/role-buyer-market-*.webp` | Shoppers choosing produce at a public market, Philippines | Denniz Futalan | https://www.pexels.com/photo/12394058/ |
+| `buyer/banner-market-produce-*.webp` | Fresh vegetables piled high at a market stall in Pasig, Metro Manila | Clarence Gaspar | https://www.pexels.com/photo/36930131/ |
+| `buyer/banner-rice-harvest-*.webp` | Locals harvesting rice in Gigmoto, Catanduanes | John Lester Pantaleon | https://www.pexels.com/photo/33778125/ |
+| `buyer/tile-market-prices-*.webp` | Calamansi, mangoes and a price sign at a market | Alexey Demidov | https://www.pexels.com/photo/11252640/ |
+| `buyer/tile-farmer-carabao-road-*.webp` | A farmer walking a carabao home along a country road | Denniz Futalan | https://www.pexels.com/photo/13118957/ |
+| `buyer/farm-shop-terraces-*.webp` | Rice terraces and coconut palms, Central Visayas | MHLBRN Brix | https://www.pexels.com/photo/31788285/ |
+| `buyer/header-baskets-carrots-*.webp` | Carrots in woven baskets at a market | Yuval Zukerman | https://www.pexels.com/photo/9209575/ |
+| `buyer/header-market-crates-*.webp` | A vendor among crates and sacks at the Baguio City market | JC Presco | https://www.pexels.com/photo/34228853/ |
+| `buyer/empty-produce-tray-*.webp` | Vegetables in a wooden tray | Brunxs | https://www.pexels.com/photo/11638270/ |
+| `buyer/empty-grain-sacks-*.webp` | Rice and grains in sacks at a market | David Brown | https://www.pexels.com/photo/17109241/ |
+| `buyer/empty-market-lane-*.webp` | A lane of produce stalls at a public market | Denniz Futalan | https://www.pexels.com/photo/2523946/ |

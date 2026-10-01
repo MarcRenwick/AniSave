@@ -27,7 +27,7 @@ export default function RemoveCartItemModal({ item, onClose, onConfirm }) {
           className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 ring-8 ring-red-50/50">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-tomato-50 text-tomato-700 ring-8 ring-red-50/50">
             <Trash2 className="h-6 w-6" />
           </span>
           <p id="remove-item-title" className="mt-4 text-lg font-semibold text-gray-900">
@@ -63,7 +63,7 @@ export default function RemoveCartItemModal({ item, onClose, onConfirm }) {
             <button
               type="button"
               onClick={onConfirm}
-              className="rounded-lg bg-red-600 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              className="rounded-lg bg-tomato-600 py-2.5 text-sm font-semibold text-white transition hover:bg-tomato-700"
             >
               Yes, remove
             </button>

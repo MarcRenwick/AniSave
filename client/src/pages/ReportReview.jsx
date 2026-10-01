@@ -15,7 +15,7 @@ export default function ReportReview() {
   const { id, ratingId } = useParams();
   const { user } = useAuth();
   // The farmer's own copy of this page is in the harvest look; a buyer's isn't.
-  useHarvestTheme(user?.role === "farmer");
+  useHarvestTheme(user?.role !== "admin");
 
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState("");
@@ -56,13 +56,13 @@ export default function ReportReview() {
       </div>
 
       <div className="mx-auto max-w-3xl p-4 sm:p-8">
-        <form onSubmit={handleSubmit} className="overflow-hidden rounded-2xl bg-[#bde8b9] shadow-sm">
+        <form onSubmit={handleSubmit} className="overflow-hidden rounded-2xl bg-forest-100 shadow-sm">
           <p className="px-5 py-3.5 text-sm font-medium text-gray-900">Please select report reason</p>
 
           <div role="radiogroup" aria-label="Report reason" className="border-t border-green-900/20">
             {REVIEW_REPORT_REASONS.map(({ key, label }) => {
               const selected = reason === key;
-              const rowColor = selected ? "bg-brand text-white" : "bg-[#7dd39b] text-gray-900 hover:bg-[#6fc78f]";
+              const rowColor = selected ? "bg-brand text-white" : "bg-forest-200 text-gray-900 hover:bg-forest-300";
 
               if (key === "other" && selected) {
                 return (
@@ -109,7 +109,7 @@ export default function ReportReview() {
           </div>
 
           <div className="px-5 py-4">
-            {error && <div className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+            {error && <div className="mb-3 rounded-md bg-tomato-50 px-3 py-2 text-sm text-tomato-700">{error}</div>}
             <button
               type="submit"
               disabled={!ready || sending}

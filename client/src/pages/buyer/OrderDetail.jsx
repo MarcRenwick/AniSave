@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { motion } from "motion/react";
 import {
   Archive,
   ArchiveRestore,
@@ -20,6 +21,9 @@ import RateProductModal from "../../components/buyer/RateProductModal";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getOrder, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
+import { BlockSkeleton } from "../../components/buyer/BuyerVisuals";
+import { categoryPhoto } from "../../utils/categoryPhotos";
+import { EASE } from "../../theme/harvest";
 import { BUYER_STEPS } from "../../utils/orderStatus";
 import { amountOf, unitOf, unitWord } from "../../utils/units";
 
@@ -27,37 +31,37 @@ import { amountOf, unitOf, unitWord } from "../../utils/units";
 const BANNERS = {
   new: {
     icon: Hourglass,
-    tone: "bg-gradient-to-r from-[#2f8f66] to-[#46a97d] text-white",
+    tone: "bg-[linear-gradient(110deg,#173d24,#2e7d32)] text-cream",
     title: "Waiting for the farmer",
     text: (farm) => `${farm} will accept your order soon. You can still cancel it until then.`,
   },
   preorder: {
     icon: CalendarClock,
-    tone: "bg-amber-50 text-amber-900 ring-1 ring-amber-200",
+    tone: "bg-gold-50 text-soil-700 ring-1 ring-gold-200",
     title: "Pre-order placed",
     text: (farm) => `This is a pre-order. ${farm} accepts it once the produce is available.`,
   },
   processing: {
     icon: PackageOpen,
-    tone: "bg-gradient-to-r from-[#2f8f66] to-[#46a97d] text-white",
+    tone: "bg-[linear-gradient(110deg,#173d24,#2e7d32)] text-cream",
     title: "Your order is being prepared",
     text: (farm) => `${farm} accepted your order and is getting it ready.`,
   },
   ready: {
     icon: PackageCheck,
-    tone: "bg-gradient-to-r from-emerald-600 to-[#2f8f66] text-white",
+    tone: "bg-[linear-gradient(110deg,#e8a33d,#f4cd6a)] text-night",
     title: "Ready for pickup!",
     text: (farm) => `Head to ${farm} to collect your order.`,
   },
   done: {
     icon: CheckCircle2,
-    tone: "bg-green-50 text-[#1f5c42] ring-1 ring-green-200",
+    tone: "bg-forest-50 text-forest-800 ring-1 ring-forest-200",
     title: "Order completed",
     text: () => "You picked this order up. Thanks for buying local!",
   },
   cancelled: {
     icon: XCircle,
-    tone: "bg-red-50 text-red-800 ring-1 ring-red-200",
+    tone: "bg-tomato-50 text-tomato-700 ring-1 ring-tomato-100",
     title: "Order cancelled",
     text: () => "This order was cancelled.",
   },
@@ -128,35 +132,52 @@ export default function OrderDetail() {
   return (
     <BuyerLayout>
       <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
+        {loading && (
+          <div className="space-y-4">
+            <BlockSkeleton className="h-24" />
+            <BlockSkeleton className="h-28" />
+            <BlockSkeleton className="h-40" />
+          </div>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && order && (
           <>
             {banner && (
-              <div className={`flex items-center gap-4 rounded-2xl p-5 shadow-sm ${banner.tone}`} data-testid="order-banner">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30">
+              <motion.div
+                initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.55, ease: EASE }}
+                className={`flex items-center gap-4 rounded-[1.5rem] p-5 shadow-soft ${banner.tone}`}
+                data-testid="order-banner"
+              >
+                <motion.span
+                  initial={{ scale: 0.6, rotate: -12 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 16, delay: 0.15 }}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20 ring-1 ring-white/30"
+                >
                   <BannerIcon className="h-6 w-6" />
-                </span>
+                </motion.span>
                 <div className="min-w-0">
-                  <p className="text-lg font-semibold">{banner.title}</p>
+                  <p className="font-display text-xl font-semibold">{banner.title}</p>
                   <p className="text-sm opacity-90">{banner.text(farmName)}</p>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {order.status !== "cancelled" && <OrderStatusTracker steps={BUYER_STEPS} order={order} />}
 
-            <section className="rounded-2xl bg-white p-5 shadow-sm" data-testid="order-pickup">
-              <h2 className="font-semibold text-gray-900">Pick up from</h2>
+            <section className="rounded-[1.5rem] bg-paper p-5 shadow-soft ring-1 ring-gray-200" data-testid="order-pickup">
+              <h2 className="font-display text-lg font-semibold text-gray-900">Pick up from</h2>
               <div className="mt-4 flex items-center gap-3">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-100 text-[#2f8f66]">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-forest-50 text-brand ring-1 ring-forest-100">
                   <Store className="h-6 w-6" />
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-gray-900">{farmName}</p>
                   <p className="flex items-center gap-1.5 text-sm text-gray-500">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-clay-500" />
                     {order.farmer?.location || "Address not set"}
                   </p>
                   {order.farmer?.phone && <p className="text-sm text-gray-500">Phone: {order.farmer.phone}</p>}
@@ -164,7 +185,7 @@ export default function OrderDetail() {
                 {order.farmer?._id && (
                   <Link
                     to={`/buyer/farmers/${order.farmer._id}`}
-                    className="shrink-0 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                    className="shrink-0 rounded-full border border-brand px-3.5 py-1.5 text-xs font-semibold text-brand transition-colors hover:bg-forest-50"
                   >
                     View Shop
                   </Link>
@@ -172,43 +193,45 @@ export default function OrderDetail() {
               </div>
             </section>
 
-            <section className="rounded-2xl bg-white p-5 shadow-sm" data-testid="order-item">
-              <h2 className="font-semibold text-gray-900">Your item</h2>
+            <section className="rounded-[1.5rem] bg-paper p-5 shadow-soft ring-1 ring-gray-200" data-testid="order-item">
+              <h2 className="font-display text-lg font-semibold text-gray-900">Your item</h2>
               <div className="mt-4 flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-gray-300">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-sand text-gray-400">
                   {order.product?.image ? (
                     <img
                       src={`${SERVER_URL}${order.product.image}`}
                       alt={order.productTitle}
                       className="h-full w-full object-cover"
                     />
+                  ) : order.product?.category ? (
+                    <img src={categoryPhoto(order.product.category).small} alt="" className="h-full w-full object-cover" />
                   ) : (
                     <ImageOff className="h-5 w-5" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-gray-900">{order.productTitle}</p>
+                  <p className="truncate font-display text-lg font-semibold text-gray-900">{order.productTitle}</p>
                   <p className="text-sm text-gray-500">
                     Quantity: {amountOf(order.quantity, unitOf(order))}
                     {order.pricePerKilo ? ` · ₱${order.pricePerKilo} per ${unitWord(unitOf(order))}` : ""}
                   </p>
                 </div>
               </div>
-              <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
+              <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
                 <span className="text-sm text-gray-500">Total to pay at pickup</span>
-                <span className="text-lg font-bold text-gray-900">₱{order.total}</span>
+                <span className="font-display text-2xl font-semibold text-forest-700">₱{order.total}</span>
               </div>
             </section>
 
             {order.status === "done" && order.myRating && (
-              <section className="rounded-2xl bg-white p-5 shadow-sm">
-                <h2 className="font-semibold text-gray-900">Your rating</h2>
+              <section className="rounded-[1.5rem] bg-paper p-5 shadow-soft ring-1 ring-gray-200">
+                <h2 className="font-display text-lg font-semibold text-gray-900">Your rating</h2>
                 <div className="mt-2 flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((value) => (
                     <Star
                       key={value}
                       className={`h-5 w-5 ${
-                        value <= order.myRating.stars ? "fill-amber-400 text-amber-400" : "text-gray-300"
+                        value <= order.myRating.stars ? "fill-gold-400 text-gold-500" : "text-gray-300"
                       }`}
                     />
                   ))}
@@ -220,14 +243,14 @@ export default function OrderDetail() {
             {order.status === "done" ? (
               <>
                 {archiveError && (
-                  <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">{archiveError}</div>
+                  <div role="alert" className="rounded-xl bg-tomato-50 px-4 py-3 text-sm text-tomato-700 ring-1 ring-tomato-100">{archiveError}</div>
                 )}
                 <div className="flex gap-3">
                   {order.product?._id && (
                     <button
                       type="button"
                       onClick={() => navigate(`/buyer/products/${order.product._id}`)}
-                      className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+                      className="flex-1 rounded-full border-2 border-brand bg-paper py-3 text-sm font-semibold text-brand transition-colors duration-150 hover:bg-forest-50 active:scale-[0.98]"
                     >
                       Buy Again
                     </button>
@@ -236,7 +259,7 @@ export default function OrderDetail() {
                     <button
                       type="button"
                       onClick={() => setShowRate(true)}
-                      className="flex-1 rounded-md border-2 border-[#2f8f66] bg-white py-3 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-[0.98]"
+                      className="flex-1 rounded-full border-2 border-brand bg-paper py-3 text-sm font-semibold text-brand transition-colors duration-150 hover:bg-forest-50 active:scale-[0.98]"
                     >
                       To Rate
                     </button>
@@ -246,7 +269,7 @@ export default function OrderDetail() {
                   type="button"
                   onClick={handleArchiveToggle}
                   disabled={archiving}
-                  className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 bg-white py-2.5 text-sm font-semibold text-gray-600 transition duration-150 hover:bg-gray-50 active:scale-[0.98] disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-gray-300 bg-paper py-2.5 text-sm font-semibold text-gray-600 transition-colors duration-150 hover:border-brand hover:text-brand active:scale-[0.98] disabled:opacity-60"
                 >
                   {order.archived ? <ArchiveRestore className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
                   {archiving ? "Updating..." : order.archived ? "Unarchive Order" : "Archive Order"}
@@ -259,7 +282,7 @@ export default function OrderDetail() {
                     <button
                       type="button"
                       onClick={() => setShowCancel(true)}
-                      className="flex-1 rounded-md bg-red-600 py-3 text-sm font-semibold text-white transition duration-150 hover:bg-red-700 active:scale-[0.98]"
+                      className="flex-1 rounded-full bg-tomato-600 py-3 text-sm font-semibold text-white transition-colors duration-150 hover:bg-tomato-700 active:scale-[0.98]"
                     >
                       Cancel Order
                     </button>
@@ -269,7 +292,7 @@ export default function OrderDetail() {
                       <MessageFarmerButton
                         farmerId={order.farmer._id}
                         label="Message Now"
-                        className="flex w-full items-center justify-center gap-2 rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
+                        className="flex w-full items-center justify-center gap-2 rounded-full bg-brand py-3 text-sm font-semibold text-white shadow-[0_10px_24px_-12px_rgb(31_81_48/0.8)] transition-colors duration-150 hover:bg-brand-hover active:scale-[0.98] disabled:opacity-60"
                       />
                     </div>
                   )}

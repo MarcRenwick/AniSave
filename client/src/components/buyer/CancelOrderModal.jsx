@@ -13,7 +13,7 @@ export default function CancelOrderModal({ order, onClose, onConfirm, cancelling
       </p>
 
       {error && (
-        <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
+        <div className="mt-3 rounded-md bg-tomato-50 px-3 py-2 text-sm text-tomato-700">{error}</div>
       )}
 
       <div className="mt-5 flex gap-3">
@@ -29,7 +29,7 @@ export default function CancelOrderModal({ order, onClose, onConfirm, cancelling
           type="button"
           onClick={onConfirm}
           disabled={cancelling}
-          className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+          className="flex-1 rounded-md bg-tomato-600 py-2 text-sm font-semibold text-white hover:bg-tomato-700 disabled:opacity-60"
         >
           {cancelling ? "Cancelling..." : "Yes, Cancel Order"}
         </button>

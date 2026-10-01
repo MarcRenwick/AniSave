@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { Archive, ArchiveRestore, Search, Store, X } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getBuyerOrders, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import { PhotoEmptyState, PhotoHeader, RowSkeletons } from "../../components/buyer/BuyerVisuals";
+import { BUYER_PHOTOS } from "../../utils/buyerPhotos";
+import { categoryPhoto } from "../../utils/categoryPhotos";
 import { BUYER_ORDER_STATUS as statusMeta } from "../../utils/orderStatus";
 import { amountOf, perUnit, unitOf } from "../../utils/units";
 
@@ -32,22 +36,28 @@ const STATUS_NOTE = {
   cancelled: "This order was cancelled",
 };
 const STATUS_TONE = {
-  new: "text-blue-700",
-  preorder: "text-amber-700",
-  processing: "text-indigo-700",
-  ready: "text-yellow-700",
-  done: "text-[#2f8f66]",
-  cancelled: "text-red-600",
+  new: "text-soil-700",
+  preorder: "text-gold-700",
+  processing: "text-clay-500",
+  ready: "text-forest-700",
+  done: "text-brand",
+  cancelled: "text-tomato-700",
+};
+const STATUS_DOT = {
+  new: "bg-soil-500",
+  preorder: "bg-gold-500",
+  processing: "bg-clay-400",
+  ready: "bg-forest-500",
+  done: "bg-brand",
+  cancelled: "bg-tomato-600",
 };
 
 // A product with no photo gets its first letter on a soft colour of its own.
 const LETTER_TILES = [
-  "bg-red-50 text-red-700",
-  "bg-green-50 text-green-700",
-  "bg-amber-50 text-amber-700",
-  "bg-pink-50 text-pink-700",
-  "bg-sky-50 text-sky-700",
-  "bg-lime-50 text-lime-700",
+  "bg-forest-50 text-forest-800",
+  "bg-gold-50 text-gold-700",
+  "bg-tomato-50 text-tomato-700",
+  "bg-sand text-soil-700",
 ];
 const tileFor = (title = "") => LETTER_TILES[[...title].reduce((sum, ch) => sum + ch.charCodeAt(0), 0) % LETTER_TILES.length];
 
@@ -63,14 +73,25 @@ function Thumb({ order }) {
       <img
         src={`${SERVER_URL}${image}`}
         alt=""
-        className="h-16 w-16 shrink-0 rounded-lg object-cover ring-1 ring-gray-100"
+        className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-gray-200 transition-transform duration-500 ease-harvest group-hover:scale-105"
+      />
+    );
+  }
+  // No photo of its own: a market photo of its category, when it's known.
+  if (order.product?.category) {
+    return (
+      <img
+        src={categoryPhoto(order.product.category).small}
+        alt=""
+        loading="lazy"
+        className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-1 ring-gray-200 transition-transform duration-500 ease-harvest group-hover:scale-105"
       />
     );
   }
   return (
     <span
       aria-hidden="true"
-      className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-lg text-xl font-bold ${tileFor(order.productTitle)}`}
+      className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl font-display text-2xl font-semibold ${tileFor(order.productTitle)}`}
     >
       {(order.productTitle || "?").charAt(0).toUpperCase()}
     </span>
@@ -85,22 +106,22 @@ function OrderCard({ order, actions }) {
   return (
     <li
       data-order={order._id}
-      className="overflow-hidden rounded-xl border border-gray-200/70 bg-white shadow-sm"
+      className="overflow-hidden rounded-[1.5rem] border border-gray-200 bg-paper shadow-soft"
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-gray-100 bg-gray-50/60 px-4 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-gray-200 bg-sand/50 px-4 py-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <Store className="h-4 w-4 shrink-0 text-gray-500" />
+          <Store className="h-4 w-4 shrink-0 text-clay-500" />
           <span className="truncate text-sm font-semibold text-gray-900">{farmNameOf(order)}</span>
           {farmerId && (
             <>
               <MessageFarmerButton
                 farmerId={farmerId}
                 label="Chat"
-                className="inline-flex items-center gap-1 rounded-md bg-[#2f8f66] px-2.5 py-1 text-xs font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+                className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
               />
               <Link
                 to={`/buyer/farmers/${farmerId}`}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex items-center gap-1 rounded-full border border-gray-300 bg-paper px-3 py-1 text-xs font-semibold text-gray-700 transition-colors hover:border-brand hover:text-brand"
               >
                 <Store className="h-3.5 w-3.5" />
                 View Farm
@@ -111,7 +132,8 @@ function OrderCard({ order, actions }) {
         <p className="flex items-center gap-2 text-xs" data-testid="order-status">
           <span className="text-gray-500">{STATUS_NOTE[order.status]}</span>
           <span className="h-3 w-px bg-gray-300" aria-hidden="true" />
-          <span className={`font-bold uppercase tracking-wide ${STATUS_TONE[order.status]}`}>
+          <span className={`flex items-center gap-1.5 font-bold uppercase tracking-wide ${STATUS_TONE[order.status]}`}>
+            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${STATUS_DOT[order.status]} ${order.status === "ready" ? "animate-pulse-soft" : ""}`} />
             {statusMeta[order.status]?.label}
           </span>
         </p>
@@ -119,22 +141,22 @@ function OrderCard({ order, actions }) {
 
       <Link
         to={`/buyer/orders/${order._id}`}
-        className="flex items-center gap-4 px-4 py-4 transition hover:bg-gray-50"
+        className="group flex items-center gap-4 px-4 py-4 transition-colors hover:bg-cream/70"
         aria-label={`Open your order of ${order.productTitle}`}
       >
         <Thumb order={order} />
         <div className="min-w-0 flex-1">
-          <p className="truncate font-semibold text-gray-900">{order.productTitle}</p>
+          <p className="truncate font-display text-lg font-semibold text-gray-900">{order.productTitle}</p>
           <p className="text-xs text-gray-500">Unit price: {peso(order.pricePerKilo)} {perUnit(unitOf(order))}</p>
           <p className="text-xs text-gray-500">x{amountOf(order.quantity, unitOf(order))}</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-lg font-bold text-[#2f8f66]">{peso(order.total)}</p>
+          <p className="font-display text-xl font-semibold text-forest-700">{peso(order.total)}</p>
           <p className="text-xs text-gray-500">Ordered {orderDate(order)}</p>
         </div>
       </Link>
 
-      {actions && <div className="flex justify-end gap-2 border-t border-gray-100 px-4 py-2.5">{actions}</div>}
+      {actions && <div className="flex justify-end gap-2 border-t border-gray-200 px-4 py-2.5">{actions}</div>}
     </li>
   );
 }
@@ -213,7 +235,7 @@ export default function BuyerOrders() {
             setCancelError("");
             setTarget(o);
           }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+          className="inline-flex items-center gap-1.5 rounded-full bg-tomato-600 px-4 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-tomato-700"
         >
           Cancel
         </button>
@@ -225,7 +247,7 @@ export default function BuyerOrders() {
           type="button"
           onClick={() => handleArchiveToggle(o, !o.archived)}
           disabled={archivingId === o._id}
-          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 px-4 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:border-brand hover:text-brand disabled:opacity-60"
         >
           {o.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
           {o.archived ? "Unarchive" : "Archive"}
@@ -238,11 +260,12 @@ export default function BuyerOrders() {
   return (
     <BuyerLayout>
       <div className="mx-auto max-w-5xl p-4 sm:p-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Orders</h1>
-        <p className="text-sm text-gray-500">Track your orders and cancel before the farmer accepts</p>
+        <PhotoHeader photo={BUYER_PHOTOS.crates} eyebrow="From the farm to you" title="My Orders" position="object-[50%_40%]">
+          <p className="mt-1 text-sm text-cream/85">Track your orders and cancel before the farmer accepts</p>
+        </PhotoHeader>
 
-        <div className="mt-5 rounded-xl border border-gray-200/70 bg-white shadow-sm">
-          <div role="tablist" aria-label="Show orders" className="flex overflow-x-auto border-b border-gray-100">
+        <div className="mt-5 rounded-[1.5rem] border border-gray-200 bg-paper shadow-soft">
+          <div role="tablist" aria-label="Show orders" className="flex gap-1 overflow-x-auto border-b border-gray-200 p-1.5">
             {filters.map(({ key, label }) => {
               const count = key ? inTab(key).length : 0;
               const chosen = status === key;
@@ -253,12 +276,17 @@ export default function BuyerOrders() {
                   role="tab"
                   aria-selected={chosen}
                   onClick={() => setStatus(key)}
-                  className={`min-w-fit flex-1 whitespace-nowrap border-b-2 px-4 py-3 text-sm transition ${
-                    chosen
-                      ? "border-[#2f8f66] font-semibold text-[#2f8f66]"
-                      : "border-transparent text-gray-600 hover:text-gray-900"
+                  className={`relative isolate min-w-fit flex-1 whitespace-nowrap rounded-full px-4 py-2.5 text-sm transition-colors ${
+                    chosen ? "font-semibold text-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   }`}
                 >
+                  {chosen && (
+                    <motion.span
+                      layoutId="buyer-orders-tab-pill"
+                      className="absolute inset-0 -z-10 rounded-full bg-brand shadow-[0_8px_18px_-10px_rgb(31_81_48/0.9)]"
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    />
+                  )}
                   {label}
                   {count > 0 && ` (${count})`}
                 </button>
@@ -274,14 +302,14 @@ export default function BuyerOrders() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by farm name, order ID or product"
                 aria-label="Search your orders"
-                className="w-full rounded-lg border border-transparent bg-gray-50 py-2.5 pl-9 pr-9 text-sm focus:border-[#2f8f66] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+                className="w-full rounded-full border border-transparent bg-cream py-2.5 pl-9 pr-9 text-sm focus:border-brand focus:bg-paper focus:outline-none focus:ring-4 focus:ring-brand/15"
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
                   aria-label="Clear the search"
-                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -290,25 +318,33 @@ export default function BuyerOrders() {
           </div>
         </div>
 
-        {loading && <p className="mt-6 text-sm text-gray-500">Loading your orders...</p>}
+        {loading && (
+          <div className="mt-6">
+            <RowSkeletons />
+          </div>
+        )}
         {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
         {archiveError && <p className="mt-6 text-sm text-red-600">{archiveError}</p>}
 
         {!loading && !error && (
           <>
-            <ul className="mt-4 space-y-4" data-testid="order-cards">
+            {/* Each order rises in as it is scrolled to (useScrollReveal). */}
+            <ul className="mt-4 space-y-4" data-testid="order-cards" data-reveal-children>
               {visibleOrders.map((o) => (
                 <OrderCard key={o._id} order={o} actions={actionsFor(o)} />
               ))}
             </ul>
             {visibleOrders.length === 0 && (
-              <p className="mt-4 rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
-                {needle
-                  ? `No orders match "${query.trim()}".`
-                  : status === "archived"
-                    ? "No archived orders."
-                    : "No orders found."}
-              </p>
+              <PhotoEmptyState
+                photo={BUYER_PHOTOS.grainSacks}
+                title={
+                  needle
+                    ? `No orders match "${query.trim()}".`
+                    : status === "archived"
+                      ? "No archived orders."
+                      : "No orders found."
+                }
+              />
             )}
           </>
         )}

@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 import { Star } from "lucide-react";
+import { AuthAlert } from "../auth/AuthParts";
 import Modal from "../Modal";
 import { createRating } from "../../services/api";
 
@@ -37,28 +39,39 @@ export default function RateProductModal({ order, onClose, onSubmitted }) {
         {order.farmer?.farmName || order.farmer?.name}?
       </p>
 
-      {error && (
-        <div className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-      )}
+      <AuthAlert>{error}</AuthAlert>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div className="flex justify-center gap-1">
           {[1, 2, 3, 4, 5].map((value) => (
-            <button
+            <motion.button
               key={value}
               type="button"
               onClick={() => setStars(value)}
               onMouseEnter={() => setHovered(value)}
               onMouseLeave={() => setHovered(0)}
               aria-label={`${value} star${value === 1 ? "" : "s"}`}
-              className="p-1"
+              aria-pressed={value <= stars}
+              className="rounded-full p-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold-300/50"
+              whileHover={{ scale: 1.18, y: -2 }}
+              whileTap={{ scale: 0.88 }}
+              transition={{ type: "spring", stiffness: 500, damping: 18 }}
             >
-              <Star
-                className={`h-8 w-8 ${
-                  value <= (hovered || stars) ? "fill-amber-400 text-amber-400" : "text-gray-300"
-                }`}
-              />
-            </button>
+              {/* The stars up to the one chosen pop in turn as it is chosen. */}
+              <motion.span
+                key={value <= stars ? `on-${stars}` : "off"}
+                className="block"
+                initial={value <= stars ? { scale: 0.6, rotate: -20 } : false}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 520, damping: 14, delay: value * 0.04 }}
+              >
+                <Star
+                  className={`h-9 w-9 transition-colors duration-150 ${
+                    value <= (hovered || stars) ? "fill-gold-400 text-gold-500" : "text-gray-300"
+                  }`}
+                />
+              </motion.span>
+            </motion.button>
           ))}
         </div>
 
@@ -72,7 +85,7 @@ export default function RateProductModal({ order, onClose, onSubmitted }) {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Share your experience with this product..."
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+            className="mt-1 w-full rounded-xl border border-gray-300 bg-paper px-3.5 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15"
           />
         </div>
 
@@ -81,14 +94,14 @@ export default function RateProductModal({ order, onClose, onSubmitted }) {
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            className="flex-1 rounded-full border border-gray-300 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:border-brand hover:text-brand disabled:opacity-60"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56] disabled:opacity-60"
+            className="flex-1 rounded-full bg-brand py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
           >
             {submitting ? "Submitting..." : "Submit Rating"}
           </button>

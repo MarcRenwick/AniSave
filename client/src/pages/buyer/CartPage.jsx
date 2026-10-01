@@ -1,12 +1,17 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ClipboardList, ImageOff, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { ClipboardList, ImageOff, Trash2 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { SERVER_URL } from "../../services/api";
 import ProductImage from "../../components/products/ProductImage";
 import RemoveCartItemModal from "../../components/buyer/RemoveCartItemModal";
 import useScrollReveal from "../../hooks/useScrollReveal";
+import useHarvestTheme from "../../theme/useHarvestTheme";
+import { PhotoBand, PhotoEmptyState } from "../../components/buyer/BuyerVisuals";
+import { BUYER_PHOTOS } from "../../utils/buyerPhotos";
+import { EASE } from "../../theme/harvest";
 import { amountOf, perUnit, totalAmounts, unitOf, unitWord, unitWords } from "../../utils/units";
 
 const peso = (amount) => `₱ ${Number(amount || 0).toLocaleString()}`;
@@ -46,7 +51,7 @@ function QuantityBox({ item, onChange }) {
         onClick={() => step(-1)}
         disabled={item.quantity <= 1}
         aria-label={`One ${unitWord(unitOf(item))} less of ${item.title}`}
-        className="h-8 w-8 rounded-md border border-gray-300 text-lg leading-none text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+        className="h-9 w-9 rounded-full border border-gray-300 bg-paper text-lg leading-none text-gray-700 transition-colors hover:border-brand hover:text-brand disabled:opacity-40"
       >
         −
       </button>
@@ -66,14 +71,14 @@ function QuantityBox({ item, onChange }) {
             commit(e.target.value);
           }
         }}
-        className="h-9 w-14 rounded-md border border-gray-400 text-center text-sm text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+        className="h-9 w-14 rounded-full border border-gray-300 bg-paper text-center text-sm font-semibold text-gray-900 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15"
       />
       <button
         type="button"
         onClick={() => step(1)}
         disabled={item.quantity >= item.stock}
         aria-label={`One ${unitWord(unitOf(item))} more of ${item.title}`}
-        className="h-8 w-8 rounded-md border border-gray-300 text-lg leading-none text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+        className="h-9 w-9 rounded-full border border-gray-300 bg-paper text-lg leading-none text-gray-700 transition-colors hover:border-brand hover:text-brand disabled:opacity-40"
       >
         +
       </button>
@@ -94,6 +99,7 @@ export default function CartPage() {
   const [removing, setRemoving] = useState(null);
   const rootRef = useRef(null);
   useScrollReveal(rootRef);
+  useHarvestTheme();
 
   const toggleSelected = (productId) => {
     setSelected((prev) => {
@@ -130,46 +136,63 @@ export default function CartPage() {
     navigate("/buyer/checkout", { state: { items: selectedItems, fromCart: true } });
   };
 
-  const headCell = "px-4 py-4 text-center text-base font-bold text-gray-800";
+  const headCell = "px-4 py-4 text-center text-sm font-bold uppercase tracking-[0.08em] text-gray-600";
+  // A row as it arrives, and as it goes when removed.
+  const rowMotion = {
+    layout: "position",
+    initial: { opacity: 0, y: 10 },
+    animate: { opacity: 1, y: 0 },
+    exit: { opacity: 0, x: -24, transition: { duration: 0.22 } },
+    transition: { duration: 0.35, ease: EASE },
+  };
 
   return (
-    <div ref={rootRef} className="min-h-screen bg-gray-50">
-      <div className="flex items-center gap-4 bg-[#2f8f66] px-6 py-5 text-white max-sm:gap-3 max-sm:px-4">
-        <button type="button" onClick={() => navigate(-1)} aria-label="Back">
-          <ArrowLeft className="h-6 w-6" />
-        </button>
-        <h1 className="flex-1 text-center text-xl font-semibold">Shopping Cart</h1>
-        <Link
-          to="/buyer/orders"
-          className="flex items-center gap-2 rounded-full bg-black/20 px-4 py-2 text-sm font-semibold hover:bg-black/30"
-        >
-          <ClipboardList className="h-4 w-4" />
-          My Orders
-        </Link>
-      </div>
+    <div ref={rootRef} className="buyer-field harvest-grain min-h-screen bg-cream">
+      {/* The header: woven baskets of carrots on an earthy shade. */}
+      <PhotoBand
+        photo={BUYER_PHOTOS.baskets}
+        eyebrow="Your basket"
+        title="Shopping Cart"
+        onBack={() => navigate(-1)}
+        testId="cart-header"
+        right={
+          <Link
+            to="/buyer/orders"
+            className="flex shrink-0 items-center gap-2 rounded-full bg-cream/10 px-4 py-2 text-sm font-semibold ring-1 ring-cream/25 backdrop-blur-sm transition-colors hover:bg-cream/20"
+          >
+            <ClipboardList className="h-4 w-4" />
+            My Orders
+          </Link>
+        }
+      />
 
       {items.length === 0 ? (
-        <div className="p-10 text-center">
-          <p className="text-base text-gray-500">Your cart is empty.</p>
-          <Link
-            to="/buyer/home"
-            className="mt-4 inline-block rounded-md bg-[#2f8f66] px-6 py-2.5 text-base font-semibold text-white hover:bg-[#267a56]"
-          >
-            Browse Products
-          </Link>
-        </div>
+        <PhotoEmptyState
+          photo={BUYER_PHOTOS.emptyTray}
+          title="Your cart is empty."
+          action={
+            <Link
+              to="/buyer/home"
+              className="inline-block rounded-full bg-brand px-6 py-2.5 text-base font-semibold text-white shadow-[0_10px_24px_-12px_rgb(31_81_48/0.8)] transition-colors hover:bg-brand-hover"
+            >
+              Browse Products
+            </Link>
+          }
+        >
+          Fresh produce you add from the market waits here until you check out.
+        </PhotoEmptyState>
       ) : (
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-          <h2 className="text-2xl font-bold text-[#2f8f66]" data-reveal>
+          <h2 className="font-display text-3xl font-semibold text-gray-900" data-reveal>
             Cart
           </h2>
 
           <div
-            className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+            className="mt-4 overflow-hidden rounded-[1.75rem] border border-gray-200 bg-paper shadow-soft"
             data-reveal
           >
             <table className="w-full max-md:hidden">
-              <thead className="bg-gray-200">
+              <thead className="bg-sand">
                 <tr>
                   <th scope="col" className="w-14 px-4 py-4">
                     <input
@@ -177,10 +200,10 @@ export default function CartPage() {
                       checked={items.length > 0 && selected.size === items.length}
                       onChange={toggleSelectAll}
                       aria-label="Select every item in the cart"
-                      className="h-5 w-5 accent-[#2f8f66]"
+                      className="h-5 w-5 accent-brand"
                     />
                   </th>
-                  <th scope="col" className="px-2 py-4 text-left text-base font-bold text-gray-800">
+                  <th scope="col" className="px-2 py-4 text-left text-sm font-bold uppercase tracking-[0.08em] text-gray-600">
                     Products
                   </th>
                   <th scope="col" className={headCell}>
@@ -199,35 +222,36 @@ export default function CartPage() {
               </thead>
 
               <tbody>
+                <AnimatePresence initial={false}>
                 {items.map((item) => (
-                  <tr key={item.productId} className="border-b border-gray-100 last:border-0">
+                  <motion.tr key={item.productId} {...rowMotion} className="border-b border-gray-200 transition-colors last:border-0 hover:bg-cream/70">
                     <td className="px-4 py-5 align-middle">
                       <input
                         type="checkbox"
                         checked={selected.has(item.productId)}
                         onChange={() => toggleSelected(item.productId)}
                         aria-label={`Include ${item.title} in the checkout`}
-                        className="h-5 w-5 accent-[#2f8f66]"
+                        className="h-5 w-5 accent-brand"
                       />
                     </td>
 
                     <td className="px-2 py-5">
                       <div className="flex items-center gap-4">
-                        <div className="flex h-16 w-16 shrink-0 items-center justify-center">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-sand/70 p-1">
                           {item.image ? (
                             <ProductImage
                               src={`${SERVER_URL}${item.image}`}
                               alt={item.title}
-                              className="h-full w-full rounded-md object-contain"
+                              className="h-full w-full rounded-xl object-contain"
                             />
                           ) : (
-                            <ImageOff className="h-6 w-6 text-gray-300" />
+                            <ImageOff className="h-6 w-6 text-gray-400" />
                           )}
                         </div>
                         <div className="min-w-0">
                           <Link
                             to={`/buyer/products/${item.productId}`}
-                            className="text-base font-medium text-gray-900 hover:underline"
+                            className="font-display text-lg font-semibold text-gray-900 hover:text-brand hover:underline"
                           >
                             {item.title}
                           </Link>
@@ -257,7 +281,7 @@ export default function CartPage() {
                       />
                     </td>
 
-                    <td className="px-4 py-5 text-center text-base font-semibold text-gray-900">
+                    <td className="px-4 py-5 text-center text-base font-bold text-forest-700">
                       {peso(item.price * item.quantity)}
                     </td>
 
@@ -266,47 +290,49 @@ export default function CartPage() {
                         type="button"
                         onClick={() => setRemoving(item)}
                         aria-label={`Remove ${item.title} from the cart`}
-                        className="text-orange-500 transition hover:text-red-600"
+                        className="rounded-full p-2 text-clay-500 transition-colors hover:bg-tomato-50 hover:text-tomato-600"
                       >
                         <Trash2 className="h-5 w-5" />
                       </button>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))}
+                </AnimatePresence>
               </tbody>
             </table>
 
             {/* Phones: each item is a card - the table's six columns don't fit. */}
             <div className="md:hidden" data-testid="cart-cards">
-              <label className="flex items-center gap-3 bg-gray-200 px-4 py-3 text-base font-bold text-gray-800">
+              <label className="flex items-center gap-3 bg-sand px-4 py-3 text-base font-bold text-gray-800">
                 <input
                   type="checkbox"
                   checked={items.length > 0 && selected.size === items.length}
                   onChange={toggleSelectAll}
                   aria-label="Select every item in the cart"
-                  className="h-5 w-5 accent-[#2f8f66]"
+                  className="h-5 w-5 accent-brand"
                 />
                 Select all
               </label>
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-gray-200">
+                <AnimatePresence initial={false}>
                 {items.map((item) => (
-                  <li key={item.productId} className="flex gap-3 px-4 py-4">
+                  <motion.li key={item.productId} {...rowMotion} className="flex gap-3 px-4 py-4">
                     <input
                       type="checkbox"
                       checked={selected.has(item.productId)}
                       onChange={() => toggleSelected(item.productId)}
                       aria-label={`Include ${item.title} in the checkout`}
-                      className="mt-5 h-5 w-5 shrink-0 accent-[#2f8f66]"
+                      className="mt-5 h-5 w-5 shrink-0 accent-brand"
                     />
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-sand/70 p-1">
                       {item.image ? (
                         <ProductImage
                           src={`${SERVER_URL}${item.image}`}
                           alt={item.title}
-                          className="h-full w-full rounded-md object-contain"
+                          className="h-full w-full rounded-xl object-contain"
                         />
                       ) : (
-                        <ImageOff className="h-6 w-6 text-gray-300" />
+                        <ImageOff className="h-6 w-6 text-gray-400" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -314,7 +340,7 @@ export default function CartPage() {
                         <div className="min-w-0">
                           <Link
                             to={`/buyer/products/${item.productId}`}
-                            className="block truncate text-base font-medium text-gray-900 hover:underline"
+                            className="block truncate font-display text-lg font-semibold text-gray-900 hover:text-brand hover:underline"
                           >
                             {item.title}
                           </Link>
@@ -324,7 +350,7 @@ export default function CartPage() {
                           type="button"
                           onClick={() => setRemoving(item)}
                           aria-label={`Remove ${item.title} from the cart`}
-                          className="shrink-0 p-1 text-orange-500 transition hover:text-red-600"
+                          className="shrink-0 rounded-full p-1.5 text-clay-500 transition-colors hover:bg-tomato-50 hover:text-tomato-600"
                         >
                           <Trash2 className="h-5 w-5" />
                         </button>
@@ -341,23 +367,32 @@ export default function CartPage() {
                           item={item}
                           onChange={(quantity) => updateQuantity(item.productId, quantity)}
                         />
-                        <p className="text-base font-semibold text-gray-900">{peso(item.price * item.quantity)}</p>
+                        <p className="text-base font-bold text-forest-700">{peso(item.price * item.quantity)}</p>
                       </div>
                     </div>
-                  </li>
+                  </motion.li>
                 ))}
+                </AnimatePresence>
               </ul>
             </div>
           </div>
 
           <div
-            className="mt-6 flex flex-col gap-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between"
+            className="mt-6 flex flex-col gap-5 rounded-[1.75rem] bg-[linear-gradient(110deg,#0f2418,#1f5130)] p-6 text-cream shadow-lift sm:flex-row sm:items-center sm:justify-between"
             data-reveal
           >
             <div>
-              <p className="text-sm text-gray-500">Total expense</p>
-              <p className="text-3xl font-bold text-[#2f8f66]">{peso(totalExpense)}</p>
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-200">Total expense</p>
+              <motion.p
+                key={totalExpense}
+                initial={{ opacity: 0.4, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="mt-1 font-display text-4xl font-semibold text-cream"
+              >
+                {peso(totalExpense)}
+              </motion.p>
+              <p className="mt-1 text-xs text-cream/75">
                 {selectedItems.length} of {items.length} item{items.length === 1 ? "" : "s"} ticked ·{" "}
                 {totalAmount}
               </p>
@@ -368,14 +403,14 @@ export default function CartPage() {
                 type="button"
                 onClick={handleProceedToCheckout}
                 disabled={selectedItems.length === 0}
-                className="rounded-full bg-[#2f8f66] px-8 py-3 text-base font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+                className="rounded-full bg-gold-400 px-8 py-3 text-base font-semibold text-night shadow-glow-gold transition-colors hover:bg-gold-300 disabled:opacity-60 disabled:shadow-none"
               >
                 Check Out ({selectedItems.length})
               </button>
             ) : (
               <Link
                 to="/login"
-                className="rounded-full bg-[#2f8f66] px-8 py-3 text-center text-base font-semibold text-white hover:bg-[#267a56]"
+                className="rounded-full bg-gold-400 px-8 py-3 text-center text-base font-semibold text-night shadow-glow-gold transition-colors hover:bg-gold-300"
               >
                 Log in to checkout
               </Link>

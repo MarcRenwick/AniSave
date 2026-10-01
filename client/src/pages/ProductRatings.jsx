@@ -19,7 +19,7 @@ function Stars({ value, className = "h-4 w-4" }) {
         <Star
           key={n}
           className={`${className} ${
-            n <= Math.round(value) ? "fill-amber-400 text-amber-400" : "text-gray-300"
+            n <= Math.round(value) ? "fill-gold-400 text-gold-500" : "text-gray-300"
           }`}
         />
       ))}
@@ -36,7 +36,7 @@ export default function ProductRatings() {
   const smoothNavigate = useSmoothNavigate();
   const { user } = useAuth();
   // The farmer's own copy of this page is in the harvest look; a buyer's isn't.
-  useHarvestTheme(user?.role === "farmer");
+  useHarvestTheme(user?.role !== "admin");
   const canLike = user?.role === "buyer";
   // A report just sent from the form left the time behind (utils/reviewReports.js),
   // since stepping back here could not carry it. Shown until it is closed - but
@@ -113,8 +113,8 @@ export default function ProductRatings() {
 
       <div className="mx-auto max-w-3xl p-4 sm:p-8">
         {loading &&
-          (user?.role === "farmer" ? <SproutLoader label="Loading..." /> : <p className="text-sm text-gray-600">Loading...</p>)}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+          (user?.role !== "admin" ? <SproutLoader label="Loading..." /> : <p className="text-sm text-gray-600">Loading...</p>)}
+        {error && <p className="text-sm text-tomato-700">{error}</p>}
 
         {!loading && !error && (
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
@@ -158,7 +158,7 @@ export default function ProductRatings() {
             </div>
 
             {likeError && (
-              <div className="mx-6 mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+              <div className="mx-6 mt-4 rounded-md bg-tomato-50 px-3 py-2 text-sm text-tomato-700">
                 {likeError}
               </div>
             )}

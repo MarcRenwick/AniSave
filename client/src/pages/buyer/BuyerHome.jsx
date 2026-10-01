@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Sprout, Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import HomeBanner from "../../components/buyer/HomeBanner";
 import ProductCard from "../../components/products/ProductCard";
+import { CardSkeletons, PhotoEmptyState } from "../../components/buyer/BuyerVisuals";
+import { BUYER_PHOTOS } from "../../utils/buyerPhotos";
+import { EASE } from "../../theme/harvest";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
@@ -32,17 +36,60 @@ const FEATURED_SLIDES = 3;
 // would win over the reveal's slow drift and leave the card snapping into
 // place. A plain wrapper has no such transition to lose the argument with; a
 // one-cell grid so the card still fills it in both directions.
-function ProductGrid({ products, onOpen }) {
+//
+// When the list changes under it (a different sort), each card glides from
+// where it was to where it now belongs, new ones grow in and gone ones fade
+// - the motion is on an inner layer, so it never fights the reveal.
+function ProductGrid({ products, onOpen, busy = false }) {
+  const reduced = useReducedMotion();
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-3 lg:grid-cols-4" data-reveal-children>
-      {products.map((product) => (
-        <div key={product._id} className="grid min-w-0">
-          <ProductCard product={product} onOpen={() => onOpen(product._id)} />
-        </div>
-      ))}
+    <div
+      className={`grid grid-cols-2 gap-3 transition-opacity duration-300 sm:gap-5 md:grid-cols-3 lg:grid-cols-4 ${busy ? "opacity-55" : ""}`}
+      aria-busy={busy || undefined}
+      data-reveal-children
+    >
+      <AnimatePresence initial={false} mode="popLayout">
+        {products.map((product) => (
+          <div key={product._id} className="grid min-w-0">
+            <motion.div
+              layout={!reduced}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.94, transition: { duration: 0.18 } }}
+              transition={{ layout: { type: "spring", stiffness: 260, damping: 30 }, duration: 0.35, ease: EASE }}
+              className="grid min-w-0"
+            >
+              <ProductCard product={product} onOpen={() => onOpen(product._id)} />
+            </motion.div>
+          </div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
+
+// A section's heading: the name in the display face, with how many beside it
+// (beside, not inside - the heading itself still reads just "All Products").
+function SectionTitle({ children, count }) {
+  return (
+    <div className="mb-4 flex items-baseline gap-3" data-reveal>
+      <h2 className="font-display text-2xl font-semibold text-gray-900">{children}</h2>
+      {count > 0 && (
+        <span className="rounded-full bg-forest-50 px-2.5 py-0.5 text-xs font-semibold text-forest-800 ring-1 ring-forest-100" aria-label={`${count} listings`}>
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
+const initials = (name = "") =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0].toUpperCase())
+    .join("") || "A";
 
 export default function BuyerHome() {
   const navigate = useNavigate();
@@ -167,7 +214,7 @@ export default function BuyerHome() {
   return (
     <BuyerLayout>
       <div className="p-4 sm:p-8">
-        <div className="mb-8" data-reveal>
+        <div className="mb-10" data-reveal>
           <HomeBanner
             featured={featured}
             buyerLocation={user?.address?.city || user?.location}
@@ -176,61 +223,75 @@ export default function BuyerHome() {
             onOpenProduct={openProduct}
           />
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 shadow-sm">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5 rounded-[1.4rem] bg-paper px-3 py-2.5 shadow-soft ring-1 ring-gray-200" data-testid="sort-row">
             {sortOptions.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setSort(sort === key ? null : key)}
                 aria-pressed={sort === key}
-                className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition duration-150 active:scale-95 ${
-                  sort === key ? "bg-[#2f8f66] text-white" : "text-gray-700 hover:bg-gray-100"
+                className={`relative isolate flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/25 active:scale-95 ${
+                  sort === key ? "text-white" : "text-gray-700 hover:bg-gray-100"
                 }`}
               >
-                <Icon className={`h-4 w-4 ${sort === key ? "" : "text-[#2f8f66]"}`} />
+                {sort === key && (
+                  <motion.span
+                    layoutId="market-sort-pill"
+                    className="absolute inset-0 -z-10 rounded-full bg-brand shadow-[0_8px_18px_-10px_rgb(31_81_48/0.9)]"
+                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  />
+                )}
+                <Icon className={`h-4 w-4 ${sort === key ? "" : "text-clay-500"}`} />
                 {label}
               </button>
             ))}
           </div>
         </div>
 
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
+        {/* Loading: placeholders the shape of the cards - unless a sorted
+            list is already showing, which stays (dimmed) so its cards can
+            glide to their new places when the next order arrives. */}
+        {loading && !(browsing && products.length > 0) && <CardSkeletons />}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        {!loading && !error && browsing && (
+        {(!loading || products.length > 0) && !error && browsing && (
           <section>
-            <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>
+            <h2 className="mb-4 font-display text-2xl font-semibold text-gray-900" data-reveal>
               {search.trim() ? "Search Results" : "All Products"}{" "}
-              <span className="text-sm font-normal text-gray-400">
+              <span className="font-body text-sm font-normal text-gray-500">
                 · Sorted by {sortOptions.find((o) => o.key === (sort || "newest"))?.label}
               </span>
             </h2>
             {sort === "nearest" && noAddressHint && (
-              <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{noAddressHint}</p>
+              <p className="mb-4 rounded-xl bg-gold-50 px-3.5 py-2.5 text-xs text-soil-700 ring-1 ring-gold-100">{noAddressHint}</p>
             )}
             {products.length === 0 ? (
-              <p className="text-sm text-gray-500">No products found.</p>
+              <PhotoEmptyState photo={BUYER_PHOTOS.marketLane} title="No products found.">
+                Try another word, or browse everything the farms near you have listed.
+              </PhotoEmptyState>
             ) : (
-              <ProductGrid products={products} onOpen={openProduct} />
+              <ProductGrid products={products} onOpen={openProduct} busy={loading} />
             )}
           </section>
         )}
 
         {!loading && !error && !browsing && (
-          <div className="space-y-8">
+          <div className="space-y-12">
             <section id="home-products">
-              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>All Products</h2>
+              <SectionTitle count={allProducts.length}>All Products</SectionTitle>
               {allProducts.length === 0 ? (
-                <p className="text-sm text-gray-500">No products yet.</p>
+                <PhotoEmptyState photo={BUYER_PHOTOS.marketLane} title="No products yet.">
+                  Farmers&apos; listings show up here as soon as they post them.
+                </PhotoEmptyState>
               ) : (
                 <ProductGrid products={allProducts} onOpen={openProduct} />
               )}
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>Recommended for You</h2>
+              <SectionTitle>Recommended for You</SectionTitle>
               {recommendedProducts.length === 0 ? (
-                <p className="text-sm text-gray-500">
+                <p className="rounded-xl bg-paper px-4 py-3 text-sm text-gray-500 ring-1 ring-gray-200">
                   No highly-rated products yet - check back once buyers start rating orders.
                 </p>
               ) : (
@@ -239,15 +300,15 @@ export default function BuyerHome() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>Nearest Farmers</h2>
+              <SectionTitle>Nearest Farmers</SectionTitle>
               {noAddressHint && (
-                <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{noAddressHint}</p>
+                <p className="mb-4 rounded-xl bg-gold-50 px-3.5 py-2.5 text-xs text-soil-700 ring-1 ring-gold-100">{noAddressHint}</p>
               )}
               {nearestFarmers.length === 0 ? (
-                <p className="text-sm text-gray-500">No farmers yet.</p>
+                <p className="rounded-xl bg-paper px-4 py-3 text-sm text-gray-500 ring-1 ring-gray-200">No farmers yet.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4" data-reveal-children>
-                  {nearestFarmers.map((farmer) => (
+                  {nearestFarmers.map((farmer, i) => (
                     // Wrapped for the same reason as a listing card: the tile
                     // is a button, and its own transition would outrun the
                     // reveal.
@@ -255,10 +316,24 @@ export default function BuyerHome() {
                     <button
                       type="button"
                       onClick={() => navigate(`/buyer/farmers/${farmer._id}`)}
-                      className="flex flex-col items-center gap-2 rounded-xl bg-white p-4 text-center shadow-sm transition duration-150 hover:shadow-md active:scale-[0.97]"
+                      className="group flex flex-col items-center gap-2 overflow-hidden rounded-[1.4rem] bg-paper px-4 pb-4 text-center shadow-soft ring-1 ring-gray-200 transition-[translate,box-shadow] duration-300 ease-harvest hover:-translate-y-1 hover:shadow-lift focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/30 active:scale-[0.97]"
+                      data-testid="farm-tile"
                     >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-[#2f8f66]">
-                        <Sprout className="h-6 w-6" />
+                      <span className="relative -mx-4 block h-20 w-[calc(100%+2rem)] overflow-hidden">
+                        <img
+                          src={BUYER_PHOTOS.farmTerraces.src}
+                          srcSet={BUYER_PHOTOS.farmTerraces.srcSet}
+                          sizes="16rem"
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover transition-transform duration-700 ease-harvest group-hover:scale-110"
+                          style={{ objectPosition: `${[20, 50, 80, 35][i % 4]}% 60%` }}
+                        />
+                        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-night/45 to-transparent" />
+                      </span>
+                      <div className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-forest-700 font-display text-lg font-semibold text-cream ring-4 ring-paper">
+                        {initials(farmer.farmName || farmer.name)}
                       </div>
                       <p className="truncate text-sm font-semibold text-gray-900">
                         {farmer.farmName || farmer.name}
@@ -267,12 +342,12 @@ export default function BuyerHome() {
                         {cityAndProvince(farmer) || farmer.location || "Location not set"}
                       </p>
                       {formatDistance(farmer) && (
-                        <p className="flex items-center gap-1 text-xs font-semibold text-[#2f8f66]">
+                        <p className="flex items-center gap-1 text-xs font-semibold text-brand">
                           <MapPin className="h-3 w-3" /> {formatDistance(farmer)}
                         </p>
                       )}
                       {farmer.rating > 0 && (
-                        <p className="flex items-center gap-1 text-xs text-amber-500">
+                        <p className="flex items-center gap-1 text-xs font-semibold text-gold-700">
                           <Star className="h-3 w-3 fill-current" /> {farmer.rating.toFixed(1)}
                         </p>
                       )}
@@ -284,9 +359,9 @@ export default function BuyerHome() {
             </section>
 
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-gray-900" data-reveal>Newest Products</h2>
+              <SectionTitle>Newest Products</SectionTitle>
               {newestProducts.length === 0 ? (
-                <p className="text-sm text-gray-500">No products yet.</p>
+                <p className="rounded-xl bg-paper px-4 py-3 text-sm text-gray-500 ring-1 ring-gray-200">No products yet.</p>
               ) : (
                 <ProductGrid products={newestProducts} onOpen={openProduct} />
               )}

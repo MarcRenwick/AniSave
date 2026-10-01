@@ -17,7 +17,7 @@ export default function BuyerTopBar({ children, search, onSearchChange, searchPl
             value={search}
             onChange={(e) => onSearchChange?.(e.target.value)}
             placeholder={searchPlaceholder}
-            className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm transition focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+            className="w-full rounded-full border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm transition focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
         </div>
       )}

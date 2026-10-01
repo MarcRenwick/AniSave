@@ -28,7 +28,7 @@ export default function BlockUserModal({ name, error, submitting, onClose, onCon
               Are you sure you want to block this user? You will no longer see their shop, and you
               won&apos;t be able to comment on or buy their products.
             </p>
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+            {error && <p className="mt-3 text-sm text-tomato-700">{error}</p>}
           </div>
 
           <div className="grid grid-cols-2 divide-x divide-gray-200 border-t border-gray-200">
@@ -45,7 +45,7 @@ export default function BlockUserModal({ name, error, submitting, onClose, onCon
               onClick={onConfirm}
               disabled={submitting}
               autoFocus
-              className="py-3 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+              className="py-3 text-sm font-semibold text-brand transition hover:bg-green-50 disabled:opacity-60"
             >
               {submitting ? "Blocking..." : "Block"}
             </button>

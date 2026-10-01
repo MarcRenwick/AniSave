@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { useParams, useNavigate, useNavigationType, useLocation, Link } from "react-router-dom";
 import { ArrowLeft, Package, Star, ShoppingBasket } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
@@ -8,6 +9,10 @@ import CheckoutModal from "../../components/buyer/CheckoutModal";
 import ProductGallery from "../../components/products/ProductGallery";
 import PriceTag from "../../components/products/PriceTag";
 import Avatar from "../../components/Avatar";
+import { BlockSkeleton } from "../../components/buyer/BuyerVisuals";
+import { categoryPhoto } from "../../utils/categoryPhotos";
+import { categoryLabel } from "../../utils/categories";
+import { EASE } from "../../theme/harvest";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getProduct, getFarmerProfile } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -20,10 +25,18 @@ function Stat({ label, value }) {
   return (
     <div className="flex items-center justify-between gap-8">
       <span className="text-gray-500">{label}</span>
-      <span className="font-semibold text-red-600">{value}</span>
+      <span className="font-display text-lg font-semibold text-forest-700">{value}</span>
     </div>
   );
 }
+
+// The page's panels: paper on the cream, rising in one after another.
+const panel = "rounded-[1.75rem] bg-paper shadow-soft ring-1 ring-gray-200";
+const rise = (delay = 0) => ({
+  initial: { opacity: 0, y: 18 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.55, delay, ease: EASE },
+});
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -105,34 +118,51 @@ export default function ProductDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-900"
+          className="group flex w-fit items-center gap-2 rounded-full border border-gray-300 bg-paper px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/25"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
           Back to Home
         </button>
       </BuyerTopBar>
 
       <div className="p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
+        {loading && (
+          <div className="grid gap-6 md:grid-cols-2">
+            <BlockSkeleton className="h-96" />
+            <BlockSkeleton className="h-96" />
+          </div>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && product && (
-          <div className="grid gap-6 rounded-2xl bg-white p-4 shadow-sm sm:p-6 md:grid-cols-2 md:gap-8">
+          <motion.div {...rise()} className={`grid gap-6 p-4 sm:p-6 md:grid-cols-2 md:gap-10 ${panel}`}>
             <div>
-              <ProductGallery key={product._id} product={product} />
+              {/* The photo the add-to-cart flight leaves from (cartFlight.js). */}
+              <div data-fly-source>
+                <ProductGallery key={product._id} product={product} />
+              </div>
 
               <Link
                 to={`/buyer/products/${product._id}/ratings`}
-                className="mx-auto mt-4 block w-fit rounded-md border-2 border-[#2f8f66] px-6 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 active:scale-95"
+                className="mx-auto mt-4 block w-fit rounded-full border-2 border-brand px-6 py-2 text-sm font-semibold text-brand transition-colors hover:bg-forest-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/25 active:scale-95"
               >
                 View Ratings
               </Link>
 
-              {buyMessage && (
-                <div className="mt-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
-                  {buyMessage}
-                </div>
-              )}
+              <AnimatePresence>
+                {buyMessage && (
+                  <motion.div
+                    key={buyMessage}
+                    role="status"
+                    initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                    className="mt-4 rounded-xl bg-forest-50 px-3.5 py-2.5 text-sm font-medium text-forest-800 ring-1 ring-forest-100"
+                  >
+                    {buyMessage}
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {user?.role === "buyer" ? (
                 <div className="mt-4 flex gap-3">
@@ -142,7 +172,7 @@ export default function ProductDetail() {
                     type="button"
                     onClick={() => setShowAddToCart(true)}
                     disabled={product.stock === 0 || isPreOrder}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-md border-2 border-[#2f8f66] py-3 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-brand py-3 text-sm font-semibold text-brand transition-colors hover:bg-forest-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/25 disabled:opacity-60"
                   >
                     <ShoppingBasket className="h-4 w-4" />
                     Add to Cart
@@ -151,8 +181,10 @@ export default function ProductDetail() {
                     type="button"
                     onClick={() => setShowCheckout(true)}
                     disabled={soldOut}
-                    className={`flex-1 rounded-md py-3 text-sm font-semibold text-white transition disabled:opacity-60 ${
-                      isPreOrder ? "bg-amber-500 hover:bg-amber-600" : "bg-green-600 hover:bg-green-700"
+                    className={`flex-1 rounded-full py-3 text-sm font-semibold shadow-[0_10px_24px_-12px_rgb(31_81_48/0.8)] transition-colors focus-visible:outline-none focus-visible:ring-4 disabled:opacity-60 ${
+                      isPreOrder
+                        ? "bg-gold-400 text-night hover:bg-gold-300 focus-visible:ring-gold-300/50"
+                        : "bg-brand text-white hover:bg-brand-hover focus-visible:ring-brand/30"
                     }`}
                   >
                     {isPreOrder ? "Pre-Order" : soldOut ? "Out of Stock" : "Buy Now"}
@@ -161,7 +193,7 @@ export default function ProductDetail() {
               ) : (
                 <Link
                   to="/login"
-                  className="mt-4 block w-full rounded-md bg-red-600 py-3 text-center text-sm font-semibold text-white transition hover:bg-red-700"
+                  className="mt-4 block w-full rounded-full bg-tomato-600 py-3 text-center text-sm font-semibold text-white shadow-glow-tomato transition-colors hover:bg-tomato-700"
                 >
                   Log in as a buyer to order
                 </Link>
@@ -169,17 +201,22 @@ export default function ProductDetail() {
             </div>
 
             <div>
-              <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-900">
+              {/* The listing's category, with a photo from the market. */}
+              <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-forest-50 py-1 pl-1 pr-3 text-xs font-bold uppercase tracking-[0.14em] text-forest-800 ring-1 ring-forest-100" data-testid="category-ribbon">
+                <img src={categoryPhoto(product.category).small} alt="" className="h-6 w-6 rounded-full object-cover" />
+                {categoryLabel(product.category)}
+              </span>
+              <h1 className="flex flex-wrap items-center gap-2 font-display text-3xl font-semibold leading-tight text-gray-900 sm:text-4xl">
                 {product.title}
                 {isPreOrder && (
-                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                  <span className="rounded-full bg-gold-200 px-2.5 py-0.5 font-body text-xs font-bold text-soil-700">
                     Pre-Order
                   </span>
                 )}
               </h1>
               <p className="mt-1 flex items-center gap-2 text-sm text-gray-500">
                 <Star
-                  className={`h-4 w-4 ${product.ratingCount > 0 ? "fill-amber-400 text-amber-400" : "text-gray-300"}`}
+                  className={`h-4 w-4 ${product.ratingCount > 0 ? "fill-gold-400 text-gold-500" : "text-gray-300"}`}
                 />
                 {product.ratingCount > 0
                   ? `${product.rating.toFixed(1)} (${product.ratingCount} rating${product.ratingCount === 1 ? "" : "s"})`
@@ -187,11 +224,13 @@ export default function ProductDetail() {
                 · Sold {product.sold || 0}
               </p>
 
-              <div className="mt-4 rounded-md bg-[#2f8f66] px-4 py-2">
+              {/* The price on deep green, with a sweep of light across it. */}
+              <div className="relative mt-5 overflow-hidden rounded-2xl bg-[linear-gradient(110deg,#173d24,#2e7d32)] px-5 py-3.5 shadow-soft" data-testid="price-band">
+                <span aria-hidden="true" className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-gradient-to-r from-transparent via-cream/25 to-transparent motion-safe:animate-[harvest-price-sweep_3.6s_var(--ease-harvest)_1s_infinite]" />
                 <PriceTag product={product} tone="light" size="lg" suffix={` per ${unitWord(unitOf(product))}`} />
               </div>
 
-              <dl className="mt-4 space-y-3 text-sm">
+              <dl className="mt-5 divide-y divide-gray-200 rounded-2xl bg-cream/70 px-4 text-sm ring-1 ring-gray-200 [&>div]:py-3">
                 <div>
                   <dt className="text-gray-500">Sold by</dt>
                   <dd className="font-medium text-gray-900">
@@ -205,7 +244,7 @@ export default function ProductDetail() {
                   </dd>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-gray-400" />
+                  <Package className="h-4 w-4 text-clay-500" />
                   <dt className="text-gray-500">Pick up</dt>
                   <dd className="font-medium text-gray-900">Ready for pickup</dd>
                 </div>
@@ -225,31 +264,31 @@ export default function ProductDetail() {
                 </div>
               </dl>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {!loading && !error && product && (
-          <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="bg-[#2f8f66] px-6 py-3 font-semibold text-white">
+          <motion.div {...rise(0.12)} className={`mt-6 overflow-hidden ${panel}`}>
+            <div className="bg-[linear-gradient(110deg,#0f2418,#1f5130)] px-6 py-3.5 font-display text-lg font-semibold text-cream">
               Product Description
             </div>
             <p className="whitespace-pre-line break-words p-6 text-sm leading-relaxed text-gray-700">
               {product.description || "No description provided yet."}
             </p>
-          </div>
+          </motion.div>
         )}
 
         {!loading && !error && product && farmerStats && (
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-2xl bg-white p-5 shadow-sm sm:gap-8 sm:p-7">
+          <motion.div {...rise(0.22)} className={`mt-6 flex flex-wrap items-center justify-between gap-5 p-5 sm:gap-8 sm:p-7 ${panel}`}>
             <div className="flex items-center gap-5">
               <Avatar
                 src={farmerStats.avatar}
                 alt={farmerStats.farmName || farmerStats.name}
-                className="h-20 w-20 rounded-full bg-green-100 text-[#2f8f66]"
+                className="h-20 w-20 rounded-full bg-forest-100 text-brand ring-4 ring-forest-50"
                 iconClass="h-10 w-10"
               />
               <div>
-                <p className="text-xl font-bold text-gray-900">
+                <p className="font-display text-2xl font-semibold text-gray-900">
                   {farmerStats.farmName || farmerStats.name}
                 </p>
                 {activeAgo(farmerStats.lastActiveAt) && (
@@ -258,13 +297,13 @@ export default function ProductDetail() {
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Link
                     to={`/buyer/farmers/${product.farmer._id}`}
-                    className="inline-block rounded-md border border-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95"
+                    className="inline-block rounded-full border border-brand px-4 py-1.5 text-sm font-semibold text-brand transition-colors duration-150 hover:bg-forest-50 active:scale-95"
                   >
                     View Seller
                   </Link>
                   <MessageFarmerButton
                     farmerId={product.farmer._id}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-[#2f8f66] bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95 disabled:opacity-60"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-brand bg-brand px-4 py-1.5 text-sm font-semibold text-white transition-colors duration-150 hover:bg-brand-hover active:scale-95 disabled:opacity-60"
                   />
                 </div>
               </div>
@@ -275,7 +314,7 @@ export default function ProductDetail() {
               <Stat label="Joined" value={timeAgo(farmerStats.createdAt)} />
               <Stat label="Products" value={farmerStats.productCount} />
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 

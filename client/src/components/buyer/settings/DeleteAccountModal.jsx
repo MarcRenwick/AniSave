@@ -39,12 +39,12 @@ export default function DeleteAccountModal({ onClose, onDeleted }) {
 
   return (
     <Modal title="Delete Account" onClose={onClose}>
-      {error && <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {error && <div className="mb-4 rounded-md bg-tomato-50 px-3 py-2 text-sm text-tomato-700">{error}</div>}
 
       {step === "warn" ? (
         <>
           <p className="text-sm text-gray-700">
-            This will <span className="font-semibold text-red-600">permanently delete</span> your
+            This will <span className="font-semibold text-tomato-700">permanently delete</span> your
             account and your order history. This cannot be undone.
           </p>
           <p className="mt-3 text-sm text-gray-600">
@@ -69,7 +69,7 @@ export default function DeleteAccountModal({ onClose, onDeleted }) {
               type="button"
               onClick={handleSendOtp}
               disabled={submitting}
-              className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              className="flex-1 rounded-md bg-tomato-600 py-2 text-sm font-semibold text-white hover:bg-tomato-700 disabled:opacity-60"
             >
               {submitting ? "Sending..." : "Send OTP"}
             </button>
@@ -101,7 +101,7 @@ export default function DeleteAccountModal({ onClose, onDeleted }) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 rounded-md bg-red-600 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+              className="flex-1 rounded-md bg-tomato-600 py-2 text-sm font-semibold text-white hover:bg-tomato-700 disabled:opacity-60"
             >
               {submitting ? "Deleting..." : "Confirm Delete"}
             </button>

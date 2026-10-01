@@ -36,7 +36,7 @@ export default function BlockedUsersModal({ onClose, onUnblocked }) {
 
   return (
     <Modal title="Blocked Users" onClose={onClose} maxWidth="max-w-md">
-      {error && <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
+      {error && <div className="mb-4 rounded-md bg-tomato-50 px-3 py-2 text-sm text-tomato-700">{error}</div>}
 
       {loading ? (
         <p className="text-sm text-gray-500">Loading...</p>
@@ -52,7 +52,7 @@ export default function BlockedUsersModal({ onClose, onUnblocked }) {
               <Avatar
                 src={farmer.avatar}
                 alt={farmer.farmName || farmer.name}
-                className="h-10 w-10 shrink-0 rounded-full bg-green-100 text-[#2f8f66]"
+                className="h-10 w-10 shrink-0 rounded-full bg-green-100 text-brand"
                 iconClass="h-5 w-5"
               />
               <div className="min-w-0 flex-1">
@@ -70,7 +70,7 @@ export default function BlockedUsersModal({ onClose, onUnblocked }) {
                 type="button"
                 onClick={() => handleUnblock(farmer)}
                 disabled={pendingId === farmer._id}
-                className="shrink-0 rounded-md border-2 border-[#2f8f66] px-4 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                className="shrink-0 rounded-md border-2 border-brand px-4 py-1.5 text-xs font-semibold text-brand transition hover:bg-green-50 disabled:opacity-60"
               >
                 {pendingId === farmer._id ? "Unblocking..." : "Unblock"}
               </button>

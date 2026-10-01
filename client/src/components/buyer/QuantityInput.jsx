@@ -95,8 +95,8 @@ export default function QuantityInput({ value, onChange, max, onValidChange, uni
           onFocus={(e) => e.target.select()}
           className={`w-16 rounded-md border py-1.5 text-center text-xl font-semibold focus:outline-none focus:ring-1 ${
             invalid
-              ? "border-red-400 text-red-600 focus:border-red-500 focus:ring-red-500"
-              : "border-gray-300 text-gray-900 focus:border-[#2f8f66] focus:ring-[#2f8f66]"
+              ? "border-red-400 text-tomato-700 focus:border-red-500 focus:ring-red-500"
+              : "border-gray-300 text-gray-900 focus:border-brand focus:ring-brand"
           }`}
         />
         <button
@@ -110,7 +110,7 @@ export default function QuantityInput({ value, onChange, max, onValidChange, uni
       </div>
 
       {invalid && (
-        <p role="alert" className="mt-2 text-center text-xs font-medium text-red-600">
+        <p role="alert" className="mt-2 text-center text-xs font-medium text-tomato-700">
           Enter at least 1 {unitWord(unit)}.
         </p>
       )}

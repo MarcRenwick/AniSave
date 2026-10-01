@@ -208,8 +208,8 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
   const [listLoading, setListLoading] = useState(true);
   const [thread, setThread] = useState({ id: null, conversation: null, messages: [], notice: null, error: "" });
   // The messages a conversation opened with. Anything after them - sent or
-  // received - springs into place on the farmer's side; the opening ones
-  // just appear, so a long conversation never plays out message by message.
+  // received - springs into place (on both sides); the opening ones just
+  // appear, so a long conversation never plays out message by message.
   const loadedIds = useRef(new Set());
   const [text, setText] = useState("");
   // A photo waiting to be sent, with the conversation it was chosen in.
@@ -741,7 +741,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                 const mine = m.sender === myId;
                 const remove = <DeleteMessageButton onClick={() => askDelete({ message: m })} />;
                 const newDay = chats && (i === 0 || !sameDay(thread.messages[i - 1].createdAt, m.createdAt));
-                const fresh = !chats && !loadedIds.current.has(m._id);
+                const fresh = !loadedIds.current.has(m._id);
                 const message = (
                   <motion.div
                     key={m._id}

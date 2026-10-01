@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { BadgeCheck, Ban, Flag, ImageOff, MapPin, MoreVertical, Phone } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "motion/react";
+import { BadgeCheck, Ban, Flag, MapPin, MoreVertical, Phone } from "lucide-react";
 import BuyerLayout from "../../layouts/BuyerLayout";
 import Avatar from "../../components/Avatar";
 import Modal from "../../components/Modal";
@@ -8,7 +9,6 @@ import BlockUserModal from "../../components/buyer/BlockUserModal";
 import BlockResultDialog from "../../components/buyer/BlockResultDialog";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import PriceTag from "../../components/products/PriceTag";
-import shopBackground from "../../assets/bckgrnd.jpg";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import {
@@ -24,7 +24,11 @@ import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { formatDistance } from "../../utils/address";
 import { forgetReportSent, reportJustSent } from "../../utils/reports";
 import { usePageSettled, useSmoothNavigate } from "../../utils/pageTransition";
-import { categoryFilters } from "../../utils/categories";
+import { categoryFilters, categoryLabel } from "../../utils/categories";
+import { categoryPhoto } from "../../utils/categoryPhotos";
+import { BUYER_PHOTOS } from "../../utils/buyerPhotos";
+import { BlockSkeleton, PhotoEmptyState } from "../../components/buyer/BuyerVisuals";
+import { EASE } from "../../theme/harvest";
 import { unitOf, unitWord } from "../../utils/units";
 
 const baseTabs = [
@@ -35,61 +39,114 @@ const baseTabs = [
 function Stat({ label, value }) {
   return (
     <div className="flex items-center gap-2 text-sm">
-      <span className="text-gray-500">{label}:</span>
-      <span className="font-semibold text-red-600">{value}</span>
+      <span className="text-cream/75">{label}:</span>
+      <span className="font-semibold text-gold-300">{value}</span>
     </div>
   );
 }
 
+// The shop's listings. Changing what's shown (a category, All) moves each
+// card to its new place and fades the rest out, rather than swapping the grid.
 function ProductGrid({ products, empty }) {
+  const reduced = useReducedMotion();
   if (products.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-500">{empty}</p>;
+    return (
+      <PhotoEmptyState photo={BUYER_PHOTOS.marketLane} title={empty} />
+    );
   }
 
   return (
-    <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4">
-      {products.map((product) => (
-        <Link
-          key={product._id}
-          to={`/buyer/products/${product._id}`}
-          // A shop page is a place buyers browse, so opening a listing from
-          // here counts as interest in the same way the marketplace does.
-          state={{ fromBrowse: true }}
-          className="overflow-hidden rounded-xl bg-white shadow-sm transition duration-150 hover:shadow-md active:scale-[0.98]"
-        >
-          <div className="relative flex h-32 w-full items-center justify-center bg-gray-50 text-gray-300">
-            {product.image ? (
-              <img
-                src={`${SERVER_URL}${product.image}`}
-                alt={product.title}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <ImageOff className="h-10 w-10" />
-            )}
-            {product.productType === "preorder" ? (
-              <span className="absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white">
-                Pre-order
-              </span>
-            ) : (
-              product.stock === 0 && (
-                <span className="absolute left-2 top-2 rounded-full bg-gray-700/80 px-2 py-0.5 text-[10px] font-semibold text-white">
-                  Out of stock
-                </span>
-              )
-            )}
-            {onFlashSale(product) && (
-              <span className="absolute right-2 top-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-semibold text-white">
-                -{discountPercent(product)}%
-              </span>
-            )}
-          </div>
-          <div className="p-3">
-            <p className="truncate font-semibold text-gray-900">{product.title}</p>
-            <PriceTag product={product} size="sm" suffix={` per ${unitWord(unitOf(product))}`} />
-          </div>
-        </Link>
-      ))}
+    <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-4" data-testid="shop-grid">
+      <AnimatePresence initial={false} mode="popLayout">
+        {products.map((product) => (
+          <motion.div
+            key={product._id}
+            layout={!reduced}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.18 } }}
+            transition={{ layout: { type: "spring", stiffness: 260, damping: 30 }, duration: 0.35, ease: EASE }}
+            className="grid"
+          >
+            <Link
+              to={`/buyer/products/${product._id}`}
+              // A shop page is a place buyers browse, so opening a listing from
+              // here counts as interest in the same way the marketplace does.
+              state={{ fromBrowse: true }}
+              className="group overflow-hidden rounded-[1.4rem] bg-paper shadow-soft ring-1 ring-gray-200 transition-[translate,box-shadow] duration-300 ease-harvest hover:-translate-y-1 hover:shadow-lift active:scale-[0.98]"
+            >
+              <div className="relative flex h-36 w-full items-center justify-center overflow-hidden bg-sand text-gray-300">
+                {product.image ? (
+                  <img
+                    src={`${SERVER_URL}${product.image}`}
+                    alt={product.title}
+                    className="h-full w-full object-cover transition-transform duration-500 ease-harvest group-hover:scale-[1.07]"
+                  />
+                ) : (
+                  <>
+                    <img
+                      src={categoryPhoto(product.category).small}
+                      srcSet={categoryPhoto(product.category).srcSet}
+                      sizes="16rem"
+                      alt={categoryPhoto(product.category).alt}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 ease-harvest group-hover:scale-[1.07]"
+                    />
+                    <span className="absolute bottom-2 left-2 rounded-full bg-night/60 px-2 py-0.5 text-[10px] font-semibold text-cream backdrop-blur-sm">
+                      No photo yet
+                    </span>
+                  </>
+                )}
+                {product.productType === "preorder" ? (
+                  <span className="absolute left-2 top-2 rounded-full bg-gold-300 px-2 py-0.5 text-[10px] font-bold text-night">
+                    Pre-order
+                  </span>
+                ) : (
+                  product.stock === 0 && (
+                    <span className="absolute left-2 top-2 rounded-full bg-night/75 px-2 py-0.5 text-[10px] font-semibold text-cream">
+                      Out of stock
+                    </span>
+                  )
+                )}
+                {onFlashSale(product) && (
+                  <span className="absolute right-2 top-2 rounded-full bg-tomato-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    -{discountPercent(product)}%
+                  </span>
+                )}
+              </div>
+              <div className="p-3.5">
+                <p className="truncate font-display text-[17px] font-semibold text-gray-900">{product.title}</p>
+                <PriceTag product={product} size="sm" suffix={` per ${unitWord(unitOf(product))}`} />
+              </div>
+            </Link>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// The shop's header photo, drifting slower than the page as it scrolls.
+function ShopPhoto() {
+  const ref = useRef(null);
+  const reduced = useReducedMotion();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], ["0%", "22%"]);
+  return (
+    <div ref={ref} aria-hidden="true" className="absolute inset-0 -z-10 overflow-hidden">
+      <motion.img
+        src={BUYER_PHOTOS.farmTerraces.src}
+        srcSet={BUYER_PHOTOS.farmTerraces.srcSet}
+        sizes="(min-width: 1280px) 1200px, 100vw"
+        alt=""
+        decoding="async"
+        style={reduced ? undefined : { y }}
+        initial={reduced ? false : { scale: 1.12, opacity: 0 }}
+        animate={{ scale: 1.04, opacity: 1 }}
+        transition={{ duration: 1.3, ease: EASE }}
+        className="absolute inset-x-0 -top-[10%] h-[125%] w-full object-cover object-[50%_60%]"
+      />
+      <div className="absolute inset-0 bg-[linear-gradient(100deg,rgb(12_28_19/0.9)_0%,rgb(15_36_24/0.72)_50%,rgb(31_26_18/0.5)_100%)]" />
     </div>
   );
 }
@@ -220,15 +277,20 @@ export default function FarmerProfile() {
   return (
     <BuyerLayout>
       <div className="p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-500">Loading...</p>}
+        {loading && (
+          <div className="space-y-5">
+            <BlockSkeleton className="h-48" />
+            <BlockSkeleton className="h-64" />
+          </div>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && farmer?.blockedByMe && (
-          <div className="mx-auto max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
+          <div className="mx-auto max-w-md rounded-[1.75rem] bg-paper p-8 text-center shadow-soft ring-1 ring-gray-200">
             <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500">
               <Ban className="h-6 w-6" />
             </span>
-            <h1 className="mt-4 text-lg font-semibold text-gray-900">You blocked {shopName}</h1>
+            <h1 className="mt-4 font-display text-xl font-semibold text-gray-900">You blocked {shopName}</h1>
             <p className="mt-2 text-sm leading-relaxed text-gray-600">
               Their shop, products and listings are hidden from you, and they can&apos;t sell to you.
               Unblock them to see the shop again - you can also do that under Profile &gt; Blocked
@@ -238,7 +300,7 @@ export default function FarmerProfile() {
             <div className="mt-6 flex gap-3">
               <Link
                 to="/buyer/home"
-                className="flex-1 rounded-md border border-gray-300 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="flex-1 rounded-full border border-gray-300 py-2 text-sm font-semibold text-gray-700 transition-colors hover:border-brand hover:text-brand"
               >
                 Back to Home
               </Link>
@@ -246,7 +308,7 @@ export default function FarmerProfile() {
                 type="button"
                 onClick={handleUnblock}
                 disabled={blocking}
-                className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+                className="flex-1 rounded-full bg-brand py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
               >
                 {blocking ? "Unblocking..." : "Unblock"}
               </button>
@@ -257,33 +319,30 @@ export default function FarmerProfile() {
         {!loading && !error && farmer && !farmer.blockedByMe && (
           <>
             <div className="relative">
-              <div
-                className="relative overflow-hidden rounded-t-2xl bg-cover bg-center"
-                style={{ backgroundImage: `url(${shopBackground})` }}
-              >
-                <div className="absolute inset-0 bg-white/85" />
+              <div className="relative isolate overflow-hidden rounded-t-[1.75rem] bg-night text-cream" data-testid="shop-header">
+                <ShopPhoto />
 
-                <div className={`relative flex flex-wrap items-center justify-between gap-6 p-6 ${canReport ? "pt-10" : ""}`}>
+                <div className={`relative flex flex-wrap items-center justify-between gap-6 p-6 sm:p-8 ${canReport ? "pt-12" : ""}`}>
                   <div className="flex items-center gap-4">
                     <Avatar
                       src={farmer.avatar}
                       alt={shopName}
-                      className="h-20 w-20 rounded-full border-4 border-white bg-green-100 text-[#2f8f66] shadow-sm"
+                      className="h-24 w-24 rounded-full border-4 border-paper bg-forest-100 text-brand shadow-lift"
                       iconClass="h-10 w-10"
                     />
                     <div>
-                      <p className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                      <p className="flex items-center gap-2 font-display text-3xl font-semibold text-cream">
                         {shopName}
-                        {farmer.isVerified && <BadgeCheck className="h-5 w-5 text-[#2f8f66]" />}
+                        {farmer.isVerified && <BadgeCheck className="h-6 w-6 text-gold-300" />}
                       </p>
                       {activeAgo(farmer.lastActiveAt) && (
-                        <p className="text-sm text-gray-600">{activeAgo(farmer.lastActiveAt)}</p>
+                        <p className="text-sm text-cream/80">{activeAgo(farmer.lastActiveAt)}</p>
                       )}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         {farmer.phone && (
                           <a
                             href={`tel:${farmer.phone}`}
-                            className="inline-flex items-center gap-2 rounded-full bg-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-95"
+                            className="inline-flex items-center gap-2 rounded-full bg-gold-400 px-4 py-1.5 text-sm font-semibold text-night transition-colors duration-150 hover:bg-gold-300 active:scale-95"
                           >
                             <Phone className="h-4 w-4" />
                             Call Now
@@ -291,13 +350,13 @@ export default function FarmerProfile() {
                         )}
                         <MessageFarmerButton
                           farmerId={farmer._id}
-                          className="inline-flex items-center gap-2 rounded-full border border-[#2f8f66] bg-white px-4 py-[5px] text-sm font-semibold text-[#2f8f66] transition duration-150 hover:bg-green-50 active:scale-95 disabled:opacity-60"
+                          className="inline-flex items-center gap-2 rounded-full border border-cream/40 bg-cream/10 px-4 py-[5px] text-sm font-semibold text-cream backdrop-blur-sm transition-colors duration-150 hover:bg-cream/20 active:scale-95 disabled:opacity-60"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 rounded-2xl bg-night/35 px-4 py-3 ring-1 ring-cream/15 backdrop-blur-sm">
                     <Stat
                       label="Ratings"
                       value={
@@ -319,26 +378,26 @@ export default function FarmerProfile() {
                     onClick={() => setMenuOpen((open) => !open)}
                     aria-label="More options"
                     aria-expanded={menuOpen}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-gray-700 shadow-sm hover:bg-white"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-paper/90 text-gray-700 shadow-sm hover:bg-paper"
                   >
                     <MoreVertical className="h-5 w-5" />
                   </button>
 
                   {menuOpen && (
-                    <div className="absolute right-0 top-full mt-1 w-52 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black/5">
+                    <div className="absolute right-0 top-full mt-1 w-52 overflow-hidden rounded-2xl bg-paper shadow-lift ring-1 ring-black/5">
                       <button
                         type="button"
                         onClick={startReport}
                         className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                       >
-                        <Flag className="h-4 w-4 text-[#2f8f66]" /> Report this user
+                        <Flag className="h-4 w-4 text-brand" /> Report this user
                       </button>
                       <button
                         type="button"
                         onClick={startBlock}
                         className="flex w-full items-center gap-2.5 border-t border-gray-100 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                       >
-                        <Ban className="h-4 w-4 text-[#2f8f66]" /> Block this user
+                        <Ban className="h-4 w-4 text-brand" /> Block this user
                       </button>
                     </div>
                   )}
@@ -346,16 +405,24 @@ export default function FarmerProfile() {
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2 rounded-b-2xl bg-[#2f8f66] px-4 py-3">
+            <div className="flex flex-wrap gap-2 rounded-b-[1.75rem] bg-night px-4 py-3" data-testid="shop-tabs">
               {[...baseTabs, ...categoryFilters(products)].map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition duration-150 active:scale-95 ${
-                    tab === key ? "bg-white text-[#1f5c42]" : "bg-white/15 text-white hover:bg-white/25"
+                  aria-pressed={tab === key}
+                  className={`relative isolate rounded-full px-4 py-1.5 text-sm font-semibold transition-colors duration-200 active:scale-95 ${
+                    tab === key ? "text-night" : "bg-cream/10 text-cream hover:bg-cream/20"
                   }`}
                 >
+                  {tab === key && (
+                    <motion.span
+                      layoutId="shop-tab-pill"
+                      className="absolute inset-0 -z-10 rounded-full bg-gold-300"
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    />
+                  )}
                   {label}
                 </button>
               ))}
@@ -365,13 +432,13 @@ export default function FarmerProfile() {
               <>
                 <div className="mt-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">
+                    <h2 className="font-display text-2xl font-semibold text-gray-900">
                       Recommended for You
                     </h2>
                     <button
                       type="button"
                       onClick={() => setTab("all")}
-                      className="text-sm font-medium text-[#2f8f66] hover:underline"
+                      className="text-sm font-semibold text-brand underline-offset-4 hover:underline"
                     >
                       See All
                     </button>
@@ -385,15 +452,15 @@ export default function FarmerProfile() {
                   </div>
                 </div>
 
-                <div className="mt-8 rounded-2xl bg-white p-6 shadow-sm">
-                  <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">
+                <div className="mt-10 rounded-[1.75rem] bg-paper p-6 shadow-soft ring-1 ring-gray-200 sm:p-8">
+                  <h2 className="font-display text-2xl font-semibold text-gray-900">
                     About Shop
                   </h2>
                   <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-700">
                     {farmer.farmDescription || "This shop hasn't written a description yet."}
                   </p>
 
-                  <dl className="mt-5 grid gap-3 border-t border-gray-100 pt-5 text-sm sm:grid-cols-2">
+                  <dl className="mt-5 grid gap-3 border-t border-gray-200 pt-5 text-sm sm:grid-cols-2">
                     <div>
                       <dt className="text-gray-500">Owner</dt>
                       <dd className="font-medium text-gray-900">{farmer.name}</dd>
@@ -401,10 +468,10 @@ export default function FarmerProfile() {
                     <div>
                       <dt className="text-gray-500">Location</dt>
                       <dd className="flex items-center gap-1.5 font-medium text-gray-900">
-                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <MapPin className="h-4 w-4 text-clay-500" />
                         {farmer.location || "Not set"}
                         {formatDistance(farmer) && (
-                          <span className="font-normal text-[#2f8f66]">· {formatDistance(farmer)} from you</span>
+                          <span className="font-normal text-brand">· {formatDistance(farmer)} from you</span>
                         )}
                       </dd>
                     </div>
@@ -415,7 +482,7 @@ export default function FarmerProfile() {
                       {farmer.certifications.map((cert) => (
                         <span
                           key={cert}
-                          className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-600"
+                          className="rounded-full bg-forest-50 px-3 py-1 text-xs font-medium text-forest-800 ring-1 ring-forest-100"
                         >
                           {cert}
                         </span>
@@ -426,6 +493,33 @@ export default function FarmerProfile() {
               </>
             ) : (
               <div className="mt-6">
+                {/* A category chosen: its photo from the market across the top. */}
+                <AnimatePresence mode="wait">
+                  {tab !== "all" && (
+                    <motion.div
+                      key={tab}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, transition: { duration: 0.15 } }}
+                      transition={{ duration: 0.45, ease: EASE }}
+                      className="relative isolate mb-6 flex h-28 items-end overflow-hidden rounded-[1.5rem] p-5 text-cream shadow-soft sm:h-32"
+                      data-testid="category-banner"
+                    >
+                      <img
+                        src={categoryPhoto(tab).src}
+                        srcSet={categoryPhoto(tab).srcSet}
+                        sizes="(min-width: 1280px) 1200px, 100vw"
+                        alt=""
+                        className="absolute inset-0 -z-10 h-full w-full object-cover motion-safe:animate-[harvest-header-in_1.2s_var(--ease-harvest)_both]"
+                      />
+                      <span aria-hidden="true" className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgb(12_28_19/0.85)_0%,rgb(15_36_24/0.55)_55%,transparent_100%)]" />
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-gold-200">From this shop</p>
+                        <p className="font-display text-2xl font-semibold">{categoryLabel(tab)}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <ProductGrid
                   products={tab === "all" ? products : products.filter((p) => p.category === tab)}
                   empty="Nothing listed in here right now."
@@ -438,7 +532,7 @@ export default function FarmerProfile() {
         {!loading && !error && !farmer && (
           <p className="text-sm text-gray-500">
             Farmer not found.{" "}
-            <Link to="/buyer/home" className="text-[#2f8f66] underline">
+            <Link to="/buyer/home" className="text-brand underline">
               Back to Home
             </Link>
           </p>
@@ -467,7 +561,7 @@ export default function FarmerProfile() {
           <button
             type="button"
             onClick={closeThanks}
-            className="mt-5 w-full rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56]"
+            className="mt-5 w-full rounded-md bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-hover"
           >
             OK
           </button>

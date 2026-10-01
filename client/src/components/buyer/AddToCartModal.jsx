@@ -36,7 +36,7 @@ export default function AddToCartModal({ product, onClose, onConfirm }) {
           type="button"
           onClick={() => onConfirm(quantity)}
           disabled={!quantityValid}
-          className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56] disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="flex-1 rounded-md bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-gray-300"
         >
           Add to Cart
         </button>
