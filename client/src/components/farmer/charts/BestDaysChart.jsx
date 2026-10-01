@@ -49,7 +49,7 @@ export default function BestDaysChart({ data, range }) {
             <CartesianGrid vertical={false} stroke={COLORS.grid} />
             <XAxis
               dataKey="day"
-              axisLine={{ stroke: "#D5DDD8" }}
+              axisLine={{ stroke: "#d4c9b3" }}
               tickLine={false}
               tick={({ x, y, payload }) => (
                 <text
@@ -58,7 +58,7 @@ export default function BestDaysChart({ data, range }) {
                   textAnchor="middle"
                   fontSize={12}
                   fontWeight={payload.index === best ? 700 : 400}
-                  fill={payload.index === best ? "#1F2A24" : COLORS.muted}
+                  fill={payload.index === best ? "#1a1d16" : COLORS.muted}
                 >
                   {payload.value}
                 </text>
@@ -84,7 +84,7 @@ export default function BestDaysChart({ data, range }) {
                 // a weekday with no sales draws none.
                 content={({ x, y, width, value }) =>
                   value === chart.points[best].average && value > 0 ? (
-                    <text x={x + width / 2} y={y - 8} textAnchor="middle" fontSize={12} fontWeight={700} fill="#1F2A24" data-testid="best-day-value">
+                    <text x={x + width / 2} y={y - 8} textAnchor="middle" fontSize={12} fontWeight={700} fill="#1a1d16" data-testid="best-day-value">
                       {peso(value)}
                     </text>
                   ) : null

@@ -176,7 +176,7 @@ export default function CropSelect({
                   <span className="block truncate font-medium text-gray-900">{crop.name}</span>
                   <span className="block text-xs capitalize text-gray-500">{crop.group}</span>
                 </span>
-                {value?._id === crop._id && <Check className="h-4 w-4 shrink-0 text-[#2f8f66]" />}
+                {value?._id === crop._id && <Check className="h-4 w-4 shrink-0 text-brand" />}
               </button>
             </li>
           ))}

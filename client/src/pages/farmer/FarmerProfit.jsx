@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { AlertCircle, ArrowLeft, Check, ChevronRight, ImageOff, Package, Plus } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
@@ -7,9 +8,11 @@ import ProfitTable from "../../components/farmer/ProfitTable";
 import { getMyProfit, SERVER_URL } from "../../services/api";
 import { money } from "../../utils/profit";
 import { amountOf } from "../../utils/units";
+import { CountUp, SproutLoader } from "../../components/motion";
+import { EASE } from "../../theme/harvest";
 
-// White, rounded, a hairline border - the dashboard's card.
-const CARD = "rounded-xl border border-gray-200/70 bg-white shadow-sm";
+// Warm paper, a hairline, a soft shadow - the dashboard's card.
+const CARD = "harvest-card";
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 // "12 kg", or "3 trays" for eggs.
@@ -53,7 +56,12 @@ function Equation({ income, expense, result, resultLabel, resultClass }) {
         {sign && <span className="mr-1 sm:hidden" aria-hidden="true">{sign}</span>}
         {label}
       </p>
-      <p className="min-w-0 break-words text-right text-lg font-bold tabular-nums sm:text-left">{money(value)}</p>
+      <CountUp
+        value={value}
+        format={money}
+        on="mount"
+        className="block min-w-0 break-words text-right font-display text-xl font-semibold tabular-nums sm:text-left"
+      />
     </div>
   );
   return (
@@ -70,23 +78,105 @@ function Equation({ income, expense, result, resultLabel, resultClass }) {
           <span className="mr-1 sm:hidden" aria-hidden="true">=</span>
           {resultLabel}
         </p>
-        <p className="min-w-0 break-words text-right text-xl font-bold tabular-nums sm:text-left">{money(result)}</p>
+        <CountUp
+          value={result}
+          format={money}
+          on="mount"
+          className="block min-w-0 break-words text-right font-display text-2xl font-semibold tabular-nums sm:text-left"
+        />
       </div>
     </div>
   );
 }
 
-function TotalCard({ kind, icon: Icon, iconClass, title, note, children }) {
+// Where each peso of income went: a bar the width of the income, filling with
+// the expense and then the profit (or, for a loss, the expense running past
+// the end). It fills from the left as the page arrives.
+function SplitBar({ income, expense, profit, profitColor }) {
+  if (!(income > 0)) return null;
+  const loss = profit < 0;
+  const expenseShare = Math.min(expense / income, 1);
+  const profitShare = loss ? 0 : Math.max(profit, 0) / income;
+  const pct = (n) => `${Math.round(n * 100)}%`;
+  return (
+    <div className="mt-4" data-testid="split-bar">
+      <div className="flex h-2.5 overflow-hidden rounded-full bg-sand">
+        <motion.span
+          className={`h-full ${loss ? "bg-tomato-600" : "bg-clay-400"}`}
+          style={{ width: pct(expenseShare), originX: 0 }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.8, delay: 0.25, ease: EASE }}
+        />
+        <motion.span
+          className="h-full"
+          style={{ width: pct(profitShare), originX: 0, background: profitColor }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: 1 }}
+          transition={{ duration: 0.8, delay: 0.95, ease: EASE }}
+        />
+      </div>
+      <div className="mt-1.5 flex justify-between text-[11px] font-medium text-gray-500">
+        <span className="flex items-center gap-1.5">
+          <span className={`h-2 w-2 rounded-full ${loss ? "bg-tomato-600" : "bg-clay-400"}`} />
+          Expense {pct(expense / income)} of income
+        </span>
+        {!loss && (
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: profitColor }} />
+            Kept {pct(profitShare)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// The margin - profit over income - as a ring that fills as the page arrives,
+// glowing green for a profit and red for a loss.
+function MarginRing({ income, profit, color }) {
+  const margin = income > 0 ? profit / income : null;
+  const share = margin === null ? 0 : Math.max(0, Math.min(margin, 1));
+  const loss = margin !== null && margin < 0;
+  return (
+    <div className="flex shrink-0 flex-col items-center" data-testid="margin-ring" title="Margin: profit ÷ income">
+      <div className="relative h-14 w-14">
+        <svg viewBox="0 0 64 64" className="h-full w-full -rotate-90" style={{ filter: `drop-shadow(0 4px 10px ${loss ? "rgb(196 66 26 / 0.45)" : `${color}66`})` }}>
+          <circle cx="32" cy="32" r="26" fill="none" stroke="#f3ebdc" strokeWidth="7" />
+          <motion.circle
+            cx="32"
+            cy="32"
+            r="26"
+            fill="none"
+            stroke={loss ? "#c4421a" : color}
+            strokeWidth="7"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: loss ? 1 : share }}
+            transition={{ duration: 1.2, delay: 0.3, ease: EASE }}
+          />
+        </svg>
+        <span className={`absolute inset-0 flex items-center justify-center font-display text-[13px] font-semibold ${loss ? "text-tomato-700" : "text-gray-900"}`}>
+          {margin === null ? "-" : `${Math.round(margin * 100)}%`}
+        </span>
+      </div>
+      <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.14em] text-gray-500">margin</span>
+    </div>
+  );
+}
+
+function TotalCard({ kind, icon: Icon, iconClass, title, note, ring, children }) {
   return (
     <section className={`${CARD} p-5`} data-testid={`totals-${kind}`}>
       <div className="flex items-start gap-3">
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${iconClass}`}>
-          <Icon className="h-4 w-4" />
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+          <Icon className="h-5 w-5" />
         </span>
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
           <p className="text-xs text-gray-500">{note}</p>
         </div>
+        {ring}
       </div>
       {children}
     </section>
@@ -118,7 +208,7 @@ export default function FarmerProfit() {
       <FarmerTopBar>
         <Link
           to="/farmer/dashboard"
-          className="inline-flex items-center gap-1 text-sm font-medium text-[#2f8f66] hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
@@ -128,8 +218,8 @@ export default function FarmerProfit() {
       </FarmerTopBar>
 
       <div className="space-y-5 p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-500">Working out your figures...</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {loading && <SproutLoader label="Working out your figures..." />}
+        {error && <p className="text-sm text-tomato-700">{error}</p>}
 
         {totals && (
           <>
@@ -137,8 +227,9 @@ export default function FarmerProfit() {
               <TotalCard
                 kind="actual"
                 icon={Check}
-                iconClass="bg-green-50 text-[#2f8f66] ring-1 ring-green-100"
+                iconClass="bg-forest-700 text-white shadow-glow-forest"
                 title="Actual sales"
+                ring={<MarginRing income={totals.actual.income} profit={totals.actual.profit} color="#2e7d32" />}
                 note={
                   totals.actual.orders > 0
                     ? `Completed orders · ${kilosAndTrays(totals.actual.soldKg, totals.actual.soldTrays)} sold in ${plural(totals.actual.orders, "order")}`
@@ -150,14 +241,25 @@ export default function FarmerProfit() {
                   expense={totals.actual.expense}
                   result={totals.actual.profit}
                   resultLabel="Profit"
-                  resultClass={totals.actual.profit < 0 ? "bg-red-600 text-white" : "bg-[#2f8f66] text-white"}
+                  resultClass={
+                    totals.actual.profit < 0
+                      ? "bg-tomato-600 text-white shadow-glow-tomato"
+                      : "bg-[linear-gradient(140deg,#1f5130,#2e7d32)] text-white shadow-glow-forest"
+                  }
+                />
+                <SplitBar
+                  income={totals.actual.income}
+                  expense={totals.actual.expense}
+                  profit={totals.actual.profit}
+                  profitColor="#2e7d32"
                 />
               </TotalCard>
               <TotalCard
                 kind="estimated"
                 icon={Package}
-                iconClass="bg-blue-50 text-blue-700 ring-1 ring-blue-100"
+                iconClass="bg-blue-700 text-white shadow-[0_14px_32px_-12px_rgb(29_78_216/0.55)]"
                 title="Estimated on stock"
+                ring={<MarginRing income={totals.estimated.income} profit={totals.estimated.profit} color="#1d4ed8" />}
                 note={
                   totals.estimated.ownCount === 0
                     ? `If you sell the ${kilosAndTrays(totals.estimated.quantity, totals.estimated.trays)} left, at ${
@@ -172,8 +274,16 @@ export default function FarmerProfit() {
                   result={totals.estimated.profit}
                   resultLabel="Est. profit"
                   resultClass={
-                    totals.estimated.profit < 0 ? "bg-red-50 text-red-700 ring-1 ring-red-100" : "bg-blue-50 text-blue-900 ring-1 ring-blue-100"
+                    totals.estimated.profit < 0
+                      ? "bg-tomato-50 text-tomato-700 ring-1 ring-tomato-100 shadow-glow-tomato"
+                      : "bg-blue-50 text-blue-900 ring-1 ring-blue-100 shadow-[0_14px_36px_-16px_rgb(29_78_216/0.45)]"
                   }
+                />
+                <SplitBar
+                  income={totals.estimated.income}
+                  expense={totals.estimated.expense}
+                  profit={totals.estimated.profit}
+                  profitColor="#1d4ed8"
                 />
                 {totals.estimated.ownCount > 0 && (
                   <p className="mt-3 text-xs text-gray-500" data-testid="estimate-basis-note">

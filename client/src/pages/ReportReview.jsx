@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { createReviewReport } from "../services/api";
 import { MAX_REVIEW_REPORT_DETAIL, REVIEW_REPORT_REASONS, markReviewReportSent } from "../utils/reviewReports";
 import { useSmoothBack } from "../utils/pageTransition";
+import useHarvestTheme from "../theme/useHarvestTheme";
 
 // Reporting a review, for buyers and for farmers (the review of one of their
 // products): pick a reason - "Other Violations" has to be explained - then
@@ -13,6 +14,8 @@ import { useSmoothBack } from "../utils/pageTransition";
 export default function ReportReview() {
   const { id, ratingId } = useParams();
   const { user } = useAuth();
+  // The farmer's own copy of this page is in the harvest look; a buyer's isn't.
+  useHarvestTheme(user?.role === "farmer");
 
   const [reason, setReason] = useState("");
   const [detail, setDetail] = useState("");
@@ -44,8 +47,8 @@ export default function ReportReview() {
   };
 
   return (
-    <div className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+    <div className="min-h-screen bg-brand-soft">
+      <div className="flex items-center gap-3 bg-brand px-4 py-4 text-white">
         <button type="button" onClick={goBack} aria-label="Back to the ratings">
           <ArrowLeft className="h-6 w-6" />
         </button>
@@ -59,7 +62,7 @@ export default function ReportReview() {
           <div role="radiogroup" aria-label="Report reason" className="border-t border-green-900/20">
             {REVIEW_REPORT_REASONS.map(({ key, label }) => {
               const selected = reason === key;
-              const rowColor = selected ? "bg-[#2f8f66] text-white" : "bg-[#7dd39b] text-gray-900 hover:bg-[#6fc78f]";
+              const rowColor = selected ? "bg-brand text-white" : "bg-[#7dd39b] text-gray-900 hover:bg-[#6fc78f]";
 
               if (key === "other" && selected) {
                 return (
@@ -82,7 +85,7 @@ export default function ReportReview() {
                       placeholder="Please describe the violation in more detail. (Required)"
                       aria-label="Describe the violation"
                       aria-required="true"
-                      className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#1f5c42] focus:outline-none focus:ring-1 focus:ring-[#1f5c42]"
+                      className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-dark focus:outline-none focus:ring-1 focus:ring-brand-dark"
                     />
                     <Check className={`h-5 w-5 shrink-0 ${detail.trim() ? "text-white" : "text-white/40"}`} aria-hidden="true" />
                   </div>
@@ -110,7 +113,7 @@ export default function ReportReview() {
             <button
               type="submit"
               disabled={!ready || sending}
-              className="mx-auto block w-full max-w-56 rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+              className="mx-auto block w-full max-w-56 rounded-md bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
             >
               {sending ? "Submitting..." : "Submit"}
             </button>

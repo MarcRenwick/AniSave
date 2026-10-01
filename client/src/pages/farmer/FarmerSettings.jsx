@@ -31,6 +31,7 @@ import { getCurrentUser, getMyProducts, getFarmerProfile, SERVER_URL } from "../
 import { useSmoothNavigate, withPageTransition } from "../../utils/pageTransition";
 import { listCategories } from "../../utils/categories";
 import { unitOf } from "../../utils/units";
+import { SproutLoader } from "../../components/motion";
 
 export default function FarmerSettings() {
   const { user, updateUser, logout } = useAuth();
@@ -158,7 +159,7 @@ export default function FarmerSettings() {
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <Pencil className="h-4 w-4 text-[#2f8f66]" /> Edit Profile
+                    <Pencil className="h-4 w-4 text-brand" /> Edit Profile
                   </button>
                   <button
                     type="button"
@@ -168,7 +169,7 @@ export default function FarmerSettings() {
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <KeyRound className="h-4 w-4 text-[#2f8f66]" /> Change Password
+                    <KeyRound className="h-4 w-4 text-brand" /> Change Password
                   </button>
                   <button
                     type="button"
@@ -178,7 +179,7 @@ export default function FarmerSettings() {
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <Lock className="h-4 w-4 text-[#2f8f66]" /> Privacy &amp; Security
+                    <Lock className="h-4 w-4 text-brand" /> Privacy &amp; Security
                   </button>
                   <button
                     type="button"
@@ -188,7 +189,7 @@ export default function FarmerSettings() {
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <ShieldCheck className="h-4 w-4 text-[#2f8f66]" /> Account Verification
+                    <ShieldCheck className="h-4 w-4 text-brand" /> Account Verification
                   </button>
                   <button
                     type="button"
@@ -208,7 +209,7 @@ export default function FarmerSettings() {
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <LogOut className="h-4 w-4 text-[#2f8f66]" /> Log out
+                    <LogOut className="h-4 w-4 text-brand" /> Log out
                   </button>
                 </div>
               )}
@@ -219,9 +220,9 @@ export default function FarmerSettings() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           <div className="farm-card farm-card-sprout rounded-xl bg-white p-5 lg:col-span-2">
             <p className="mb-4 flex items-center gap-2 font-semibold text-gray-900">
-              <UserIcon className="h-4 w-4 text-[#2f8f66]" /> Personal Information
+              <UserIcon className="h-4 w-4 text-brand" /> Personal Information
             </p>
-            <dl className="space-y-3 text-sm [&_dt_svg]:text-[#2f8f66]/70">
+            <dl className="space-y-3 text-sm [&_dt_svg]:text-brand/70">
               <div className="flex items-center justify-between gap-3">
                 <dt className="flex items-center gap-2 text-gray-500">
                   <UserIcon className="h-4 w-4" /> Full Name
@@ -270,19 +271,19 @@ export default function FarmerSettings() {
           <div className="farm-card farm-card-wheat rounded-xl bg-white p-5 lg:col-span-3">
             <div className="mb-4 flex items-center justify-between">
               <p className="flex items-center gap-2 font-semibold text-gray-900">
-                <Package className="h-4 w-4 text-[#2f8f66]" /> My Products
+                <Package className="h-4 w-4 text-brand" /> My Products
               </p>
               <button
                 type="button"
                 onClick={() => navigate("/farmer/products")}
-                className="text-xs font-medium text-[#2f8f66] hover:underline"
+                className="text-xs font-medium text-brand hover:underline"
               >
                 See More
               </button>
             </div>
 
             {loading ? (
-              <p className="text-sm text-gray-400">Loading...</p>
+              <SproutLoader compact label="Loading..." />
             ) : products.length === 0 ? (
               <p className="text-sm text-gray-400">You haven&apos;t listed any products yet.</p>
             ) : (
@@ -292,7 +293,7 @@ export default function FarmerSettings() {
                     key={p._id}
                     type="button"
                     onClick={() => navigate(`/farmer/products/${p._id}`)}
-                    className="group overflow-hidden rounded-lg bg-gray-50 text-left shadow-sm ring-1 ring-[#2f8f66]/10 transition hover:shadow-lg hover:shadow-[#2f8f66]/15 hover:ring-[#2f8f66]/35"
+                    className="group overflow-hidden rounded-lg bg-gray-50 text-left shadow-sm ring-1 ring-brand/10 transition hover:shadow-lg hover:shadow-brand/15 hover:ring-brand/35"
                   >
                     <div className="flex h-20 items-center justify-center overflow-hidden bg-white text-gray-300">
                       {p.image ? (
@@ -305,7 +306,7 @@ export default function FarmerSettings() {
                         <Package className="h-6 w-6" />
                       )}
                     </div>
-                    <div className="bg-gradient-to-r from-[#2f8f66] to-[#3d9e73] px-2 py-1.5 text-white">
+                    <div className="bg-gradient-to-r from-brand to-[#3d9e73] px-2 py-1.5 text-white">
                       <p className="truncate text-xs font-semibold">{p.title}</p>
                       <PriceTag product={p} tone="light" size="sm" suffix={`/${unitOf(p) === "tray" ? "tray" : "kg"}`} />
                     </div>

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
 import { ArrowDownUp, Download, Search } from "lucide-react";
+import { EASE } from "../../theme/harvest";
 import { SERVER_URL } from "../../services/api";
 import { money } from "../../utils/profit";
 import { amountOf } from "../../utils/units";
@@ -78,7 +80,7 @@ function ProductCell({ row }) {
       <div className="min-w-0">
         <Link
           to={`/farmer/products/${row._id}`}
-          className="block truncate text-sm font-semibold text-gray-900 hover:text-[#2f8f66] hover:underline"
+          className="block truncate text-sm font-semibold text-gray-900 hover:text-brand hover:underline"
         >
           {row.title}
         </Link>
@@ -135,7 +137,7 @@ function ProfitFigure({ figures, estimate = false }) {
   const thin = estimate && margin !== null && margin < THIN_MARGIN;
   return (
     <div data-testid={estimate ? "est-profit" : "actual-profit"}>
-      <p className={`whitespace-nowrap text-[15px] font-bold ${loss ? "text-red-600" : estimate ? "text-blue-900" : "text-[#2f8f66]"}`}>
+      <p className={`whitespace-nowrap text-[15px] font-bold ${loss ? "text-red-600" : estimate ? "text-blue-900" : "text-brand"}`}>
         {signed(figures.profit)}
       </p>
       {margin !== null && (
@@ -162,7 +164,7 @@ const NO_STOCK = "Out of stock · nothing left to estimate";
 
 // The tinted band over each group of columns.
 const BAND = {
-  actual: "bg-[#eef7f1]",
+  actual: "bg-[#eef6ee]",
   estimated: "bg-[#eef2fb]",
 };
 
@@ -173,11 +175,20 @@ const Divider = () => (
   </td>
 );
 
-function TableRow({ row }) {
+// How a row arrives - a moment after the one above it - and how it glides to
+// its new place when the list is sorted differently.
+const rowMotion = (index) => ({
+  layout: "position",
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.45, delay: Math.min(index, 10) * 0.045, ease: EASE, layout: { duration: 0.45, ease: EASE } },
+});
+
+function TableRow({ row, index = 0 }) {
   const { actual, estimated } = row;
   const money$ = "px-3 text-right text-gray-700";
   return (
-    <tr className="h-20 transition hover:bg-gray-50/60" data-testid="profit-row" data-product={row._id}>
+    <motion.tr {...rowMotion(index)} className="h-20 transition-colors hover:bg-gray-50/60" data-testid="profit-row" data-product={row._id}>
       <td className="max-w-0 py-2 pl-3 pr-3">
         <ProductCell row={row} />
       </td>
@@ -211,12 +222,12 @@ function TableRow({ row }) {
           <EmptyPill>{NO_STOCK}</EmptyPill>
         </td>
       )}
-    </tr>
+    </motion.tr>
   );
 }
 
 // The same on a phone or tablet: the product, then its two groups.
-function MobileRow({ row }) {
+function MobileRow({ row, index = 0 }) {
   const { actual, estimated } = row;
   const group = (title, dot, band, figures, estimate, empty, tag) => (
     <div className={`rounded-xl px-3 py-2.5 text-xs ${band}`}>
@@ -248,9 +259,9 @@ function MobileRow({ row }) {
     </div>
   );
   return (
-    <li className="space-y-2.5 px-4 py-4 sm:px-5" data-testid="profit-row" data-product={row._id}>
+    <motion.li {...rowMotion(index)} className="space-y-2.5 px-4 py-4 sm:px-5" data-testid="profit-row" data-product={row._id}>
       <ProductCell row={row} />
-      {group("Actual sales", "bg-[#2f8f66]", BAND.actual, hasSales(row) ? actual : null, false, NO_SALES)}
+      {group("Actual sales", "bg-brand", BAND.actual, hasSales(row) ? actual : null, false, NO_SALES)}
       {group(
         "Estimated on stock",
         "bg-blue-600",
@@ -260,7 +271,7 @@ function MobileRow({ row }) {
         NO_STOCK,
         <PriceUsed row={row} />
       )}
-    </li>
+    </motion.li>
   );
 }
 
@@ -357,7 +368,7 @@ export default function ProfitTable({ rows }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search product"
-                className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-[#2f8f66] focus:ring-2 focus:ring-green-100"
+                className="h-9 w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-xs text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-brand focus:ring-2 focus:ring-green-100"
                 data-testid="profit-search"
               />
             </label>
@@ -367,7 +378,7 @@ export default function ProfitTable({ rows }) {
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
-                className="h-9 cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-xs font-semibold text-gray-800 outline-none transition focus:border-[#2f8f66] focus:ring-2 focus:ring-green-100"
+                className="h-9 cursor-pointer appearance-none rounded-xl border border-gray-200 bg-white pl-8 pr-3 text-xs font-semibold text-gray-800 outline-none transition focus:border-brand focus:ring-2 focus:ring-green-100"
                 data-testid="profit-sort"
               >
                 {SORTS.map((s) => (
@@ -413,8 +424,8 @@ export default function ProfitTable({ rows }) {
                       <th className="p-0" />
                       <th colSpan={3} className="p-0 pt-1">
                         <p className={`whitespace-nowrap rounded-t-xl px-3 pb-1 pt-2.5 text-left ${BAND.actual}`} data-testid="band-actual">
-                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#1f5c42]">
-                            <span className="h-1.5 w-1.5 rounded-full bg-[#2f8f66]" />
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-brand-dark">
+                            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
                             Actual sales
                           </span>
                           <span className="font-normal text-gray-500"> · completed orders</span>
@@ -444,15 +455,15 @@ export default function ProfitTable({ rows }) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {shown.map((row) => (
-                      <TableRow key={row._id} row={row} />
+                    {shown.map((row, i) => (
+                      <TableRow key={row._id} row={row} index={i} />
                     ))}
                   </tbody>
                 </table>
               </div>
               <ul className="divide-y divide-gray-100 border-t border-gray-100 xl:hidden" data-testid="profit-cards">
-                {shown.map((row) => (
-                  <MobileRow key={row._id} row={row} />
+                {shown.map((row, i) => (
+                  <MobileRow key={row._id} row={row} index={i} />
                 ))}
               </ul>
             </>
@@ -477,7 +488,7 @@ export default function ProfitTable({ rows }) {
               type="button"
               onClick={() => exportCsv(shown)}
               disabled={shown.length === 0}
-              className="inline-flex items-center gap-1 font-semibold text-[#2f8f66] hover:underline disabled:opacity-50"
+              className="inline-flex items-center gap-1 font-semibold text-brand hover:underline disabled:opacity-50"
               data-testid="export-csv"
             >
               <Download className="h-3.5 w-3.5" />

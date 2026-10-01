@@ -6,6 +6,8 @@ import Avatar from "../Avatar";
 import Modal from "../Modal";
 import ChatOrders from "./ChatOrders";
 import OrderUpdateCard from "./OrderUpdateCard";
+import { motion } from "motion/react";
+import { SPRING_SOFT } from "../../theme/harvest";
 import { useAuth } from "../../context/AuthContext";
 import { useChat } from "../../context/ChatContext";
 import { useDocumentUrl } from "../../utils/documents";
@@ -99,7 +101,7 @@ function ActivityLine({ person }) {
       {status && (
         <>
           {" · "}
-          <span className={person.online ? "font-medium text-[#2f8f66]" : ""}>{status}</span>
+          <span className={person.online ? "font-medium text-brand" : ""}>{status}</span>
         </>
       )}
     </p>
@@ -157,7 +159,7 @@ function SenderPhoto({ person }) {
     <Avatar
       src={person.avatar}
       alt=""
-      className="h-7 w-7 rounded-full bg-green-100 text-[#2f8f66]"
+      className="h-7 w-7 rounded-full bg-green-100 text-brand"
       iconClass="h-4 w-4"
     />
   );
@@ -205,6 +207,10 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
   const [conversations, setConversations] = useState([]);
   const [listLoading, setListLoading] = useState(true);
   const [thread, setThread] = useState({ id: null, conversation: null, messages: [], notice: null, error: "" });
+  // The messages a conversation opened with. Anything after them - sent or
+  // received - springs into place on the farmer's side; the opening ones
+  // just appear, so a long conversation never plays out message by message.
+  const loadedIds = useRef(new Set());
   const [text, setText] = useState("");
   // A photo waiting to be sent, with the conversation it was chosen in.
   const [photo, setPhoto] = useState(null);
@@ -278,6 +284,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
     getConversation(id)
       .then(({ data }) => {
         if (cancelled) return;
+        loadedIds.current = new Set(data.messages.map((m) => m._id));
         setThread({ id, conversation: data.conversation, messages: data.messages, notice: data.notice, error: "" });
         setConversations((list) => list.map((c) => (c._id === id ? { ...c, unread: 0 } : c)));
         markReadWhenSeen(id);
@@ -597,7 +604,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                     <Avatar
                       src={c.other.avatar}
                       alt={displayName(c.other)}
-                      className={`${chats ? "h-12 w-12" : "h-11 w-11"} rounded-full bg-green-100 text-[#2f8f66]`}
+                      className={`${chats ? "h-12 w-12" : "h-11 w-11"} rounded-full bg-green-100 text-brand`}
                       iconClass="h-6 w-6"
                     />
                     <OnlineDot online={c.other.online} />
@@ -609,7 +616,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                       </span>
                       <span
                         className={`shrink-0 text-[11px] ${
-                          chats && unread ? "font-semibold text-[#2f8f66]" : "text-gray-400"
+                          chats && unread ? "font-semibold text-brand" : "text-gray-400"
                         }`}
                       >
                         {listTime(c.lastMessageAt)}
@@ -618,7 +625,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                     <span className="mt-0.5 flex items-center justify-between gap-2">
                       <span
                         className={`truncate text-xs ${
-                          typing ? "font-medium text-[#2f8f66]" : unread ? "font-semibold text-gray-800" : "text-gray-500"
+                          typing ? "font-medium text-brand" : unread ? "font-semibold text-gray-800" : "text-gray-500"
                         }`}
                       >
                         {typing ? (
@@ -638,7 +645,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                       {unread && (
                         <span
                           className={`flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold text-white ${
-                            chats ? "bg-[#2f8f66]" : "bg-red-500"
+                            chats ? "bg-brand" : "bg-red-500"
                           }`}
                           aria-label={`${c.unread} unread`}
                         >
@@ -675,7 +682,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                 <Avatar
                   src={other.avatar}
                   alt={displayName(other)}
-                  className={`${chats ? "h-11 w-11" : "h-10 w-10"} rounded-full bg-green-100 text-[#2f8f66]`}
+                  className={`${chats ? "h-11 w-11" : "h-10 w-10"} rounded-full bg-green-100 text-brand`}
                   iconClass="h-5 w-5"
                 />
                 <OnlineDot online={other.online} />
@@ -691,8 +698,8 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                   to={`/buyer/farmers/${other._id}`}
                   className={
                     chats
-                      ? "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-[#2f8f66] px-3 py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
-                      : "shrink-0 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                      ? "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand transition hover:bg-green-50"
+                      : "shrink-0 rounded-md border border-brand px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-green-50"
                   }
                 >
                   {chats && <Store className="h-4 w-4 shrink-0" />}
@@ -734,11 +741,16 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                 const mine = m.sender === myId;
                 const remove = <DeleteMessageButton onClick={() => askDelete({ message: m })} />;
                 const newDay = chats && (i === 0 || !sameDay(thread.messages[i - 1].createdAt, m.createdAt));
+                const fresh = !chats && !loadedIds.current.has(m._id);
                 const message = (
-                  <div
+                  <motion.div
                     key={m._id}
                     className={`group flex flex-col ${mine ? "items-end" : "items-start"} ${chats && !mine ? "min-w-0 flex-1" : ""}`}
                     data-mine={mine}
+                    initial={fresh ? { opacity: 0, y: 14, scale: 0.97 } : false}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={SPRING_SOFT}
+                    style={{ originX: mine ? 1 : 0 }}
                   >
                     <div className={`flex w-full items-center gap-1 ${mine ? "justify-end" : "justify-start"}`}>
                       {mine && remove}
@@ -757,7 +769,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                       ) : (
                         <div
                           className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl text-sm ${m.image ? "p-1" : "px-4 py-2"} ${
-                            mine ? "rounded-br-sm bg-[#2f8f66] text-white" : "rounded-bl-sm bg-white text-gray-900 ring-1 ring-gray-200"
+                            mine ? "rounded-br-sm bg-brand text-white" : "rounded-bl-sm bg-white text-gray-900 ring-1 ring-gray-200"
                           }`}
                         >
                           {m.image && (
@@ -777,7 +789,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                       {m._id === receiptOn && (
                         <span
                           data-testid="receipt"
-                          className={`flex items-center gap-0.5 ${active.seen ? "font-medium text-[#2f8f66]" : ""}`}
+                          className={`flex items-center gap-0.5 ${active.seen ? "font-medium text-brand" : ""}`}
                         >
                           ·{" "}
                           {active.seen ? <CheckCheck className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
@@ -785,7 +797,7 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                         </span>
                       )}
                     </p>
-                  </div>
+                  </motion.div>
                 );
                 if (!chats) return message;
                 return (
@@ -849,8 +861,8 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                     title="Send a photo"
                     className={
                       chats
-                        ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-50 text-[#2f8f66] transition hover:bg-green-100 disabled:opacity-60"
-                        : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#2f8f66] transition hover:bg-green-50 disabled:opacity-60"
+                        ? "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-green-50 text-brand transition hover:bg-green-100 disabled:opacity-60"
+                        : "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-brand transition hover:bg-green-50 disabled:opacity-60"
                     }
                   >
                     <ImagePlus className="h-5 w-5" />
@@ -864,14 +876,14 @@ export default function ChatPanel({ basePath, heightClass, variant = "classic" }
                     maxLength={MAX_MESSAGE}
                     placeholder={staged ? "Add a caption (optional)" : chats ? "Type a message..." : "Type a message"}
                     aria-label="Message"
-                    className={`min-w-0 flex-1 rounded-full border border-gray-300 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66] ${
+                    className={`min-w-0 flex-1 rounded-full border border-gray-300 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand ${
                       chats ? "h-11 px-5" : "px-4 py-2"
                     }`}
                   />
                   <button
                     type="submit"
                     disabled={(!text.trim() && !staged) || sending}
-                    className={`flex shrink-0 items-center gap-1.5 rounded-full bg-[#2f8f66] text-sm font-semibold text-white transition hover:bg-[#267a56] active:scale-95 disabled:opacity-60 ${
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full bg-brand text-sm font-semibold text-white transition hover:bg-brand-hover active:scale-95 disabled:opacity-60 ${
                       chats ? "h-11 px-5" : "px-4 py-2"
                     }`}
                   >

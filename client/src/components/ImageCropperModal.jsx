@@ -122,7 +122,7 @@ export default function ImageCropperModal({ file, onCancel, onCropped }) {
           step="0.01"
           value={zoom}
           onChange={(e) => handleZoom(Number(e.target.value))}
-          className="mt-1 w-full accent-[#2f8f66]"
+          className="mt-1 w-full accent-brand"
         />
       </label>
       <p className="text-center text-xs text-gray-500">Drag the photo to move it.</p>
@@ -139,7 +139,7 @@ export default function ImageCropperModal({ file, onCancel, onCropped }) {
           type="button"
           onClick={handleConfirm}
           disabled={busy || !size}
-          className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56] disabled:opacity-60"
+          className="flex-1 rounded-md bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
         >
           {busy ? "Saving..." : "Use photo"}
         </button>

@@ -7,15 +7,18 @@ import { useLayoutEffect } from "react";
 let wanted = 0;
 
 // Turns the "Premium Harvest" look on (theme/harvest.css) while the calling
-// page is showing. It goes on <html> rather than on the page's own element so
-// that what a page draws on <body> - a modal, say - gets it too.
-export default function useHarvestTheme() {
+// page is showing - or, with `enabled` false, doesn't (a page shared with
+// buyers only wants it for farmers). It goes on <html> rather than on the
+// page's own element so that what a page draws on <body> - a modal, say -
+// gets it too.
+export default function useHarvestTheme(enabled = true) {
   useLayoutEffect(() => {
+    if (!enabled) return undefined;
     wanted += 1;
     document.documentElement.classList.add("harvest");
     return () => {
       wanted -= 1;
       if (wanted === 0) document.documentElement.classList.remove("harvest");
     };
-  }, []);
+  }, [enabled]);
 }

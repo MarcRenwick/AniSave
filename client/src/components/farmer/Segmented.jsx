@@ -1,6 +1,6 @@
 // A segmented control: the chosen option filled in AniSave green, so which one
 // is on is never in doubt.
-export default function Segmented({ label, options, value, onChange, activeClass = "bg-[#2f8f66] text-white shadow-sm" }) {
+export default function Segmented({ label, options, value, onChange, activeClass = "bg-brand text-white shadow-sm" }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs font-medium text-gray-500">{label}</span>

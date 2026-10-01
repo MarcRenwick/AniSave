@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { motion } from "motion/react";
 import { Plus, Leaf, Apple, Egg, Beef, Fish } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
@@ -11,6 +12,8 @@ import { getMyProducts, restockProduct, deleteProduct } from "../../services/api
 import usePreserveScroll from "../../hooks/usePreserveScroll";
 import { useAuth } from "../../context/AuthContext";
 import { categoryFilters } from "../../utils/categories";
+import { EmptyState, SproutLoader, Stagger, StaggerItem } from "../../components/motion";
+import { SPRING } from "../../theme/harvest";
 
 // Each kind of produce gets its own little picture on its filter.
 const FILTER_ICONS = { vegetable: Leaf, fruit: Apple, egg: Egg, meat: Beef, seafood: Fish };
@@ -54,7 +57,7 @@ export default function FarmerProducts() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">My Products</h1>
+        <h1 className="text-3xl font-semibold tracking-tight text-gray-900">My Products</h1>
         <p className="text-sm text-gray-500">Manage your fresh fruits and vegetables</p>
       </FarmerTopBar>
 
@@ -64,22 +67,26 @@ export default function FarmerProducts() {
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2 rounded-full bg-white/70 p-1.5 shadow-soft ring-1 ring-black/5">
             {[{ key: "all", label: "All" }, ...categoryFilters(products)].map(({ key, label }) => {
               const Icon = FILTER_ICONS[key];
+              const active = filter === key;
               return (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setFilter(key)}
-                  className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium shadow-sm transition ${
-                    filter === key
-                      ? "bg-[#2f8f66] text-white"
-                      : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  aria-pressed={active}
+                  className={`relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    active ? "text-white" : "text-gray-600 hover:text-gray-900"
                   }`}
                 >
-                  {Icon && <Icon className="h-4 w-4" />}
-                  {label}
+                  {/* The chosen filter's green slides across to the next one picked. */}
+                  {active && (
+                    <motion.span layoutId="product-filter-pill" className="absolute inset-0 rounded-full bg-forest-700 shadow-sm" transition={SPRING} />
+                  )}
+                  {Icon && <Icon className="relative h-4 w-4" />}
+                  <span className="relative">{label}</span>
                 </button>
               );
             })}
@@ -90,24 +97,25 @@ export default function FarmerProducts() {
             onClick={() => navigate("/farmer/products/new")}
             disabled={!canSell}
             title={canSell ? undefined : "Your account needs to be verified before you can list products"}
-            className="flex items-center gap-2 rounded-full bg-[#2f8f66] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-full bg-tomato-600 px-5 py-3 text-sm font-semibold text-white shadow-glow-tomato transition-colors hover:bg-tomato-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
           >
             <Plus className="h-4 w-4" /> Create new
           </button>
         </div>
 
-        {loading && <p className="mt-6 text-sm text-gray-500">Loading your products...</p>}
-        {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+        {loading && <SproutLoader label="Loading your products..." />}
+        {error && <p className="mt-6 text-sm text-tomato-700">{error}</p>}
 
         {!loading && !error && visible.length === 0 && (
-          <p className="mt-6 text-sm text-gray-500">
+          <EmptyState art="crate" title="Nothing here yet" className="mt-6">
             No products yet. Click &ldquo;Create new&rdquo; to add your first one.
-          </p>
+          </EmptyState>
         )}
 
         {!loading && !error && visible.length > 0 && (
-          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <Stagger key={filter} on="mount" className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3" stagger={0.06}>
             {visible.map((product) => (
+              <StaggerItem key={product._id} y={20}>
               <ProductCard
                 key={product._id}
                 product={product}
@@ -117,8 +125,9 @@ export default function FarmerProducts() {
                 onEdit={(p) => navigate(`/farmer/products/${p._id}/edit`)}
                 onDelete={(p) => setModal({ type: "delete", product: p })}
               />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </div>
 

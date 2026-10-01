@@ -9,6 +9,8 @@ import useScrollReveal from "../hooks/useScrollReveal";
 import usePreserveScroll from "../hooks/usePreserveScroll";
 import { usePageSettled, useSmoothNavigate } from "../utils/pageTransition";
 import { forgetReviewReportSent, reviewReportJustSent } from "../utils/reviewReports";
+import useHarvestTheme from "../theme/useHarvestTheme";
+import { SproutLoader } from "../components/motion";
 
 function Stars({ value, className = "h-4 w-4" }) {
   return (
@@ -33,6 +35,8 @@ export default function ProductRatings() {
   const navigate = useNavigate();
   const smoothNavigate = useSmoothNavigate();
   const { user } = useAuth();
+  // The farmer's own copy of this page is in the harvest look; a buyer's isn't.
+  useHarvestTheme(user?.role === "farmer");
   const canLike = user?.role === "buyer";
   // A report just sent from the form left the time behind (utils/reviewReports.js),
   // since stepping back here could not carry it. Shown until it is closed - but
@@ -99,8 +103,8 @@ export default function ProductRatings() {
         : ratings.filter((r) => r.stars === Number(filter));
 
   return (
-    <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+    <div ref={rootRef} className="min-h-screen bg-brand-soft">
+      <div className="flex items-center gap-3 bg-brand px-4 py-4 text-white">
         <button type="button" onClick={() => navigate(-1)} aria-label="Back">
           <ArrowLeft className="h-6 w-6" />
         </button>
@@ -108,7 +112,8 @@ export default function ProductRatings() {
       </div>
 
       <div className="mx-auto max-w-3xl p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
+        {loading &&
+          (user?.role === "farmer" ? <SproutLoader label="Loading..." /> : <p className="text-sm text-gray-600">Loading...</p>)}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && (
@@ -142,8 +147,8 @@ export default function ProductRatings() {
                     onClick={() => setFilter(key)}
                     className={`rounded px-3 py-1.5 text-xs font-medium ${
                       filter === key
-                        ? "bg-[#2f8f66] text-white"
-                        : "border border-[#2f8f66]/50 bg-white text-gray-700 hover:bg-green-50"
+                        ? "bg-brand text-white"
+                        : "border border-brand/50 bg-white text-gray-700 hover:bg-green-50"
                     }`}
                   >
                     {label}
@@ -172,7 +177,7 @@ export default function ProductRatings() {
                       <Avatar
                         src={r.buyerAvatar}
                         alt={r.buyerName}
-                        className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                        className="h-10 w-10 rounded-full bg-green-100 text-brand"
                         iconClass="h-5 w-5"
                       />
                       <div>
@@ -210,7 +215,7 @@ export default function ProductRatings() {
                         aria-pressed={r.likedByMe}
                         aria-label={r.likedByMe ? "Remove your helpful mark" : "Mark this review helpful"}
                         className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm disabled:opacity-60 ${
-                          r.likedByMe ? "bg-green-50 text-[#2f8f66]" : "text-gray-500 hover:bg-gray-100"
+                          r.likedByMe ? "bg-green-50 text-brand" : "text-gray-500 hover:bg-gray-100"
                         }`}
                       >
                         <ThumbsUp className={`h-4 w-4 ${r.likedByMe ? "fill-current" : ""}`} />

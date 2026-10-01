@@ -9,7 +9,7 @@ import { addressFromUser, isAddressComplete, sameAddress } from "../../utils/add
 import { getPhoneError } from "../../utils/accountRules";
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
 export default function EditProfileModal({ user, onClose, onSaved, onAvatarChanged }) {
   const [form, setForm] = useState({
@@ -95,14 +95,14 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
         <Avatar
           src={avatar}
           alt={user?.name || "Profile photo"}
-          className="h-24 w-24 rounded-full border-4 border-white bg-green-100 text-[#2f8f66] shadow-sm"
+          className="h-24 w-24 rounded-full border-4 border-white bg-green-100 text-brand shadow-sm"
           iconClass="h-12 w-12"
         />
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="mt-3 flex items-center gap-2 rounded-full border-2 border-[#2f8f66] px-4 py-1.5 text-sm font-semibold text-[#2f8f66] hover:bg-green-50 disabled:opacity-60"
+          className="mt-3 flex items-center gap-2 rounded-full border-2 border-brand px-4 py-1.5 text-sm font-semibold text-brand hover:bg-green-50 disabled:opacity-60"
         >
           <Camera className="h-4 w-4" />
           {uploading ? "Saving..." : avatar ? "Change photo" : "Add photo"}
@@ -205,7 +205,7 @@ export default function EditProfileModal({ user, onClose, onSaved, onAvatarChang
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56] disabled:opacity-60"
+            className="flex-1 rounded-md bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>

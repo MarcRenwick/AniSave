@@ -32,7 +32,7 @@ export default function RestockModal({ product, onClose, onConfirm }) {
                 setSelected(kg);
                 setCustom("");
               }}
-              className="h-4 w-4 accent-[#2f8f66]"
+              className="h-4 w-4 accent-brand"
             />
             {amountOf(kg, unit)}
           </label>
@@ -45,7 +45,7 @@ export default function RestockModal({ product, onClose, onConfirm }) {
             min="1"
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+            className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
           <span>{unit === "tray" ? "trays" : "kg"}</span>
         </label>
@@ -54,7 +54,7 @@ export default function RestockModal({ product, onClose, onConfirm }) {
       <button
         type="button"
         onClick={handleConfirm}
-        className="mt-5 w-full rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white transition hover:bg-[#267a56]"
+        className="mt-5 w-full rounded-md bg-brand py-2 text-sm font-semibold text-white transition hover:bg-brand-hover"
       >
         Confirm Restock ({product.title})
       </button>

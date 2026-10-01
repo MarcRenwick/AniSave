@@ -50,7 +50,7 @@ export default function OrderUpdateCard({ order, isBuyer }) {
       data-testid="order-update-card"
       data-status={order.status}
     >
-      <div className="flex items-center gap-2 bg-[#2f8f66] px-4 py-2.5 text-white">
+      <div className="flex items-center gap-2 bg-brand px-4 py-2.5 text-white">
         <Package className="h-4 w-4 shrink-0" />
         <p className="min-w-0 flex-1 truncate text-sm font-semibold">{HEADLINE[isBuyer ? "buyer" : "farmer"][order.status] || "Order update"}</p>
       </div>
@@ -91,15 +91,15 @@ export default function OrderUpdateCard({ order, isBuyer }) {
               {i < STEPS.length - 1 && (
                 <span
                   aria-hidden="true"
-                  className={`absolute left-[9px] top-5 bottom-0 w-0.5 ${i < current ? "bg-[#2f8f66]" : "bg-gray-200"}`}
+                  className={`absolute left-[9px] top-5 bottom-0 w-0.5 ${i < current ? "bg-brand" : "bg-gray-200"}`}
                 />
               )}
               <span
                 className={`relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
                   isCurrent
-                    ? "bg-[#2f8f66] text-white ring-4 ring-green-100"
+                    ? "bg-brand text-white ring-4 ring-green-100"
                     : done
-                      ? "bg-[#2f8f66] text-white"
+                      ? "bg-brand text-white"
                       : "border-2 border-gray-200 bg-white"
                 }`}
               >
@@ -110,13 +110,13 @@ export default function OrderUpdateCard({ order, isBuyer }) {
               >
                 <p
                   className={`text-sm leading-5 ${
-                    isCurrent ? "font-semibold text-[#2f8f66]" : done ? "text-gray-800" : "text-gray-400"
+                    isCurrent ? "font-semibold text-brand" : done ? "text-gray-800" : "text-gray-400"
                   }`}
                 >
                   {step.label}
                 </p>
                 {done && order[step.at] && (
-                  <p className={`text-[11px] ${isCurrent ? "font-medium text-[#2f8f66]" : "text-gray-400"}`}>
+                  <p className={`text-[11px] ${isCurrent ? "font-medium text-brand" : "text-gray-400"}`}>
                     {when(order[step.at])}
                   </p>
                 )}
@@ -128,7 +128,7 @@ export default function OrderUpdateCard({ order, isBuyer }) {
 
       <Link
         to={isBuyer ? `/buyer/orders/${order._id}` : `/farmer/orders/${order._id}`}
-        className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+        className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-xs font-semibold text-brand transition hover:bg-green-50"
       >
         View order
         <ChevronRight className="h-4 w-4" />

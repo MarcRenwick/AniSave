@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { motion } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -21,6 +22,8 @@ import { getMyProducts, getFarmerOrders, getTopSearchedProducts, getMyProfit, SE
 import { deriveNotifications, LOW_STOCK_THRESHOLD } from "../../utils/notifications";
 import { money } from "../../utils/profit";
 import { amountOf, totalAmounts, unitOf } from "../../utils/units";
+import { ShimmerRows, Stagger, StaggerItem } from "../../components/motion";
+import { EASE } from "../../theme/harvest";
 
 // The Analytical Demands card draws its charts with Recharts, which is large -
 // so it is fetched when a farmer opens the dashboard, not with every page.
@@ -31,9 +34,10 @@ const STALE_PRODUCT_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const PROFIT_PAGE = "/farmer/dashboard/profit";
 
-// Every card has one look: white, a hairline border, a dark title - no
-// coloured header bars, so green is kept for what can be clicked or chosen.
-const CARD = "rounded-xl border border-gray-200/70 bg-white p-5 shadow-sm";
+// Every card has one look: warm paper, a hairline, a soft shadow, a dark
+// title - no coloured header bars, so green is kept for what can be clicked
+// or chosen (theme/harvest.css).
+const CARD = "harvest-card p-5";
 
 // getFarmerOrders populates `product` (for its image/category/location), so
 // an order's product is an object here, not a plain id - grouping or
@@ -62,13 +66,13 @@ function RankedList({ title, subtitle, items, barClass, loading, empty, testId }
       <h2 className="text-base font-semibold text-gray-900">{title}</h2>
       <p className="text-xs text-gray-500">{subtitle}</p>
       {loading ? (
-        <p className="mt-4 text-sm text-gray-400">Loading...</p>
+        <ShimmerRows rows={4} className="mt-4" label="Loading..." />
       ) : items.length === 0 ? (
         <p className="mt-4 text-sm text-gray-400">{empty}</p>
       ) : (
-        <ol className="mt-4 space-y-3">
+        <Stagger as="ol" on="mount" className="mt-4 space-y-3" stagger={0.06}>
           {items.map((item, i) => (
-            <li key={item.key} title={item.hint}>
+            <StaggerItem as="li" key={item.key} title={item.hint} y={10}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="min-w-0 truncate text-gray-800">
                   <span className="mr-0.5 font-semibold text-gray-400">{i + 1}</span> {item.name}
@@ -76,11 +80,17 @@ function RankedList({ title, subtitle, items, barClass, loading, empty, testId }
                 <span className="shrink-0 font-semibold tabular-nums text-gray-900">{item.label}</span>
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-100">
-                <div className={`h-full rounded-full ${barClass}`} style={{ width: `${(item.value / top) * 100}%` }} />
+                <motion.div
+                  className={`h-full rounded-full ${barClass}`}
+                  style={{ width: `${(item.value / top) * 100}%`, originX: 0 }}
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.8, delay: 0.15 + i * 0.06, ease: EASE }}
+                />
               </div>
-            </li>
+            </StaggerItem>
           ))}
-        </ol>
+        </Stagger>
       )}
     </section>
   );
@@ -88,9 +98,9 @@ function RankedList({ title, subtitle, items, barClass, loading, empty, testId }
 
 // How each kind of notification looks in the dashboard's list.
 const NOTE_LOOK = {
-  order: { icon: ShoppingBag, tone: "bg-green-50 text-[#2f8f66]" },
-  "low-stock": { icon: AlertTriangle, tone: "bg-amber-50 text-amber-600" },
-  "out-of-stock": { icon: PackageX, tone: "bg-red-50 text-red-600" },
+  order: { icon: ShoppingBag, tone: "bg-green-50 text-brand" },
+  "low-stock": { icon: AlertTriangle, tone: "bg-gold-50 text-gold-700" },
+  "out-of-stock": { icon: PackageX, tone: "bg-tomato-50 text-tomato-700" },
 };
 const sentenceCase = (text) => text.charAt(0) + text.slice(1).toLowerCase();
 
@@ -226,48 +236,61 @@ export default function FarmerDashboard() {
   return (
     <FarmerLayout>
       <FarmerTopBar>
-        <h1 className="text-xl font-bold text-gray-900 sm:text-2xl">Hello, {user?.name}!</h1>
-        <p className="text-sm text-gray-500">Here&apos;s how your farm store is doing · {today}</p>
+        <h1 className="text-2xl font-semibold text-gray-900 sm:text-[2rem]">Hello, {user?.name}!</h1>
+        <p className="mt-0.5 text-sm text-gray-500">Here&apos;s how your farm store is doing · {today}</p>
       </FarmerTopBar>
 
       <div className="space-y-6 p-4 sm:p-8">
         <VerificationBanner />
 
         {/* The four figures a farmer checks first, side by side */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Stagger on="mount" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" stagger={0.07}>
+          <StaggerItem y={18}>
           <StatCard icon={Clock} label="Today's sales" tone="green" testId="stat-today">
-            <Figure>{money(todaySales.revenue)}</Figure>
+            <Figure value={todaySales.revenue} format={money} />
             <CaptionRow pill={`${todaySales.amount} · ${plural(todaySales.orders, "order")}`} testId="today-pill">
-              <Caption tone="mt-0 text-gray-600">Earned so far today</Caption>
+              <Caption tone="mt-0 text-cream/75">Earned so far today</Caption>
             </CaptionRow>
-            <Sparkline values={dailyRevenue.lastWeek} color="#1F7A4D" label="Sales over the last 7 days" testId="today-sparkline" />
+            <Sparkline values={dailyRevenue.lastWeek} color="#f2c14e" label="Sales over the last 7 days" testId="today-sparkline" />
           </StatCard>
+          </StaggerItem>
 
+          <StaggerItem y={18}>
           <StatCard icon={CalendarDays} label="Revenue this month" tone="blue" testId="stat-revenue">
-            <Figure>{money(monthRevenue.current)}</Figure>
+            <Figure value={monthRevenue.current} format={money} />
             <CaptionRow pill={plural(dailyRevenue.saleDays, "sale day")} testId="revenue-pill">
               {monthRevenue.change === null ? (
                 <Caption tone="mt-0 text-gray-600">No sales last month to compare</Caption>
               ) : (
-                <Caption tone={`mt-0 font-medium ${monthRevenue.change >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                <Caption tone={`mt-0 font-semibold ${monthRevenue.change >= 0 ? "text-forest-700" : "text-tomato-700"}`}>
                   <span className="inline-flex items-center gap-1">
-                    {monthRevenue.change >= 0 ? (
-                      <TrendingUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <TrendingDown className="h-3.5 w-3.5" />
-                    )}
+                    {/* The arrow rises (or drops) into place. */}
+                    <motion.span
+                      className="inline-flex"
+                      initial={{ opacity: 0, y: monthRevenue.change >= 0 ? 6 : -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.7, ease: EASE }}
+                    >
+                      {monthRevenue.change >= 0 ? (
+                        <TrendingUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <TrendingDown className="h-3.5 w-3.5" />
+                      )}
+                    </motion.span>
                     {monthRevenue.change >= 0 ? "+" : ""}
                     {Math.round(monthRevenue.change)}% vs last month
                   </span>
                 </Caption>
               )}
             </CaptionRow>
-            <MiniBars values={dailyRevenue.thisMonth} color="#2D63AA" label="Revenue on each day of this month" testId="revenue-bars" />
+            <MiniBars values={dailyRevenue.thisMonth} color="#c98521" label="Revenue on each day of this month" testId="revenue-bars" />
           </StatCard>
+          </StaggerItem>
 
           {/* The profit made so far on completed sales, with the estimate on
               stock beside it; the card opens the Profit page, with every
               product's figures. */}
+          <StaggerItem y={18}>
           <StatCard
             icon={TrendingUp}
             label="Profit"
@@ -276,9 +299,15 @@ export default function FarmerDashboard() {
             onClick={() => navigate(PROFIT_PAGE)}
             testId="profit-card"
           >
-            <Figure tone={profit && profit.actual.profit < 0 ? "text-red-600" : "text-gray-900"}>
-              {profit ? money(profit.actual.profit) : profitFailed ? "N/A" : "..."}
-            </Figure>
+            {profit ? (
+              <Figure
+                value={profit.actual.profit}
+                format={money}
+                tone={profit.actual.profit < 0 ? "text-tomato-700" : "text-gray-900"}
+              />
+            ) : (
+              <Figure>{profitFailed ? "N/A" : "..."}</Figure>
+            )}
             {profit && (
               <Caption tone="text-gray-600">
                 {profit.actual.orders > 0
@@ -293,9 +322,11 @@ export default function FarmerDashboard() {
               </Warning>
             )}
           </StatCard>
+          </StaggerItem>
 
+          <StaggerItem y={18}>
           <StatCard icon={Package} label="Stock" tone="purple" link={{ to: "/farmer/products", label: "Manage" }} testId="stat-stock">
-            <Figure>{totalStockKg.toLocaleString()} kg</Figure>
+            <Figure value={totalStockKg} format={(n) => `${Math.round(n).toLocaleString()} kg`} />
             <Caption tone="text-gray-600">
               Across {plural(products.length, "product")}
               {totalStockTrays > 0 && ` · plus ${amountOf(totalStockTrays, "tray")} of eggs`}
@@ -307,13 +338,14 @@ export default function FarmerDashboard() {
               </Warning>
             )}
           </StatCard>
-        </div>
+          </StaggerItem>
+        </Stagger>
 
         <div className="grid items-start gap-6 lg:grid-cols-3">
           <div className="min-w-0 space-y-6 lg:col-span-2">
             <Suspense
               fallback={
-                <section className="rounded-[18px] border border-[#E1E7E2] bg-white p-5 shadow-sm sm:p-6">
+                <section className="harvest-card p-5 sm:p-6">
                   <ChartSkeleton stats />
                 </section>
               }
@@ -328,7 +360,7 @@ export default function FarmerDashboard() {
                 <h2 className="text-base font-semibold text-gray-900">Recent notifications</h2>
                 <Link
                   to="/farmer/notifications"
-                  className="text-xs font-semibold text-[#2f8f66] underline underline-offset-2 hover:text-[#1f5c42]"
+                  className="text-xs font-semibold text-brand underline underline-offset-2 hover:text-brand-dark"
                 >
                   See all →
                 </Link>
@@ -336,22 +368,22 @@ export default function FarmerDashboard() {
               {notifications.length === 0 ? (
                 <p className="mt-4 text-sm text-gray-400">You&apos;re all caught up!</p>
               ) : (
-                <ul className="mt-2 divide-y divide-gray-100">
+                <Stagger as="ul" on="mount" className="mt-2 divide-y divide-gray-100" stagger={0.07} delay={0.2}>
                   {notifications.slice(0, 3).map((note) => {
                     const look = NOTE_LOOK[note.kind] || NOTE_LOOK.order;
                     return (
-                      <li key={note.id} className="flex items-center gap-3 py-3">
+                      <StaggerItem as="li" key={note.id} className="flex items-center gap-3 py-3" y={0} x={-10}>
                         {/* The product's own photo, so it can be told at a glance
                             which product it is - the icon only for one without. */}
                         {note.image ? (
                           <img
                             src={`${SERVER_URL}${note.image}`}
                             alt=""
-                            className="h-9 w-9 shrink-0 rounded-lg bg-gray-100 object-cover ring-1 ring-gray-200"
+                            className="h-10 w-10 shrink-0 rounded-xl bg-gray-100 object-cover ring-1 ring-gray-200"
                             data-testid="note-photo"
                           />
                         ) : (
-                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${look.tone}`}>
+                          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${look.tone}`}>
                             <look.icon className="h-4 w-4" />
                           </span>
                         )}
@@ -370,15 +402,15 @@ export default function FarmerDashboard() {
                         {note.to && (
                           <Link
                             to={note.to}
-                            className="shrink-0 rounded-md border border-[#2f8f66] px-3 py-2 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                            className="shrink-0 rounded-full border border-brand px-3.5 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand hover:text-white"
                           >
                             {note.action}
                           </Link>
                         )}
-                      </li>
+                      </StaggerItem>
                     );
                   })}
-                </ul>
+                </Stagger>
               )}
             </section>
           </div>
@@ -392,7 +424,7 @@ export default function FarmerDashboard() {
               subtitle="Top searched products · searches/views"
               loading={loading}
               empty="No searches yet"
-              barClass="bg-[#2f8f66]"
+              barClass="bg-brand"
               items={topSearched.map((crop) => ({
                 key: crop.title,
                 name: crop.title,
@@ -406,10 +438,10 @@ export default function FarmerDashboard() {
               <h2 className="text-base font-semibold text-gray-900">Flash sale suggestions</h2>
               <p className="text-xs text-gray-500">Products with no orders for a week or more</p>
               {loading ? (
-                <p className="mt-4 text-sm text-gray-400">Loading...</p>
+                <ShimmerRows rows={3} className="mt-4" label="Loading..." />
               ) : staleStock.length === 0 ? (
                 <div className="mt-4 flex items-start gap-3 rounded-lg bg-green-50 p-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand text-white">
                     <Check className="h-4 w-4" />
                   </span>
                   <div>
@@ -418,9 +450,9 @@ export default function FarmerDashboard() {
                   </div>
                 </div>
               ) : (
-                <ul className="mt-3 divide-y divide-gray-100">
+                <Stagger as="ul" on="mount" className="mt-3 divide-y divide-gray-100" stagger={0.06}>
                   {staleStock.map((p) => (
-                    <li key={p._id} className="flex items-center justify-between gap-3 py-2.5">
+                    <StaggerItem as="li" key={p._id} className="flex items-center justify-between gap-3 py-2.5" y={8}>
                       <div className="min-w-0 text-sm">
                         <p className="truncate font-medium text-gray-800">{p.title}</p>
                         <p className="text-xs text-gray-500">
@@ -430,13 +462,13 @@ export default function FarmerDashboard() {
                       <button
                         type="button"
                         onClick={() => navigate(`/farmer/products/${p._id}/edit`)}
-                        className="shrink-0 rounded-md border border-[#2f8f66] px-3 py-1.5 text-xs font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                        className="shrink-0 rounded-full border border-tomato-600 px-3.5 py-1.5 text-xs font-semibold text-tomato-700 transition-colors hover:bg-tomato-600 hover:text-white"
                       >
                         Discount
                       </button>
-                    </li>
+                    </StaggerItem>
                   ))}
-                </ul>
+                </Stagger>
               )}
             </section>
           </div>

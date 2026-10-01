@@ -1,9 +1,21 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "motion/react";
+import { ArrowRight } from "lucide-react";
 import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
+import { SproutLoader, Stagger, StaggerItem } from "../../components/motion";
 import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
 import { categoryLabels } from "../../utils/notifications";
+import { SPRING } from "../../theme/harvest";
+
+// Each kind of notification in its harvest colour: a new order in green, a
+// product running low in gold, one sold out in tomato.
+const LOOK = {
+  order: { band: "bg-forest-700", tile: "bg-forest-50 text-forest-700 ring-forest-100" },
+  "low-stock": { band: "bg-gold-500", tile: "bg-gold-50 text-gold-700 ring-gold-200" },
+  "out-of-stock": { band: "bg-tomato-600", tile: "bg-tomato-50 text-tomato-700 ring-tomato-100" },
+};
 
 export default function FarmerNotifications() {
   const { notifications, loading } = useFarmerNotifications();
@@ -29,57 +41,65 @@ export default function FarmerNotifications() {
       </FarmerTopBar>
 
       <div className="p-4 sm:p-8">
-        <div className="flex flex-wrap gap-3">
-          {tabs.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                filter === key
-                  ? "bg-[#2f8f66] text-white"
-                  : "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* The chosen filter's green slides across to the next one picked. */}
+        <div className="inline-flex flex-wrap gap-1.5 rounded-full bg-white/70 p-1.5 shadow-soft ring-1 ring-black/5">
+          {tabs.map(({ key, label }) => {
+            const active = filter === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                aria-pressed={active}
+                className={`relative rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  active ? "text-white" : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {active && (
+                  <motion.span layoutId="notification-filter-pill" className="absolute inset-0 rounded-full bg-forest-700 shadow-sm" transition={SPRING} />
+                )}
+                <span className="relative">{label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
-          <div className="bg-[#2f8f66] px-4 py-2 text-sm font-semibold text-white">Select</div>
+        <div className="harvest-card mt-6 p-4 sm:p-5">
+          {loading && <SproutLoader label="Loading notifications..." />}
 
-          <div className="p-4">
-            {loading && <p className="text-sm text-gray-500">Loading notifications...</p>}
-
-            {!loading && visible.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {visible.map((note) => (
-                  <Link
-                    key={note.id}
-                    to={note.to}
-                    className="block overflow-hidden rounded-lg border border-gray-200 transition hover:border-[#2f8f66] hover:shadow-md"
-                    data-testid="notification-card"
-                  >
-                    <div className={`px-3 py-1.5 text-sm font-semibold text-white ${note.color}`}>
-                      {note.title}
-                    </div>
-                    <div className="flex flex-col items-center gap-3 p-4 text-center">
-                      <span className={`flex h-10 w-10 items-center justify-center rounded-full text-white ${note.color}`}>
-                        <note.icon className="h-5 w-5" />
+          {!loading && visible.length > 0 && (
+            <Stagger key={filter} on="mount" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" stagger={0.06}>
+              {visible.map((note) => {
+                const look = LOOK[note.kind] || LOOK.order;
+                return (
+                  <StaggerItem key={note.id} y={16}>
+                    <Link
+                      to={note.to}
+                      className="harvest-card harvest-card-hover group relative flex h-full flex-col overflow-hidden p-4"
+                      data-testid="notification-card"
+                    >
+                      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-1 ${look.band}`} />
+                      <div className="flex items-center gap-3">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${look.tile}`}>
+                          <note.icon className="h-5 w-5" />
+                        </span>
+                        <p className="font-display text-base font-semibold text-gray-900">{note.title}</p>
+                      </div>
+                      <p className="mt-3 flex-1 text-sm text-gray-600">{note.description}</p>
+                      <span className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-brand">
+                        {note.action} →
+                        <ArrowRight className="h-3.5 w-3.5 -translate-x-1 opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100" />
                       </span>
-                      <p className="text-xs text-gray-600">{note.description}</p>
-                      <span className="text-xs font-semibold text-[#2f8f66]">{note.action} →</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
+                    </Link>
+                  </StaggerItem>
+                );
+              })}
+            </Stagger>
+          )}
 
-            {!loading && (
-              <p className="mt-6 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
-            )}
-          </div>
+          {!loading && (
+            <p className="mt-6 text-center text-sm text-gray-400">You&apos;re all caught up!</p>
+          )}
         </div>
       </div>
     </FarmerLayout>

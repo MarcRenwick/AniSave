@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { Bell, X } from "lucide-react";
 import { useFarmerNotifications } from "../../hooks/useFarmerNotifications";
 import { useAuth } from "../../context/AuthContext";
 import Avatar from "../Avatar";
+import { EASE } from "../../theme/harvest";
 
 // "JR" for Jonvic Remulla - what the account button shows until there's a photo.
 const initialsOf = (name = "") =>
@@ -46,7 +48,7 @@ export default function FarmerTopBar({ children, showActions = true }) {
 
   return (
     <div
-      className="relative flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-4 sm:px-8 sm:py-5"
+      className="relative z-20 flex items-center justify-between gap-3 border-b border-gray-200/70 bg-white/60 px-4 py-4 backdrop-blur-sm sm:px-8 sm:py-5"
     >
       <div className="min-w-0">{children}</div>
 
@@ -64,7 +66,7 @@ export default function FarmerTopBar({ children, showActions = true }) {
               {count > 0 && (
                 <span
                   data-testid="bell-count"
-                  className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-semibold text-white ring-2 ring-white"
+                  className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-tomato-600 px-1 text-[11px] font-bold text-white ring-2 ring-white"
                 >
                   {count > 9 ? "9+" : count}
                 </span>
@@ -78,7 +80,7 @@ export default function FarmerTopBar({ children, showActions = true }) {
               {user?.avatar ? (
                 <Avatar src={user.avatar} alt="" className="h-9 w-9 rounded-full bg-green-100" iconClass="h-5 w-5" />
               ) : (
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-xs font-bold text-white">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
                   {initialsOf(user?.name)}
                 </span>
               )}
@@ -86,8 +88,17 @@ export default function FarmerTopBar({ children, showActions = true }) {
             </Link>
           </div>
 
+          <AnimatePresence>
           {open && (
-            <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-xl bg-white shadow-xl">
+            <motion.div
+              initial={{ opacity: 0, y: -8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.98 }}
+              transition={{ duration: 0.28, ease: EASE }}
+              style={{ originX: 1, originY: 0 }}
+              className="absolute right-0 top-full z-20 mt-2 w-80 overflow-hidden rounded-2xl bg-white shadow-lift ring-1 ring-black/5"
+              data-testid="bell-panel"
+            >
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
                 <p className="font-semibold text-gray-900">Notifications</p>
                 <button
@@ -124,12 +135,13 @@ export default function FarmerTopBar({ children, showActions = true }) {
               <Link
                 to="/farmer/notifications"
                 onClick={() => setOpen(false)}
-                className="block border-t border-gray-100 px-4 py-2.5 text-center text-xs font-semibold text-[#2f8f66] hover:bg-gray-50"
+                className="block border-t border-gray-100 px-4 py-2.5 text-center text-xs font-semibold text-brand hover:bg-gray-50"
               >
                 See all notifications
               </Link>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
       )}
     </div>

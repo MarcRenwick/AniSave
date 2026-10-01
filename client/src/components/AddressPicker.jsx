@@ -22,7 +22,7 @@ function load(key, fetcher) {
 }
 
 const defaultSelectClass =
-  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66] disabled:bg-gray-50 disabled:text-gray-400";
+  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-gray-50 disabled:text-gray-400";
 
 // Province > Municipality/City. AniSave serves one province, so the province
 // is shown fixed rather than as a choice of one, and only its municipalities

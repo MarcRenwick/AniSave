@@ -16,6 +16,9 @@ import Avatar from "../../components/Avatar";
 import { categoryLabel as categoryLabelFor } from "../../utils/categories";
 import { estimate, money, profitTone } from "../../utils/profit";
 import { amountOf, perUnit, unitOf, unitWord, unitWords } from "../../utils/units";
+import useHarvestTheme from "../../theme/useHarvestTheme";
+import { motion, useReducedMotion } from "motion/react";
+import { SproutLoader, SuccessCheck } from "../../components/motion";
 
 const MAX_PHOTOS = 5;
 // The same limit the server holds a description to.
@@ -83,7 +86,7 @@ function Pill({ children }) {
 function StepMark({ step, done, optional }) {
   if (done) {
     return (
-      <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+      <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-white">
         <Check className="h-3.5 w-3.5" strokeWidth={3} />
       </span>
     );
@@ -92,7 +95,7 @@ function StepMark({ step, done, optional }) {
     <span
       aria-hidden="true"
       className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-        optional ? "bg-gray-200 text-gray-600" : "bg-[#2f8f66] text-white"
+        optional ? "bg-gray-200 text-gray-600" : "bg-brand text-white"
       }`}
     >
       {step}
@@ -142,7 +145,7 @@ function Label({ htmlFor, required = false, extra, children }) {
 // "/ kg" behind - so nobody has to guess whether a price is per kilo.
 function AddonInput({ prefix, suffix, ...input }) {
   return (
-    <div className="mt-1.5 flex overflow-hidden rounded-lg border border-gray-300 bg-white transition focus-within:border-[#2f8f66] focus-within:ring-1 focus-within:ring-[#2f8f66]">
+    <div className="mt-1.5 flex overflow-hidden rounded-lg border border-gray-300 bg-white transition focus-within:border-brand focus-within:ring-1 focus-within:ring-brand">
       {prefix && (
         <span aria-hidden="true" className="flex items-center pl-3 text-sm text-gray-500">
           {prefix}
@@ -162,7 +165,7 @@ function AddonInput({ prefix, suffix, ...input }) {
 }
 
 const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
 // A plain statement in place of the price guide, when there isn't one to show.
 function Notice({ tone = "gray", children }) {
@@ -257,7 +260,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, costPerUnit, onU
   return (
     <div className="overflow-hidden rounded-xl border border-green-200 bg-white" data-testid="price-guide">
       <div className="flex items-center gap-3 bg-green-50 px-4 py-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#2f8f66] text-white">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
           <TrendingUp className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -269,7 +272,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, costPerUnit, onU
       </div>
 
       <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <div className="flex flex-col justify-between rounded-xl bg-[#1f5c42] p-4 text-white">
+        <div className="flex flex-col justify-between rounded-xl bg-brand-dark p-4 text-white">
           <div>
             <p className="text-xs font-medium text-green-100">Recommended selling price</p>
             <p className="mt-1 text-3xl font-bold tracking-tight" data-testid="recommended-price">
@@ -279,7 +282,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, costPerUnit, onU
           <button
             type="button"
             onClick={() => onUse(price)}
-            className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-[#1f5c42] transition hover:bg-green-50"
+            className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2.5 text-sm font-semibold text-brand-dark transition hover:bg-green-50"
           >
             <Check className="h-4 w-4" />
             Use {peso(price)} {perUnit(unit)}
@@ -304,7 +307,7 @@ function PriceGuide({ crop, recommendation, checking, quantity, costPerUnit, onU
             ) : (
               <>
                 <p className="text-xs text-gray-500">
-                  If you <span className="font-semibold text-[#2f8f66]">sell all</span> {amountOf(kilos, unit)} at {peso(price)}
+                  If you <span className="font-semibold text-brand">sell all</span> {amountOf(kilos, unit)} at {peso(price)}
                 </p>
                 <p className="mt-0.5 text-lg font-bold text-gray-900">
                   {money(figures.income)} <span className="text-xs font-medium text-gray-500">estimated income</span>
@@ -353,7 +356,7 @@ function MarginHint({ price, costPerUnit, unit }) {
   if (margin < 0) {
     return hint(`You lose ${money(-margin)} per ${each} at this price - it's below your cost.`, "font-medium text-red-600");
   }
-  return hint(`You make ${money(margin)} per ${each} at this price, after your cost.`, "font-medium text-[#2f8f66]");
+  return hint(`You make ${money(margin)} per ${each} at this price, after your cost.`, "font-medium text-brand");
 }
 
 // The six things a listing needs, ticked off as they are filled in.
@@ -376,7 +379,7 @@ function Checklist({ items, isEdit }) {
         className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100"
       >
         <div
-          className="h-full rounded-full bg-[#2f8f66] transition-all duration-300"
+          className="h-full rounded-full bg-brand transition-all duration-300"
           style={{ width: `${(done / items.length) * 100}%` }}
         />
       </div>
@@ -384,7 +387,7 @@ function Checklist({ items, isEdit }) {
         {items.map((item) => (
           <li key={item.key} className="flex items-center gap-2.5 text-sm" data-done={item.done}>
             {item.done ? (
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand text-white">
                 <Check className="h-3 w-3" strokeWidth={3} />
               </span>
             ) : (
@@ -403,7 +406,7 @@ function Chip({ tone = "green", children }) {
   return (
     <span
       className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${
-        tone === "amber" ? "bg-amber-50 text-amber-800 ring-amber-100" : "bg-green-50 text-[#1f5c42] ring-green-100"
+        tone === "amber" ? "bg-amber-50 text-amber-800 ring-amber-100" : "bg-green-50 text-brand-dark ring-green-100"
       }`}
     >
       {children}
@@ -445,7 +448,7 @@ function Preview({ crop, form, photos, shown, onPickPhoto, seller, town }) {
               aria-label={`Show photo ${i + 1}`}
               aria-current={photo === shown}
               className={`h-11 w-11 shrink-0 overflow-hidden rounded-lg border-2 ${
-                photo === shown ? "border-[#2f8f66]" : "border-transparent"
+                photo === shown ? "border-brand" : "border-transparent"
               }`}
             >
               <img src={photoSrc(photo)} alt="" className="h-full w-full object-cover" />
@@ -487,7 +490,7 @@ function Preview({ crop, form, photos, shown, onPickPhoto, seller, town }) {
           <Avatar
             src={seller?.avatar}
             alt={seller?.name || "You"}
-            className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+            className="h-10 w-10 rounded-full bg-green-100 text-brand"
             iconClass="h-5 w-5"
           />
           <div className="min-w-0">
@@ -521,6 +524,7 @@ export default function FarmerProductForm() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const { user } = useAuth();
+  useHarvestTheme();
 
   const [form, setForm] = useState(emptyForm);
   // The catalogue product this listing is of. Not part of `form`, because it
@@ -680,6 +684,10 @@ export default function FarmerProductForm() {
       return to < 0 || to >= prev.length ? prev : moveTo(prev, key, photoKey(prev[to]));
     });
 
+  // Saved: the button shows a tick for a moment before the page moves on.
+  const [saved, setSaved] = useState(false);
+  const reducedMotion = useReducedMotion();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -717,12 +725,18 @@ export default function FarmerProductForm() {
     }
 
     setSubmitting(true);
+    // A moment for the tick on the button before the page moves on.
+    const afterTick = () => new Promise((resolve) => setTimeout(resolve, reducedMotion ? 0 : 700));
     try {
       if (isEdit) {
         await updateProduct(id, data);
+        setSaved(true);
+        await afterTick();
         navigate(`/farmer/products/${id}`);
       } else {
         const { data: created } = await createProduct(data);
+        setSaved(true);
+        await afterTick();
         navigate("/farmer/products", { state: { justAddedId: created._id } });
       }
     } catch (err) {
@@ -759,12 +773,17 @@ export default function FarmerProductForm() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#eaf6ec]">
+    <div className="harvest-field min-h-screen">
       {/* Held at the top so Back is always a click away, however far down the
           form the farmer has got. */}
-      <div className="sticky top-0 z-30 flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
-        <button type="button" onClick={() => navigate(-1)} aria-label="Back">
-          <ArrowLeft className="h-6 w-6" />
+      <div className="harvest-grain-dark sticky top-0 z-30 flex items-center gap-3 bg-[linear-gradient(110deg,#0f2418,#1f5130)] px-4 py-4 text-cream shadow-[0_10px_30px_-20px_rgb(0_0_0/0.6)]">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label="Back"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-cream/10 transition-colors hover:bg-cream/20"
+        >
+          <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="flex-1 pr-6 text-center text-xl font-semibold">
           {isEdit ? "Edit Product" : "Add New Product"}
@@ -773,20 +792,20 @@ export default function FarmerProductForm() {
 
       <div className="mx-auto max-w-6xl p-4 sm:p-8">
         {loading ? (
-          <p className="text-sm text-gray-600">Loading...</p>
+          <SproutLoader label="Loading..." />
         ) : (
           // The form on the left; on the right what is still to do and the
           // listing it is building. That column is held in place so it stays
           // in view while the form is filled in - items-start keeps it from
           // being stretched, which is what a sticky box needs in order to stick.
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem] xl:grid-cols-[minmax(0,1fr)_24rem]">
-            <form onSubmit={handleSubmit} className="rounded-2xl border border-gray-200/70 bg-white shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-2xl bg-[#f6faf7] px-5 py-4 sm:px-6">
+            <form onSubmit={handleSubmit} className="harvest-card">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-t-[1.25rem] bg-sand/60 px-5 py-4 sm:px-6">
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar
                     src={user?.avatar}
                     alt={sellerName}
-                    className="h-10 w-10 rounded-full bg-green-100 text-[#2f8f66]"
+                    className="h-10 w-10 rounded-full bg-green-100 text-brand"
                     iconClass="h-5 w-5"
                   />
                   <div className="min-w-0">
@@ -846,7 +865,7 @@ export default function FarmerProductForm() {
                           }}
                           aria-label={`Photo ${i + 1} of ${photos.length}${i === 0 ? ", the cover" : ""}. Press to preview it, or use the arrow keys to move it.`}
                           className={`block h-full w-full cursor-grab touch-pan-y overflow-hidden rounded-xl border-2 bg-gray-50 active:cursor-grabbing ${
-                            i === 0 ? "border-[#2f8f66]" : "border-gray-200"
+                            i === 0 ? "border-brand" : "border-gray-200"
                           }`}
                         >
                           <img
@@ -858,7 +877,7 @@ export default function FarmerProductForm() {
                         </button>
 
                         {i === 0 && (
-                          <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-[#1f5c42] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                          <span className="pointer-events-none absolute bottom-1.5 left-1.5 rounded bg-brand-dark px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                             Cover
                           </span>
                         )}
@@ -879,7 +898,7 @@ export default function FarmerProductForm() {
                     <button
                       type="button"
                       onClick={() => fileRef.current?.click()}
-                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#2f8f66]/50 bg-green-50/60 text-[#2f8f66] transition hover:border-[#2f8f66] hover:bg-green-50"
+                      className="flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-brand/50 bg-green-50/60 text-brand transition hover:border-brand hover:bg-green-50"
                     >
                       <Camera className="h-5 w-5" />
                       <span className="text-xs font-semibold">Add photo</span>
@@ -924,7 +943,7 @@ export default function FarmerProductForm() {
                   <div>
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900">
                       Category
-                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-[#1f5c42]">
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-brand-dark">
                         Automatic
                       </span>
                     </p>
@@ -932,7 +951,7 @@ export default function FarmerProductForm() {
                       data-testid="category"
                       className="mt-1.5 flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2.5 text-sm"
                     >
-                      <Tag className="h-4 w-4 shrink-0 text-[#2f8f66]" />
+                      <Tag className="h-4 w-4 shrink-0 text-brand" />
                       {crop ? (
                         <span className="font-medium text-gray-900">{categoryLabel(crop)}</span>
                       ) : (
@@ -1055,7 +1074,7 @@ export default function FarmerProductForm() {
                         <label
                           key={value}
                           className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition ${
-                            chosen ? "border-[#2f8f66] bg-green-50 ring-1 ring-[#2f8f66]" : "border-gray-200 hover:border-gray-300"
+                            chosen ? "border-brand bg-green-50 ring-1 ring-brand" : "border-gray-200 hover:border-gray-300"
                           }`}
                         >
                           <input
@@ -1064,7 +1083,7 @@ export default function FarmerProductForm() {
                             value={value}
                             checked={chosen}
                             onChange={handleChange}
-                            className="h-4 w-4 shrink-0 accent-[#2f8f66]"
+                            className="h-4 w-4 shrink-0 accent-brand"
                           />
                           <span className="min-w-0">
                             <span className="block text-sm font-semibold text-gray-900">{label}</span>
@@ -1130,7 +1149,7 @@ export default function FarmerProductForm() {
                 </div>
 
                 <div className="flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3 text-sm">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8f66]" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                   <div className="min-w-0">
                     <p className="text-gray-900">
                       <span className="font-semibold">Pickup:</span>{" "}
@@ -1153,7 +1172,7 @@ export default function FarmerProductForm() {
                     to="/terms"
                     target="_blank"
                     rel="noreferrer"
-                    className="font-medium text-[#2f8f66] underline hover:text-[#1f5c42]"
+                    className="font-medium text-brand underline hover:text-brand-dark"
                   >
                     Terms of Use
                   </Link>
@@ -1161,9 +1180,16 @@ export default function FarmerProductForm() {
                 </p>
 
                 {error && (
-                  <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+                  <motion.div
+                    key={error}
+                    role="alert"
+                    initial={{ x: 0 }}
+                    animate={{ x: [0, -7, 7, -4, 4, 0] }}
+                    transition={{ duration: 0.45 }}
+                    className="rounded-xl bg-tomato-50 px-3 py-2 text-sm text-tomato-700 ring-1 ring-tomato-100"
+                  >
                     {error}
-                  </div>
+                  </motion.div>
                 )}
 
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-3">
@@ -1177,9 +1203,22 @@ export default function FarmerProductForm() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="rounded-xl bg-[#2f8f66] py-3 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
+                    className={`flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-colors disabled:opacity-90 ${
+                      saved ? "bg-forest-700" : "bg-brand hover:bg-brand-dark"
+                    }`}
                   >
-                    {submitting ? "Saving..." : isEdit ? "Save changes" : "Publish listing"}
+                    {saved ? (
+                      <>
+                        <SuccessCheck className="h-5 w-5" color="#fffdf8" />
+                        Saved
+                      </>
+                    ) : submitting ? (
+                      "Saving..."
+                    ) : isEdit ? (
+                      "Save changes"
+                    ) : (
+                      "Publish listing"
+                    )}
                   </button>
                 </div>
               </div>
@@ -1192,7 +1231,7 @@ export default function FarmerProductForm() {
               <div>
                 <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3">
                   <h2 className="text-sm font-semibold text-gray-900">Buyer preview</h2>
-                  <p className="text-xs font-medium text-[#2f8f66]">How buyers will see it</p>
+                  <p className="text-xs font-medium text-brand">How buyers will see it</p>
                 </div>
                 <Preview
                   crop={crop}

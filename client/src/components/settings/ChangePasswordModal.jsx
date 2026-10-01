@@ -6,7 +6,7 @@ import { changePassword } from "../../services/api";
 import { getPasswordError } from "../../utils/password";
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
 export default function ChangePasswordModal({ onClose }) {
   const { updateToken } = useAuth();
@@ -119,7 +119,7 @@ export default function ChangePasswordModal({ onClose }) {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56] disabled:opacity-60"
+            className="flex-1 rounded-md bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
           >
             {saving ? "Saving..." : "Change Password"}
           </button>

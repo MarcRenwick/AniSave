@@ -7,7 +7,7 @@ import { useAuth } from "../../context/AuthContext";
 import { setTwoStep } from "../../services/api";
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
 // Two-step sign-in: after the password, a code is emailed to the address the
 // account was registered with.
@@ -45,7 +45,7 @@ export default function PrivacySecurityModal({ onClose }) {
       <section>
         <div className="flex items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <ShieldCheck className="h-4 w-4 text-[#2f8f66]" />
+            <ShieldCheck className="h-4 w-4 text-brand" />
             Two-step sign-in
           </p>
           <span
@@ -81,7 +81,7 @@ export default function PrivacySecurityModal({ onClose }) {
             className={`w-full rounded-md py-2 text-sm font-semibold disabled:opacity-60 ${
               enabled
                 ? "border-2 border-red-600 text-red-600 hover:bg-red-50"
-                : "bg-[#2f8f66] text-white hover:bg-[#267a56]"
+                : "bg-brand text-white hover:bg-brand-hover"
             }`}
           >
             {saving ? "Saving..." : enabled ? "Turn off two-step sign-in" : "Turn on two-step sign-in"}
@@ -90,11 +90,11 @@ export default function PrivacySecurityModal({ onClose }) {
       </section>
 
       <p className="mt-5 text-center text-xs text-gray-400">
-        <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-[#2f8f66] hover:underline">
+        <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-brand hover:underline">
           Privacy Policy
         </Link>
         {" · "}
-        <Link to="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-[#2f8f66] hover:underline">
+        <Link to="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-brand hover:underline">
           Terms of Use
         </Link>
       </p>

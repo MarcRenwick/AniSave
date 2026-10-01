@@ -166,7 +166,7 @@ export default function TrendChart({ data, range, period }) {
             <XAxis
               dataKey="label"
               tick={{ fontSize: 11, fill: COLORS.muted }}
-              axisLine={{ stroke: "#D5DDD8" }}
+              axisLine={{ stroke: "#d4c9b3" }}
               tickLine={false}
               interval="preserveStartEnd"
               minTickGap={12}
@@ -188,7 +188,7 @@ export default function TrendChart({ data, range, period }) {
                     title={label}
                     lines={[
                       ...(p.current !== null ? [[names[0], revenue.format(p.current), COLORS.blue]] : []),
-                      [names[1][0].toUpperCase() + names[1].slice(1), revenue.format(p.previous), "#9AA59F"],
+                      [names[1][0].toUpperCase() + names[1].slice(1), revenue.format(p.previous), "#786f5d"],
                     ]}
                   />
                 );
@@ -197,7 +197,7 @@ export default function TrendChart({ data, range, period }) {
             <Line
               type="monotone"
               dataKey="previous"
-              stroke="#9AA59F"
+              stroke="#786f5d"
               strokeWidth={2}
               strokeDasharray="5 4"
               dot={false}
@@ -219,7 +219,7 @@ export default function TrendChart({ data, range, period }) {
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: COLORS.muted }}>
         <Key swatch={<span className="h-0.5 w-4 rounded" style={{ background: COLORS.blue }} />}>{names[0]}</Key>
-        <Key swatch={<span className="w-4 border-t-2 border-dashed" style={{ borderColor: "#9AA59F" }} />}>
+        <Key swatch={<span className="w-4 border-t-2 border-dashed" style={{ borderColor: "#786f5d" }} />}>
           {names[1][0].toUpperCase() + names[1].slice(1)}
         </Key>
       </div>

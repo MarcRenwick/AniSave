@@ -22,8 +22,8 @@ const HEIGHT = 320;
 // corners, where products with no stock and no interest gather.
 const QUADRANTS = [
   { key: "restock", label: "RESTOCK SOON", tint: "#FCEBEA", dot: COLORS.red, text: "#B0352B", position: "insideTopLeft" },
-  { key: "selling", label: "SELLING WELL", tint: "#E8F4EC", dot: COLORS.green, text: "#17603F", position: "insideTopRight" },
-  { key: "low", label: "LOW PRIORITY", tint: "#F2F4F3", dot: "#8A968F", text: "#53635A", position: "insideTopLeft" },
+  { key: "selling", label: "SELLING WELL", tint: "#eef6ee", dot: COLORS.green, text: "#1f5130", position: "insideTopRight" },
+  { key: "low", label: "LOW PRIORITY", tint: "#f6f1e6", dot: "#786f5d", text: "#62594a", position: "insideTopLeft" },
   { key: "promote", label: "PROMOTE / DISCOUNT", tint: "#FDF3E4", dot: COLORS.orange, text: "#8A5409", position: "insideTopRight" },
 ];
 const NAMES = { restock: "Restock soon", selling: "Selling well", low: "Low priority", promote: "Promote / discount" };
@@ -125,7 +125,7 @@ export default function DemandStockChart({ demand }) {
               domain={[0, xMax]}
               tick={{ fontSize: 11, fill: COLORS.muted }}
               tickLine={false}
-              axisLine={{ stroke: "#D5DDD8" }}
+              axisLine={{ stroke: "#d4c9b3" }}
               label={{ value: `Stock on hand (${chart.placed.some((p) => unitOf(p) === "tray") ? "kg, or trays of eggs" : "kg"}) →`, position: "insideBottom", offset: -12, fill: COLORS.muted, fontSize: 11 }}
             />
             <YAxis
@@ -135,7 +135,7 @@ export default function DemandStockChart({ demand }) {
               allowDecimals={false}
               tick={{ fontSize: 11, fill: COLORS.muted }}
               tickLine={false}
-              axisLine={{ stroke: "#D5DDD8" }}
+              axisLine={{ stroke: "#d4c9b3" }}
               width={44}
               label={{ value: "Buyer searches & views →", angle: -90, position: "insideLeft", offset: 12, fill: COLORS.muted, fontSize: 11, style: { textAnchor: "middle" } }}
             />
@@ -165,7 +165,7 @@ export default function DemandStockChart({ demand }) {
                 fill={q.dot}
                 isAnimationActive={false}
               >
-                <LabelList dataKey="title" position="right" offset={8} style={{ fontSize: 11, fontWeight: 600, fill: "#1F2A24" }} />
+                <LabelList dataKey="title" position="right" offset={8} style={{ fontSize: 11, fontWeight: 600, fill: "#1a1d16" }} />
               </Scatter>
             ))}
           </ScatterChart>

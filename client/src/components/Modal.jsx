@@ -14,7 +14,7 @@ export default function Modal({ title, onClose, children, maxWidth = "max-w-sm" 
           className={`w-full ${maxWidth} overflow-hidden rounded-xl bg-white shadow-xl`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between bg-[#2f8f66] px-4 py-3 text-white">
+          <div className="flex items-center justify-between bg-brand px-4 py-3 text-white">
             <p className="font-semibold">{title}</p>
             <button type="button" onClick={onClose} aria-label="Close">
               <X className="h-5 w-5" />

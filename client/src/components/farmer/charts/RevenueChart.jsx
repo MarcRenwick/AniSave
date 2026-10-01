@@ -27,7 +27,7 @@ function ActiveBar({ onChange }) {
 
 function Stat({ label, value, detail, testId }) {
   return (
-    <div className="min-w-0 rounded-xl bg-[#F4F7F5] px-3 py-2.5" data-testid={testId}>
+    <div className="min-w-0 rounded-xl bg-[#f6f1e6] px-3 py-2.5" data-testid={testId}>
       <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: COLORS.muted }}>
         {label}
       </p>
@@ -138,14 +138,14 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
               <ReferenceArea
                 x1={chart.firstUpcoming}
                 x2={points.length - 1}
-                fill="#F1F4F2"
+                fill="#f6f1e6"
                 fillOpacity={1}
                 ifOverflow="extendDomain"
                 // Named on the chart only where the shaded stretch is wide enough
                 // to hold the word; the legend says what the shading is either way.
                 label={
                   !phone && points.length - chart.firstUpcoming >= 5
-                    ? { value: "Upcoming", position: "insideBottom", fill: "#8A968F", fontSize: 11 }
+                    ? { value: "Upcoming", position: "insideBottom", fill: "#786f5d", fontSize: 11 }
                     : undefined
                 }
               />
@@ -156,7 +156,7 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
               ticks={pickTicks(points.length, current, peak, phone)}
               tickFormatter={(i) => points[i]?.label ?? ""}
               tick={{ fontSize: 11, fill: COLORS.muted }}
-              axisLine={{ stroke: "#D5DDD8" }}
+              axisLine={{ stroke: "#d4c9b3" }}
               tickLine={false}
               interval={0}
             />
@@ -220,7 +220,7 @@ export default function RevenueChart({ data, range, period, metric, orders, phon
             {granularity === "hour" ? "Now" : "Today"}
           </Key>
         )}
-        {chart.firstUpcoming > 0 && <Key swatch={<span className="h-2.5 w-2.5 rounded-sm bg-[#E4E9E6]" />}>Upcoming</Key>}
+        {chart.firstUpcoming > 0 && <Key swatch={<span className="h-2.5 w-2.5 rounded-sm bg-[#ece5d6]" />}>Upcoming</Key>}
         <span>Tip: tap the line to see that {unit}&apos;s orders</span>
       </div>
 

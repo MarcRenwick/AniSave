@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "motion/react";
+import { EASE, SPRING } from "../../theme/harvest";
 import { getFarmerAnalytics, getMyDemand } from "../../services/api";
 import useMediaQuery, { PHONE } from "../../hooks/useMediaQuery";
 import Segmented from "./Segmented";
@@ -45,9 +47,9 @@ function saveView(view) {
   }
 }
 
-const ACTIVE = "bg-[#1F7A4D] text-white shadow-sm";
+const ACTIVE = "bg-forest-700 text-white shadow-sm";
 const DATE_INPUT =
-  "rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-[#1F7A4D] focus:outline-none focus:ring-1 focus:ring-[#1F7A4D]";
+  "rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-[#2e7d32] focus:outline-none focus:ring-1 focus:ring-[#2e7d32]";
 
 export default function DemandChart({ orders }) {
   const [view, setView] = useState(savedView);
@@ -104,7 +106,7 @@ export default function DemandChart({ orders }) {
 
   const failed = (retry) => (
     <EmptyState title="Couldn't load these figures">
-      <button type="button" onClick={retry} className="font-semibold text-[#1F7A4D] underline underline-offset-2">
+      <button type="button" onClick={retry} className="font-semibold text-[#2e7d32] underline underline-offset-2">
         Try again
       </button>
     </EmptyState>
@@ -140,18 +142,18 @@ export default function DemandChart({ orders }) {
 
   return (
     <section
-      className="rounded-[18px] border border-[#E1E7E2] bg-white p-5 shadow-sm sm:p-6"
+      className="harvest-card harvest-chart p-5 sm:p-6"
       style={{ fontFamily: FONT }}
       data-testid="demand-chart"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-bold text-gray-900">Analytical Demands</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Analytical Demands</h2>
         <label className="flex items-center gap-2 text-xs font-medium md:hidden" style={{ color: COLORS.muted }}>
           View
           <select
             value={view}
             onChange={(e) => chooseView(e.target.value)}
-            className="rounded-lg border border-[#E1E7E2] bg-white px-2.5 py-2 text-sm font-semibold text-gray-900 focus:border-[#1F7A4D] focus:outline-none focus:ring-1 focus:ring-[#1F7A4D]"
+            className="rounded-lg border border-[#e7dfcf] bg-white px-2.5 py-2 text-sm font-semibold text-gray-900 focus:border-[#2e7d32] focus:outline-none focus:ring-1 focus:ring-[#2e7d32]"
             data-testid="view-select"
           >
             {VIEWS.map((v) => (
@@ -166,7 +168,7 @@ export default function DemandChart({ orders }) {
       <div
         role="tablist"
         aria-label="View"
-        className="mt-3 hidden flex-wrap gap-1 rounded-xl border border-[#E1E7E2] bg-[#F4F7F5] p-1 md:flex"
+        className="mt-3 hidden flex-wrap gap-1 rounded-xl border border-[#e7dfcf] bg-[#f6f1e6] p-1 md:flex"
         data-testid="view-tabs"
       >
         {VIEWS.map((v) => (
@@ -177,11 +179,15 @@ export default function DemandChart({ orders }) {
             aria-selected={view === v.key}
             onClick={() => chooseView(v.key)}
             title={v.label}
-            className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-              view === v.key ? ACTIVE : "text-[#53635A] hover:bg-white hover:text-gray-900"
+            className={`relative rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+              view === v.key ? "text-white" : "text-[#62594a] hover:bg-white hover:text-gray-900"
             }`}
           >
-            {v.tab || v.label}
+            {/* The chosen tab's green slides across to whichever is picked next. */}
+            {view === v.key && (
+              <motion.span layoutId="demand-view-pill" className="absolute inset-0 rounded-lg bg-forest-700 shadow-sm" transition={SPRING} />
+            )}
+            <span className="relative">{v.tab || v.label}</span>
           </button>
         ))}
       </div>
@@ -189,7 +195,7 @@ export default function DemandChart({ orders }) {
       {/* What is plotted, then over what. Demand vs Stock has no period: the
           stock is what is on hand now, and buyer interest is counted since
           each product was listed. */}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl bg-[#F7F9F7] p-3" data-testid="chart-filters">
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl bg-[#faf6ee] p-3" data-testid="chart-filters">
         {view === "demand" ? (
           <p className="text-xs" style={{ color: COLORS.muted }} data-testid="period-note">
             Stock on hand right now, against buyer searches and views since each product was listed - so this view isn&apos;t
@@ -233,9 +239,17 @@ export default function DemandChart({ orders }) {
       </div>
 
       {/* A new view or period starts fresh - no bar or day left open from the last. */}
-      <div className="mt-5" key={`${view}-${rangeKey}`} role="tabpanel" aria-label={VIEWS.find((v) => v.key === view).label}>
+      <motion.div
+        className="mt-5"
+        key={`${view}-${rangeKey}`}
+        role="tabpanel"
+        aria-label={VIEWS.find((v) => v.key === view).label}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: EASE }}
+      >
         {body}
-      </div>
+      </motion.div>
     </section>
   );
 }

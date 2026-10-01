@@ -31,7 +31,7 @@ export default function PriceTag({ product, tone = "dark", size = "md", suffix =
         ₱{effectivePrice(product)}
         {suffix}
       </span>
-      <span className={`${s.badge} rounded bg-yellow-300 font-bold text-[#1f5c42]`}>
+      <span className={`${s.badge} rounded bg-yellow-300 font-bold text-brand-dark`}>
         -{discountPercent(product)}%
       </span>
     </span>

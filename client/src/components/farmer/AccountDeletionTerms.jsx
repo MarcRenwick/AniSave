@@ -71,7 +71,7 @@ export default function AccountDeletionTerms({ onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="mt-8 w-full rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white hover:bg-[#267a56] sm:w-48"
+          className="mt-8 w-full rounded-md bg-brand py-2.5 text-sm font-semibold text-white hover:bg-brand-hover sm:w-48"
         >
           Back
         </button>

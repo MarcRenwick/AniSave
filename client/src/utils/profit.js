@@ -59,6 +59,9 @@ export function productFinancials(row) {
       soldKg: actual.soldKg,
       pendingKg: Math.min(pendingKg, stock),
       inStockKg: Math.max(stock - pendingKg, 0),
+      // Everything still at the farm - ordered or not - which is what the
+      // remaining-stock figures are worked out on.
+      onHandKg: stock,
       listedKg: actual.soldKg + stock,
     },
     remaining: {

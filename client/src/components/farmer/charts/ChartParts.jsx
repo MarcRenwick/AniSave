@@ -5,10 +5,10 @@ import { COLORS } from "./analytics";
 // Small pieces every Analytical Demands view is built from.
 
 const BADGE_TONES = {
-  green: "bg-[#E6F3EB] text-[#17603F]",
+  green: "bg-[#eef6ee] text-[#1f5130]",
   red: "bg-[#FCE9E7] text-[#B0352B]",
   amber: "bg-[#FDF1DF] text-[#8A5409]",
-  gray: "bg-[#EEF1EF] text-[#53635A]",
+  gray: "bg-[#f3eee3] text-[#62594a]",
 };
 
 export function Badge({ tone = "green", title, children }) {
@@ -42,13 +42,13 @@ export function ChartSkeleton({ stats = false, height = 240 }) {
       {stats && (
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-16 rounded-xl bg-[#EEF1EF]" />
+            <div key={i} className="h-16 rounded-xl bg-[#f3eee3]" />
           ))}
         </div>
       )}
-      <div className="flex items-end gap-2 rounded-xl bg-[#F6F8F6] p-4" style={{ height }}>
+      <div className="flex items-end gap-2 rounded-xl bg-[#f8f4ec] p-4" style={{ height }}>
         {[40, 65, 30, 80, 55, 70, 45, 60, 35, 75].map((h, i) => (
-          <div key={i} className="flex-1 rounded-t bg-[#E3E9E5]" style={{ height: `${h}%` }} />
+          <div key={i} className="flex-1 rounded-t bg-[#ebe3d3]" style={{ height: `${h}%` }} />
         ))}
       </div>
     </div>
@@ -59,11 +59,11 @@ export function ChartSkeleton({ stats = false, height = 240 }) {
 export function EmptyState({ title, children, height = 240 }) {
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#E1E7E2] bg-[#FAFBFA] px-6 text-center"
+      className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#e7dfcf] bg-[#fcfaf4] px-6 text-center"
       style={{ minHeight: height }}
       data-testid="chart-empty"
     >
-      <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F3EB] text-[#1F7A4D]">
+      <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#eef6ee] text-[#2e7d32]">
         <BarChart3 className="h-5 w-5" />
       </span>
       <p className="text-sm font-semibold text-gray-900">{title}</p>
@@ -76,7 +76,7 @@ export function EmptyState({ title, children, height = 240 }) {
 const MAX_LISTED = 5;
 export function OrdersPanel({ title, orders, summary, emptyText, onClose }) {
   return (
-    <div className="mt-4 rounded-xl border border-[#E1E7E2] bg-[#F7F9F7] p-4" data-testid="chart-orders">
+    <div className="mt-4 rounded-xl border border-[#e7dfcf] bg-[#faf6ee] p-4" data-testid="chart-orders">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-gray-900">{title}</p>
@@ -108,7 +108,7 @@ export function OrdersPanel({ title, orders, summary, emptyText, onClose }) {
               </div>
               <Link
                 to={`/farmer/orders/${order._id}`}
-                className="shrink-0 rounded-md border border-[#1F7A4D] bg-white px-3 py-1.5 text-xs font-semibold text-[#1F7A4D] transition hover:bg-green-50"
+                className="shrink-0 rounded-md border border-[#2e7d32] bg-white px-3 py-1.5 text-xs font-semibold text-[#2e7d32] transition hover:bg-green-50"
               >
                 View order
               </Link>
@@ -117,7 +117,7 @@ export function OrdersPanel({ title, orders, summary, emptyText, onClose }) {
         </ul>
       )}
       {orders.length > MAX_LISTED && (
-        <Link to="/farmer/orders" className="mt-2 inline-block text-xs font-semibold text-[#1F7A4D] hover:underline">
+        <Link to="/farmer/orders" className="mt-2 inline-block text-xs font-semibold text-[#2e7d32] hover:underline">
           +{orders.length - MAX_LISTED} more in Orders
         </Link>
       )}

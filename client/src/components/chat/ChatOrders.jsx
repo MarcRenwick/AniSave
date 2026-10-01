@@ -66,7 +66,7 @@ export default function ChatOrders({ conversationId, reloadKey }) {
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-[#2f8f66] hover:bg-green-50"
+            className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-xs font-semibold text-brand hover:bg-green-50"
           >
             {open ? "Hide" : `All orders (${data.total})`}
             <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
@@ -79,7 +79,7 @@ export default function ChatOrders({ conversationId, reloadKey }) {
             <OrderRow key={order._id} order={order} />
           ))}
           {data.total > data.orders.length && (
-            <Link to="/buyer/orders" className="block px-2 py-2 text-center text-xs font-semibold text-[#2f8f66] hover:underline">
+            <Link to="/buyer/orders" className="block px-2 py-2 text-center text-xs font-semibold text-brand hover:underline">
               See all {data.total} in My Orders
             </Link>
           )}

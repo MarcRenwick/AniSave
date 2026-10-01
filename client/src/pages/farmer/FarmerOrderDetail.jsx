@@ -14,6 +14,8 @@ import {
   previousStatusOf,
 } from "../../utils/orderStatus";
 import { amountOf, unitOf, unitWord } from "../../utils/units";
+import { AnimatePresence, motion } from "motion/react";
+import { SproutLoader, SuccessCheck } from "../../components/motion";
 
 // The farmer's side of an order, inside the farmer portal: who the customer
 // is, what they ordered, and - beside it - how far along it is and the next
@@ -28,6 +30,13 @@ export default function FarmerOrderDetail() {
   const [actionError, setActionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [undoing, setUndoing] = useState(false);
+  // A tick beside the status for a moment after it changes.
+  const [justUpdated, setJustUpdated] = useState(false);
+  useEffect(() => {
+    if (!justUpdated) return undefined;
+    const t = setTimeout(() => setJustUpdated(false), 2400);
+    return () => clearTimeout(t);
+  }, [justUpdated]);
   const busy = submitting || undoing;
 
   useEffect(() => {
@@ -43,6 +52,7 @@ export default function FarmerOrderDetail() {
     try {
       const { data } = await updateOrderStatus(order._id, status);
       setOrder((prev) => ({ ...prev, ...data }));
+      setJustUpdated(true);
     } catch (err) {
       setActionError(err.response?.data?.message || "Could not update this order. Please try again.");
     } finally {
@@ -77,7 +87,7 @@ export default function FarmerOrderDetail() {
       <FarmerTopBar>
         <Link
           to="/farmer/orders"
-          className="inline-flex items-center gap-1 text-sm font-medium text-[#2f8f66] hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-medium text-brand hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
           Orders
@@ -91,19 +101,19 @@ export default function FarmerOrderDetail() {
       </FarmerTopBar>
 
       <div className="p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
+        {loading && <SproutLoader label="Loading..." />}
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         {!loading && !error && order && (
           <div className="grid items-start gap-6 lg:grid-cols-5">
             <div className="space-y-6 lg:col-span-3">
-              <section className="rounded-2xl bg-white p-5 shadow-sm" data-testid="order-customer">
+              <section className="harvest-card p-5" data-testid="order-customer">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-semibold text-gray-900">Customer</h2>
                   <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">Buyer</span>
                 </div>
                 <div className="mt-4 flex items-center gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-100 text-lg font-semibold text-[#2f8f66]">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-100 text-lg font-semibold text-brand">
                     {buyerName.charAt(0).toUpperCase()}
                   </span>
                   <div className="min-w-0">
@@ -129,7 +139,7 @@ export default function FarmerOrderDetail() {
                 </dl>
               </section>
 
-              <section className="rounded-2xl bg-white p-5 shadow-sm" data-testid="order-items">
+              <section className="harvest-card p-5" data-testid="order-items">
                 <h2 className="font-semibold text-gray-900">Order items</h2>
                 <div className="mt-4 flex items-center gap-4">
                   <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-50 text-gray-300">
@@ -158,7 +168,7 @@ export default function FarmerOrderDetail() {
               </section>
 
               {order.status === "done" && order.myRating && (
-                <section className="rounded-2xl bg-white p-5 shadow-sm">
+                <section className="harvest-card p-5">
                   <h2 className="font-semibold text-gray-900">Buyer&apos;s rating</h2>
                   <div className="mt-2 flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((value) => (
@@ -175,18 +185,38 @@ export default function FarmerOrderDetail() {
               )}
             </div>
 
-            <section className="rounded-2xl bg-white p-5 shadow-sm lg:col-span-2" data-testid="order-progress">
+            <section className="harvest-card p-5 lg:col-span-2" data-testid="order-progress">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-semibold text-gray-900">Order progress</h2>
-                {status && (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${status.color}`}
-                    data-testid="order-status"
-                  >
-                    <StatusIcon className="h-3.5 w-3.5" />
-                    {FARMER_STATUS_TITLE[order.status]}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  <AnimatePresence>
+                    {justUpdated && (
+                      <motion.span
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-forest-700"
+                        data-testid="status-updated"
+                      >
+                        <SuccessCheck className="h-4 w-4" />
+                        Updated
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                  {status && (
+                    <motion.span
+                      key={order.status}
+                      initial={{ scale: 0.85, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${status.color}`}
+                      data-testid="order-status"
+                    >
+                      <StatusIcon className="h-3.5 w-3.5" />
+                      {FARMER_STATUS_TITLE[order.status]}
+                    </motion.span>
+                  )}
+                </div>
               </div>
 
               <div className="mt-5">
@@ -219,7 +249,7 @@ export default function FarmerOrderDetail() {
                       type="button"
                       onClick={() => handleTransition("processing")}
                       disabled={busy}
-                      className="flex-1 rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
+                      className="flex-1 rounded-md bg-brand py-3 text-sm font-semibold text-white transition duration-150 hover:bg-brand-hover active:scale-[0.98] disabled:opacity-60"
                     >
                       Accept Order
                     </button>
@@ -231,7 +261,7 @@ export default function FarmerOrderDetail() {
                     type="button"
                     onClick={() => handleTransition("ready")}
                     disabled={busy}
-                    className="w-full rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
+                    className="w-full rounded-md bg-brand py-3 text-sm font-semibold text-white transition duration-150 hover:bg-brand-hover active:scale-[0.98] disabled:opacity-60"
                   >
                     {submitting ? "Updating..." : "Mark as ready to pick up"}
                   </button>
@@ -242,7 +272,7 @@ export default function FarmerOrderDetail() {
                     type="button"
                     onClick={() => handleTransition("done")}
                     disabled={busy}
-                    className="w-full rounded-md bg-[#2f8f66] py-3 text-sm font-semibold text-white transition duration-150 hover:bg-[#267a56] active:scale-[0.98] disabled:opacity-60"
+                    className="w-full rounded-md bg-brand py-3 text-sm font-semibold text-white transition duration-150 hover:bg-brand-hover active:scale-[0.98] disabled:opacity-60"
                   >
                     {submitting ? "Updating..." : "Mark as done order"}
                   </button>

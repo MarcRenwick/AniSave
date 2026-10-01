@@ -291,6 +291,15 @@ html.lenis {
   }
 }
 
+@keyframes harvest-chart-draw {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes harvest-backdrop-in {
   from {
     opacity: 0;
@@ -305,11 +314,13 @@ html.lenis {
 
 @layer components {
   /* A fine film grain over a surface - the "rice paper" in rice-paper cream. */
-  .harvest-grain {
+  .harvest-grain,
+  .harvest-grain-dark {
     position: relative;
     isolation: isolate;
   }
-  .harvest-grain::after {
+  .harvest-grain::after,
+  .harvest-grain-dark::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -370,6 +381,20 @@ html.lenis {
     transform: translateX(-100%);
     background: linear-gradient(90deg, transparent, rgb(255 250 235 / 0.85), rgb(247 219 143 / 0.35), transparent);
     animation: var(--animate-shimmer);
+  }
+
+  /* A chart drawing itself in: a cover in the card's own colour slides off
+     it, left to right, when it first appears (and again for a new view or
+     period, which draws a new chart). Only a transform moves. */
+  .harvest-chart .recharts-wrapper::after {
+    content: "";
+    position: absolute;
+    inset: -2px -4px -2px 0;
+    z-index: 2;
+    pointer-events: none;
+    background-color: var(--color-paper);
+    transform-origin: right center;
+    animation: harvest-chart-draw 1s var(--ease-harvest) 0.12s both;
   }
 
   /* Underline that grows from the left on hover (links in dark bars). */

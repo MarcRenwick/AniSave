@@ -7,6 +7,7 @@ import AccountDeletionTerms from "../../components/farmer/AccountDeletionTerms";
 import { confirmAccountDeletion, requestAccountDeletion } from "../../services/api";
 import { DELETION_REASONS, MAX_DELETION_DETAIL, deletionReasonLabel } from "../../utils/accountDeletion";
 import { useSmoothBack, withPageTransition } from "../../utils/pageTransition";
+import useHarvestTheme from "../../theme/useHarvestTheme";
 
 // A farmer asking for their account to be deleted: choose a reason, then check
 // the request (the reason, the address the code will go to, and agreeing to the
@@ -15,6 +16,7 @@ import { useSmoothBack, withPageTransition } from "../../utils/pageTransition";
 // has always used, now at the end of the form.
 export default function DeleteAccount() {
   const { logout, user } = useAuth();
+  useHarvestTheme();
   const navigate = useNavigate();
   const leaveToSettings = useSmoothBack("/farmer/settings");
 
@@ -58,8 +60,8 @@ export default function DeleteAccount() {
   };
 
   return (
-    <div className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-4 text-white">
+    <div className="min-h-screen bg-brand-soft">
+      <div className="flex items-center gap-3 bg-brand px-4 py-4 text-white">
         <button
           type="button"
           onClick={reason ? () => setReason("") : leaveToSettings}
@@ -106,7 +108,7 @@ export default function DeleteAccount() {
             </button>
 
             {isOther && (
-              <div className="bg-[#eaf6ec] px-5 py-3">
+              <div className="bg-brand-soft px-5 py-3">
                 <label htmlFor="deletion-detail" className="sr-only">
                   Tell us why you are deleting your account
                 </label>
@@ -118,7 +120,7 @@ export default function DeleteAccount() {
                   maxLength={MAX_DELETION_DETAIL}
                   onChange={(e) => setDetail(e.target.value)}
                   placeholder="Please tell us a little more. (Required)"
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]"
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                 />
               </div>
             )}
@@ -134,7 +136,7 @@ export default function DeleteAccount() {
                 type="checkbox"
                 checked={agreed}
                 onChange={(e) => setAgreed(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[#2f8f66]"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
               />
               <span>
                 I agree to the{" "}
@@ -157,7 +159,7 @@ export default function DeleteAccount() {
               <button
                 type="submit"
                 disabled={!ready || sending}
-                className="mx-auto block w-full max-w-56 rounded-md bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                className="mx-auto block w-full max-w-56 rounded-md bg-brand py-2.5 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
                 {sending ? "Sending OTP..." : "Submit"}
               </button>

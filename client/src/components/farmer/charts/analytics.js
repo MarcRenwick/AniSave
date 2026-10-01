@@ -4,18 +4,18 @@ import { CalendarDays } from "lucide-react";
 // can pick, how a period is cut into bars, and how figures are written.
 
 export const COLORS = {
-  green: "#1F7A4D",
-  darkGreen: "#17603F",
-  lightGreen: "#3FA46E",
-  paleGreen: "#A8D8BC",
-  orange: "#E8742C",
-  blue: "#2D63AA",
-  purple: "#6446B8",
-  amber: "#B7700C",
-  red: "#C8453B",
-  muted: "#53635A",
-  border: "#E1E7E2",
-  grid: "#EEF1EF",
+  green: "#2e7d32",
+  darkGreen: "#1f5130",
+  lightGreen: "#58a061",
+  paleGreen: "#b6d9b8",
+  orange: "#e4572e",
+  blue: "#0e7c86",
+  purple: "#a0522d",
+  amber: "#c98521",
+  red: "#c4421a",
+  muted: "#62594a",
+  border: "#e7dfcf",
+  grid: "#f3eee3",
 };
 
 export const FONT = '"Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif';

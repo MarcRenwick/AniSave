@@ -20,7 +20,7 @@ export default function ReportSentDialog({ onClose }) {
           className="w-full max-w-sm rounded-xl border border-gray-300 bg-white p-6 shadow-xl"
           onClick={(e) => e.stopPropagation()}
         >
-          <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-[#2f8f66] text-white">
+          <span className="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-brand text-white">
             <Smile className="h-6 w-6" />
           </span>
           <p id="report-sent-message" className="mt-4 text-base font-medium leading-snug text-gray-900">
@@ -31,7 +31,7 @@ export default function ReportSentDialog({ onClose }) {
             type="button"
             onClick={onClose}
             autoFocus
-            className="mt-5 w-full rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white outline-none hover:bg-[#267a56] focus-visible:ring-2 focus-visible:ring-[#2f8f66] focus-visible:ring-offset-2"
+            className="mt-5 w-full rounded-md bg-brand py-2 text-sm font-semibold text-white outline-none hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
           >
             OK
           </button>

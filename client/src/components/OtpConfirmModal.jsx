@@ -34,7 +34,7 @@ export default function OtpConfirmModal({
 
   const accent = danger
     ? "bg-red-600 hover:bg-red-700 focus:border-red-500 focus:ring-red-500"
-    : "bg-[#2f8f66] hover:bg-[#267a56] focus:border-[#2f8f66] focus:ring-[#2f8f66]";
+    : "bg-brand hover:bg-brand-hover focus:border-brand focus:ring-brand";
 
   return (
     <Modal title={title} onClose={onClose}>

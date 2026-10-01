@@ -118,7 +118,7 @@ export default function VerificationModal({ onClose }) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 rounded-md bg-[#2f8f66] py-2 text-sm font-semibold text-white hover:bg-[#267a56] disabled:opacity-60"
+              className="flex-1 rounded-md bg-brand py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
             >
               {submitting ? "Submitting..." : "Submit for review"}
             </button>
@@ -144,7 +144,7 @@ export default function VerificationModal({ onClose }) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="mt-5 w-full rounded-md border-2 border-[#2f8f66] py-2 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+            className="mt-5 w-full rounded-md border-2 border-brand py-2 text-sm font-semibold text-brand transition hover:bg-green-50"
           >
             {hasDocuments ? "Update documents" : "Submit documents"}
           </button>

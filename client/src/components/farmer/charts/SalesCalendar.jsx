@@ -17,7 +17,7 @@ import {
 import { Badge, EmptyState, OrdersPanel, ViewHeading } from "./ChartParts";
 
 // Five shades, from nothing sold to the period's best day.
-const LEVELS = ["#EEF1EF", "#CFEBDA", "#8FCBA5", "#3FA46E", "#17603F"];
+const LEVELS = ["#f3eee3", "#CFEBDA", "#8FCBA5", "#58a061", "#1f5130"];
 const levelOf = (value, max) => (value <= 0 || max <= 0 ? 0 : Math.min(4, Math.ceil((value / max) * 4)));
 const MIN_SALE_DAYS = 3;
 
@@ -80,7 +80,7 @@ export default function SalesCalendar({ data, range, orders }) {
             }}
             disabled={shown === 0}
             aria-label="Previous month"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E1E7E2] text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#e7dfcf] text-gray-600 hover:bg-gray-50 disabled:opacity-40"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -95,7 +95,7 @@ export default function SalesCalendar({ data, range, orders }) {
             }}
             disabled={shown >= months.length - 1}
             aria-label="Next month"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E1E7E2] text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#e7dfcf] text-gray-600 hover:bg-gray-50 disabled:opacity-40"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -124,7 +124,7 @@ export default function SalesCalendar({ data, range, orders }) {
                 <span
                   key={key}
                   className={`flex h-10 items-start justify-end rounded-lg p-1.5 text-[11px] sm:h-12 ${
-                    future ? "border border-dashed border-[#D5DDD8] bg-white text-gray-400" : "bg-[#F6F8F6] text-gray-300"
+                    future ? "border border-dashed border-[#d4c9b3] bg-white text-gray-400" : "bg-[#f8f4ec] text-gray-300"
                   }`}
                   data-testid={future ? "day-future" : "day-outside"}
                 >
@@ -144,7 +144,7 @@ export default function SalesCalendar({ data, range, orders }) {
                 data-testid={isToday ? "day-today" : "day"}
                 className={`flex h-10 items-start justify-end rounded-lg p-1.5 text-[11px] font-semibold transition hover:brightness-95 sm:h-12 ${
                   level >= 3 ? "text-white" : "text-gray-700"
-                } ${isToday ? "ring-2 ring-[#17603F] ring-offset-1" : ""} ${isOpen ? "outline-2 outline-offset-2 outline-[#E8742C]" : ""}`}
+                } ${isToday ? "ring-2 ring-[#1f5130] ring-offset-1" : ""} ${isOpen ? "outline-2 outline-offset-2 outline-[#e4572e]" : ""}`}
                 style={{ background: LEVELS[level] }}
               >
                 {day.getDate()}

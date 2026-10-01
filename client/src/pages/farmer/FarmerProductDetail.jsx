@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Star } from "lucide-react";
+import { motion } from "motion/react";
+import { ArrowLeft, Lock, Pencil, Star } from "lucide-react";
 import ProductGallery from "../../components/products/ProductGallery";
 import { getProduct, getProductProfit } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
@@ -9,14 +10,17 @@ import { categoryLabel } from "../../utils/categories";
 import { discountPercent, effectivePrice, onFlashSale } from "../../utils/pricing";
 import { money, productFinancials } from "../../utils/profit";
 import { amountOf, unitOf, unitWord } from "../../utils/units";
+import useHarvestTheme from "../../theme/useHarvestTheme";
+import { CountUp, SproutLoader } from "../../components/motion";
+import { CATEGORY_COLORS, EASE } from "../../theme/harvest";
 
-const CARD = "rounded-[18px] bg-white p-6 shadow-sm";
+const CARD = "harvest-card p-6";
 // "12 kg", or "3 trays" for eggs.
 const kilos = (n, unit = "kg") => amountOf(n.toLocaleString(), unit);
 
 function Chip({ tone = "green", children }) {
   const look = {
-    green: "bg-green-50 text-[#1f5c42] ring-green-100",
+    green: "bg-green-50 text-brand-dark ring-green-100",
     grey: "bg-gray-100 text-gray-700 ring-gray-200",
     amber: "bg-amber-50 text-amber-800 ring-amber-100",
   }[tone];
@@ -48,7 +52,7 @@ function PerKilo({ label, children }) {
 function StockBar({ stock, unit }) {
   const { soldKg, pendingKg, inStockKg, listedKg } = stock;
   const parts = [
-    { key: "sold", label: "Sold", kg: soldKg, className: "bg-[#1f5c42]" },
+    { key: "sold", label: "Sold", kg: soldKg, className: "bg-brand-dark" },
     { key: "pending", label: "Ordered, not done yet", kg: pendingKg, className: "bg-amber-400" },
     { key: "stock", label: "Not ordered yet", kg: inStockKg, className: "bg-green-200" },
   ];
@@ -85,13 +89,15 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
       {/* Only the profit card is solid green; a loss turns it to a warning. */}
       <div
         data-testid="profit-card"
-        className={`mt-4 rounded-2xl p-5 text-white ${loss ? "bg-red-600" : "bg-[#2f8f66]"}`}
+        className={`harvest-grain-dark mt-4 overflow-hidden rounded-2xl p-5 text-white ${
+          loss ? "bg-tomato-600 shadow-glow-tomato" : "bg-[linear-gradient(145deg,#173d24,#1f5130_45%,#2e7d32)] shadow-glow-forest"
+        }`}
       >
         <p className="text-sm font-medium opacity-90">Profit from completed sales</p>
         {actual.profit === null ? (
           <p className="mt-1 text-sm font-semibold">Add your total expense to see it</p>
         ) : (
-          <p className="mt-1 text-4xl font-bold tracking-tight">{money(actual.profit)}</p>
+          <CountUp value={actual.profit} format={money} on="mount" className="mt-1 block font-display text-4xl font-semibold tracking-tight" />
         )}
         <p className="mt-1 text-xs opacity-90">
           {actual.soldKg > 0
@@ -136,7 +142,7 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
           {fin.margin === null ? (
             <span className="font-normal text-gray-400">—</span>
           ) : (
-            <span className={fin.margin < 0 ? "text-red-600" : "text-[#2f8f66]"}>
+            <span className={fin.margin < 0 ? "text-tomato-700" : "text-brand"}>
               {fin.margin > 0 ? "+" : ""}
               {money(fin.margin)}
             </span>
@@ -156,14 +162,14 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
       </div>
 
       <div className="mt-5 rounded-xl border border-dashed border-gray-300 p-4" data-testid="remaining-stock">
-        <p className="text-sm font-semibold text-gray-900">Remaining stock ({kilos(fin.stock.inStockKg, unit)})</p>
+        <p className="text-sm font-semibold text-gray-900">Remaining stock ({kilos(fin.stock.onHandKg, unit)})</p>
         <dl className="mt-2 space-y-1.5 text-sm">
           {fin.hasCost && (
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-gray-600">
                 Capital in stock{" "}
                 <span className="text-xs text-gray-400">
-                  {kilos(fin.stock.inStockKg, unit)} × {money(fin.costPerUnit)}
+                  {kilos(fin.stock.onHandKg, unit)} × {money(fin.costPerUnit)}
                 </span>
               </dt>
               <dd className="font-semibold text-gray-900">{money(remaining.capital)}</dd>
@@ -173,7 +179,7 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
             <dt className="text-gray-600">
               {remaining.basis === "market" ? "If sold at market price" : "If sold at your price"}{" "}
               <span className="text-xs text-gray-400">
-                {kilos(fin.stock.inStockKg, unit)} × {money(remaining.pricePerKg)}
+                {kilos(fin.stock.onHandKg, unit)} × {money(remaining.pricePerKg)}
               </span>
             </dt>
             <dd className="font-semibold text-gray-900">{money(remaining.income)}</dd>
@@ -181,7 +187,7 @@ function FinancialsPanel({ fin, productTitle, city, editPath }) {
           {remaining.profit !== null && (
             <div className="flex items-baseline justify-between gap-3">
               <dt className="text-gray-600">Estimated profit</dt>
-              <dd className={`font-bold ${remaining.profit < 0 ? "text-red-600" : "text-[#2f8f66]"}`}>{money(remaining.profit)}</dd>
+              <dd className={`font-bold ${remaining.profit < 0 ? "text-tomato-700" : "text-brand"}`}>{money(remaining.profit)}</dd>
             </div>
           )}
         </dl>
@@ -204,6 +210,7 @@ export default function FarmerProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  useHarvestTheme();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -234,41 +241,50 @@ export default function FarmerProductDetail() {
   const editPath = `/farmer/products/${id}/edit`;
 
   return (
-    <div ref={rootRef} className="min-h-screen bg-[#eaf6ec]">
-      <div className="flex items-center gap-3 bg-[#2f8f66] px-4 py-3 text-white sm:px-6">
+    <div ref={rootRef} className="harvest-field min-h-screen">
+      <div className="harvest-grain-dark sticky top-0 z-20 flex items-center gap-3 bg-[linear-gradient(110deg,#0f2418,#1f5130)] px-4 py-3 text-cream shadow-[0_10px_30px_-20px_rgb(0_0_0/0.6)] sm:px-6">
         <button
           type="button"
           onClick={() => navigate("/farmer/products")}
           aria-label="Back"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white/15 transition hover:bg-white/25"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-cream/10 transition-colors hover:bg-cream/20"
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
         <h1 className="min-w-0 flex-1 truncate text-xl font-semibold">Product Details</h1>
         <Link
           to={editPath}
-          className="flex h-11 shrink-0 items-center rounded-lg border border-white/70 px-4 text-sm font-semibold transition hover:bg-white/10"
+          className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-gold-400 px-4 text-sm font-bold text-night shadow-glow-gold transition-colors hover:bg-gold-300"
         >
+          <Pencil className="h-4 w-4" />
           Edit product
         </Link>
       </div>
 
       <div className="mx-auto max-w-6xl p-4 sm:p-8">
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {loading && <SproutLoader label="Loading..." />}
+        {error && <p className="text-sm text-tomato-700">{error}</p>}
 
         {!loading && !error && product && (
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)]">
             <div className="min-w-0 space-y-6">
-              <div className={`grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-[minmax(0,22.5rem)_minmax(0,1fr)] ${CARD}`} data-testid="product-card">
+              <div
+                className={`relative grid grid-cols-1 gap-6 overflow-hidden md:grid-cols-2 xl:grid-cols-[minmax(0,22.5rem)_minmax(0,1fr)] ${CARD}`}
+                data-testid="product-card"
+                style={{ "--cat": CATEGORY_COLORS[product.category] || CATEGORY_COLORS.vegetable }}
+              >
+                <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,var(--cat),transparent_85%)]" data-testid="category-accent" />
                 <ProductGallery key={product._id} product={product} variant="farmer" />
 
                 <div className="min-w-0">
                   <div className="flex flex-wrap gap-1.5">
-                    <Chip>{categoryLabel(product.category)}</Chip>
+                    <Chip>
+                      <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: "var(--cat)" }} />
+                      {categoryLabel(product.category)}
+                    </Chip>
                     {isPreOrder ? <Chip tone="amber">For Pre-Order</Chip> : <Chip tone="grey">For Sale</Chip>}
                   </div>
-                  <h2 className="mt-2 break-words text-3xl font-bold text-gray-900">{product.title}</h2>
+                  <h2 className="mt-2 break-words text-4xl font-semibold tracking-tight text-gray-900">{product.title}</h2>
                   <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
                     {product.ratingCount > 0 ? (
                       <span className="flex items-center gap-1">
@@ -282,15 +298,30 @@ export default function FarmerProductDetail() {
                     <span>{product.sold} sold</span>
                   </p>
 
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-green-100 bg-green-50/70 px-4 py-3" data-testid="price-block">
-                    <p className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="text-3xl font-bold text-[#2f8f66]">{money(effectivePrice(product))}</span>
+                  <div className="relative mt-4 flex flex-wrap items-center justify-between gap-2 overflow-hidden rounded-2xl border border-gold-200 bg-[linear-gradient(120deg,#fdf6e3,#fffdf8_60%)] px-4 py-3" data-testid="price-block">
+                    <motion.span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-[linear-gradient(90deg,transparent,rgb(247_219_143/0.7),transparent)]"
+                      initial={{ x: "0%" }}
+                      animate={{ x: "520%" }}
+                      transition={{ duration: 1.4, delay: 0.5, ease: EASE }}
+                    />
+                    <p className="relative flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-display text-4xl font-semibold text-brand">{money(effectivePrice(product))}</span>
                       <span className="text-sm text-gray-600">per {unitWord(unitOf(product))}</span>
                       {onFlashSale(product) && <span className="text-sm text-gray-400 line-through">{money(product.price)}</span>}
                     </p>
                     {onFlashSale(product) && (
-                      <span className="rounded-full bg-yellow-300 px-2.5 py-1 text-xs font-bold text-[#1f5c42]">
+                      <span className="relative rounded-full bg-gold-400 px-2.5 py-1 text-xs font-bold text-night">
                         Flash sale −{discountPercent(product)}%
+                      </span>
+                    )}
+                    {fin?.marketPrice != null && (
+                      <span className="relative w-full text-xs text-gray-600" data-testid="recommended-price">
+                        Recommended in {city}:{" "}
+                        <span className="font-semibold text-gray-900">
+                          {money(fin.marketPrice)} per {unitWord(unitOf(product))}
+                        </span>
                       </span>
                     )}
                   </div>
@@ -306,7 +337,7 @@ export default function FarmerProductDetail() {
                   <button
                     type="button"
                     onClick={() => navigate(`/farmer/products/${product._id}/ratings`)}
-                    className="mt-4 h-11 rounded-lg border border-[#2f8f66] px-5 text-sm font-semibold text-[#2f8f66] transition hover:bg-green-50"
+                    className="mt-4 h-11 rounded-full border border-brand px-5 text-sm font-semibold text-brand transition-colors hover:bg-brand hover:text-white"
                   >
                     View ratings
                   </button>
@@ -321,7 +352,7 @@ export default function FarmerProductDetail() {
               </div>
             </div>
 
-            <section className={`${CARD} lg:sticky lg:top-6`} data-testid="product-profit">
+            <section className={`${CARD} lg:sticky lg:top-24`} data-testid="product-profit">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-base font-semibold text-gray-900">Expense, Income &amp; Profit</h2>
                 <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
@@ -330,8 +361,8 @@ export default function FarmerProductDetail() {
                 </span>
               </div>
 
-              {profitError && <p className="mt-3 text-sm text-red-600">{profitError}</p>}
-              {!profit && !profitError && <p className="mt-3 text-sm text-gray-500">Working it out...</p>}
+              {profitError && <p className="mt-3 text-sm text-tomato-700">{profitError}</p>}
+              {!profit && !profitError && <SproutLoader compact label="Working it out..." className="mt-3" />}
               {fin && <FinancialsPanel fin={fin} productTitle={product.title} city={city} editPath={editPath} />}
             </section>
           </div>
