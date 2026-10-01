@@ -130,6 +130,29 @@ The desktop layout is the design; smaller screens adapt it with Tailwind's break
 - **Messages** shows the list and the conversation side by side from 1024px; below that, one at a time, with a back arrow.
 - Nothing scrolls sideways on any page at 360px or wider.
 
+## The "Premium Harvest" look (landing page and farmer pages)
+
+The landing page and the farmer's pages share one look: deep forest green, harvest gold and ripe-tomato accents on warm cream (never pure white), near-black green for dark sections, soil and clay for warm details, a fine film grain, and headings in **Fraunces** over **Plus Jakarta Sans** (Google Fonts - a font file is only downloaded by a page that uses it, so other pages don't pay for it).
+
+- **Tokens** live in `client/src/theme/harvest.css` as Tailwind theme variables, so they are ordinary utilities (`bg-forest-800`, `text-gold-300`, `font-display`, `ease-harvest`, `shadow-lift`, `animate-float`...), and in `client/src/theme/harvest.js` for code that animates or draws in JavaScript (Motion, GSAP, Recharts). One colour per category: Vegetables green, Fruits tomato, Eggs gold, Meat deep red, Seafood ocean teal.
+- **Scoped, not global.** A page turns the look on with `useHarvestTheme()` (`theme/useHarvestTheme.js`), which puts `harvest` on `<html>` while it is showing - on `<html>` so that what it draws on `<body>` (a modal) gets it too. Only then do the overrides apply; buyer and admin pages, and a buyer's copy of shared pieces like the chat or a modal, look exactly as before. `bg-brand` / `text-brand` are the app's original green (#2f8f66) everywhere else and the harvest green under `harvest`.
+- **Contrast.** Gold is only used on dark backgrounds or behind dark text (gold text on cream fails AA). Buttons with white text use the deeper tomato `tomato-600` (5.1:1), not `tomato-500` (3.7:1). Every grey used for text passes AA on cream.
+- **Animation.** `motion` (Framer Motion) for components, `gsap` with ScrollTrigger for the landing page's scroll story, `lenis` for its smooth scrolling. The reusable pieces are in `client/src/components/motion/`: FadeIn, Stagger/StaggerItem, CountUp, TextReveal, Magnetic, TiltCard, MouseParallax/ParallaxLayer, Marquee, SproutLoader, Shimmer, SuccessCheck and EmptyState. Only transform and opacity are animated. **Reduced motion** (the system setting) is honoured everywhere: `<MotionConfig reducedMotion="user">` around the app, GSAP and Lenis switched off, looping animations stopped, and every reveal shown straight away.
+
+## The landing page
+
+`pages/Landing.jsx` with its sections in `components/landing/`. It is loaded on its own (`React.lazy` in `App.jsx`), so GSAP and Lenis are never downloaded by someone signed in.
+
+- **Bar.** See-through over the hero, then frosted glass once the page has scrolled - dark over the dark sections and light over the light ones (each section says which it is with `data-nav-tone`). Links get an underline that grows in; on a phone they fold into a menu.
+- **Hero.** A sunrise drawn in layers - a sky that slowly warms, the sun, far mountains, terraced hills with a nipa hut, rice in front leaning in the wind - with produce drifting through it. Scrolling, the far layers hang back while the near ones go with the page (GSAP); with a mouse the layers also lean toward the pointer. The headline rises word by word with a brush stroke painted under "straight to you."; **Get started** leans toward the cursor and glows.
+- **In numbers.** How many verified farmers, products buyers can order now, buyers and towns with farms, counting up as they come into view - real numbers from `GET /api/public/overview` (counts only, cached 10 minutes). If they can't be had, or there is nothing to count yet, the strip isn't shown rather than showing a made-up number.
+- **How AniSave works.** On a wide screen the section holds still while a vine grows from step to step as you scroll - Farmer lists → Buyer orders → Pick up at the farm → Farmer earns - each step lighting up as the vine reaches it, leaves sprouting along the way. On a narrower screen it is a list with a stem that grows down beside it.
+- **Shop by category.** The market's own five categories, each a big card in its colour that tilts toward the mouse, its drawing growing and a glow coming up behind it. Each opens the market (`/buyer/home`); on a phone they swipe sideways.
+- **Why AniSave.** Six real features (verified farmers, local recommended prices, flash sales, chat with live order updates, pre-orders, profit tracking) arriving one after another on a dark section.
+- **About.** The rice-terrace photo drifting slower than the page, with a turning badge.
+- **What buyers are saying.** Real 4- and 5-star reviews with a comment - the same ones already public on each product's ratings page - by first name, with the farm and its town (nothing about where the buyer lives), in two rows passing each other that stop while one is pointed at. With fewer than three reviews the section isn't shown.
+- **Join AniSave** over a field of wheat swaying in the wind, then the footer.
+
 ## The buyer's marketplace
 
 The top of the marketplace is a carousel (`components/buyer/HomeBanner.jsx`, `h-80`) of two fixed slides plus up to three real listings - Flash Sale items first, topped up with the newest, and only ones with a photo to show. It advances itself every four seconds, holds while the pointer or the keyboard is on it, and does not advance at all where the system asks for less motion. The Flash Sale and Nearest to You tiles sit beside it and grow with it. The filter row underneath reaches the same places - All Products, Recommended for You, Nearest to You, Newest Products and Flash Sale - so neither a tile nor the row is the only way to anything.

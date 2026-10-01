@@ -1,0 +1,414 @@
+/* "Premium Harvest" - the look of the landing page and every farmer page.
+
+   The colours, fonts, shadows, easings and animations below are Tailwind
+   theme tokens, so they are ordinary utilities everywhere (bg-forest-800,
+   font-display, ease-harvest, shadow-lift, animate-float...). Nothing here
+   changes a page until it opts in: the landing page and the farmer layout put
+   `harvest` on <html> while they are showing (theme/useHarvestTheme.js), and
+   only then do the overrides at the bottom of this file apply - so buyer and
+   admin pages, and shared pieces like the chat or a modal when a buyer opens
+   them, look exactly as they did. */
+
+@theme {
+  /* The app's original green, as a token: a component written with
+     bg-brand / text-brand looks as it always did, until a page turns the
+     harvest look on, when it becomes the harvest green. */
+  --color-brand: #2f8f66;
+  --color-brand-hover: #267a56;
+  --color-brand-dark: #1f5c42;
+  --color-brand-soft: #eaf6ec;
+
+  /* Near-black green for dark sections and the farmer sidebar. */
+  --color-night: #0f2418;
+  --color-night-800: #132d1f;
+  --color-night-700: #1a3a29;
+  --color-night-600: #23492f;
+
+  /* Deep forest / leaf green - the primary. */
+  --color-forest-50: #eef6ee;
+  --color-forest-100: #d9ebd9;
+  --color-forest-200: #b6d9b8;
+  --color-forest-300: #88bf8d;
+  --color-forest-400: #58a061;
+  --color-forest-500: #3b8a43;
+  --color-forest-600: #2e7d32;
+  --color-forest-700: #256a2b;
+  --color-forest-800: #1f5130;
+  --color-forest-900: #173d24;
+
+  /* Harvest gold / wheat - on dark backgrounds or behind dark text only:
+     gold text on cream doesn't pass contrast. */
+  --color-gold-50: #fdf6e3;
+  --color-gold-100: #fbecc2;
+  --color-gold-200: #f7db8f;
+  --color-gold-300: #f4cd6a;
+  --color-gold-400: #f2c14e;
+  --color-gold-500: #e8a33d;
+  --color-gold-600: #c98521;
+  --color-gold-700: #8f5e10;
+
+  /* Ripe tomato / mango - highlights and calls to action. 500 is for glows
+     and large type; anything carrying white text uses 600 (5.1:1). */
+  --color-tomato-50: #fdeee8;
+  --color-tomato-100: #fbd8cc;
+  --color-tomato-300: #f29a7c;
+  --color-tomato-400: #ec7a55;
+  --color-tomato-500: #e4572e;
+  --color-tomato-600: #c4421a;
+  --color-tomato-700: #a03516;
+
+  /* Soil and clay. */
+  --color-soil-300: #c9a68a;
+  --color-soil-500: #8a5a3c;
+  --color-soil-700: #5c3d2e;
+  --color-clay-400: #c0703f;
+  --color-clay-500: #a0522d;
+
+  /* Warm whites - never pure white. */
+  --color-cream: #fbf7ee;
+  --color-paper: #fffdf8;
+  --color-sand: #f3ebdc;
+  --color-wheat: #f2c14e;
+
+  /* One colour per marketplace category. */
+  --color-cat-vegetable: #2e7d32;
+  --color-cat-fruit: #e4572e;
+  --color-cat-egg: #e8a33d;
+  --color-cat-meat: #9b2226;
+  --color-cat-seafood: #0e7c86;
+
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --font-body: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Quick to start, long soft settle - every reveal uses it. */
+  --ease-harvest: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+
+  --shadow-soft: 0 1px 2px rgb(31 41 26 / 0.05), 0 10px 28px -16px rgb(31 41 26 / 0.22);
+  --shadow-lift: 0 2px 4px rgb(31 41 26 / 0.06), 0 22px 44px -20px rgb(31 41 26 / 0.38);
+  --shadow-glow-gold: 0 0 0 1px rgb(242 193 78 / 0.35), 0 14px 40px -10px rgb(232 163 61 / 0.6);
+  --shadow-glow-tomato: 0 16px 40px -12px rgb(228 87 46 / 0.65);
+  --shadow-glow-forest: 0 16px 40px -14px rgb(46 125 50 / 0.55);
+
+  --animate-float: harvest-float 9s ease-in-out infinite;
+  --animate-sway: harvest-sway 5s ease-in-out infinite;
+  --animate-shimmer: harvest-shimmer 1.6s ease-in-out infinite;
+  --animate-marquee: harvest-marquee 60s linear infinite;
+  --animate-sunrise: harvest-sunrise 16s ease-in-out infinite alternate;
+  --animate-pulse-soft: harvest-pulse 2.4s ease-in-out infinite;
+  --animate-wind: harvest-wind 6s ease-in-out infinite;
+  --animate-spin-slow: harvest-spin 28s linear infinite;
+
+  @keyframes harvest-float {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) rotate(var(--float-from, -6deg));
+    }
+    50% {
+      transform: translate3d(0, -16px, 0) rotate(var(--float-to, 6deg));
+    }
+  }
+  @keyframes harvest-sway {
+    0%,
+    100% {
+      transform: rotate(calc(var(--sway, 4deg) * -1));
+    }
+    50% {
+      transform: rotate(var(--sway, 4deg));
+    }
+  }
+  @keyframes harvest-shimmer {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  @keyframes harvest-marquee {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+  @keyframes harvest-sunrise {
+    from {
+      opacity: 0.35;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  /* Wind through a field: stalks lean with their roots kept still. */
+  @keyframes harvest-wind {
+    0%,
+    100% {
+      transform: skewX(calc(var(--wind, 3deg) * -1));
+    }
+    50% {
+      transform: skewX(var(--wind, 3deg));
+    }
+  }
+  @keyframes harvest-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes harvest-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+  }
+}
+
+/* The harvest look, while a page has it turned on. The farmer pages are
+   written with Tailwind's grey and green, so re-pointing those colours here
+   re-skins every one of them at once: warm stone greys instead of cool ones,
+   leaf greens, and cards in warm paper rather than pure white. Every grey that
+   is used for text still passes AA on cream (gray-400 is 4.6:1). */
+@layer base {
+  html.harvest {
+    --color-brand: var(--color-forest-600);
+    --color-brand-hover: var(--color-forest-700);
+    --color-brand-dark: var(--color-forest-800);
+    --color-brand-soft: var(--color-forest-50);
+
+    --color-white: #fffdf8;
+
+    --color-gray-50: #faf7f0;
+    --color-gray-100: #f3eee3;
+    --color-gray-200: #e7dfcf;
+    --color-gray-300: #d4c9b3;
+    --color-gray-400: #786f5d;
+    --color-gray-500: #62594a;
+    --color-gray-600: #4d463a;
+    --color-gray-700: #3b352c;
+    --color-gray-800: #29251f;
+    --color-gray-900: #1a1d16;
+
+    --color-green-50: #eef6ee;
+    --color-green-100: #d9ebd9;
+    --color-green-200: #b6d9b8;
+    --color-green-300: #88bf8d;
+    --color-green-400: #58a061;
+    --color-green-500: #3b8a43;
+    --color-green-600: #2e7d32;
+    --color-green-700: #256a2b;
+    --color-green-800: #1f5130;
+    --color-green-900: #173d24;
+
+    font-family: var(--font-body);
+    background-color: var(--color-cream);
+    color: var(--color-gray-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Headings in Fraunces, with its optical sizes doing the work: large
+     headings get the high-contrast display cut by themselves. */
+  html.harvest :is(h1, h2) {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.012em;
+  }
+
+  html.harvest ::selection {
+    background-color: var(--color-gold-200);
+    color: var(--color-night);
+  }
+
+  /* Instead of growing on hover (the rest of the app's buttons), a harvest
+     button lifts a pixel and settles back when pressed. */
+  html.harvest button:not(:disabled):hover,
+  html.harvest [class*="active:scale"]:hover {
+    transform: translateY(-1px);
+  }
+  html.harvest button:not(:disabled):active {
+    transform: translateY(0) scale(0.97);
+  }
+
+  /* Fields glow softly green when they take focus. */
+  html.harvest :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    transition:
+      border-color 180ms var(--ease-soft),
+      box-shadow 240ms var(--ease-soft),
+      background-color 180ms var(--ease-soft);
+  }
+  html.harvest :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea):focus-visible {
+    border-color: var(--color-forest-600);
+    box-shadow: 0 0 0 4px rgb(46 125 50 / 0.16);
+    outline: none;
+  }
+
+  /* Sections arriving as they scroll in (hooks/useScrollReveal.js), quicker
+     and shorter than elsewhere so a farmer at work never waits for a page. */
+  html.harvest .scroll-reveal {
+    transform: translateY(14px);
+    transition-duration: 520ms;
+    transition-timing-function: var(--ease-harvest);
+  }
+  html.harvest .scroll-reveal-visible {
+    transform: none;
+  }
+
+  /* Modals: a softer backdrop and a card that rises in. */
+  html.harvest .fixed.inset-0.bg-black\/40 {
+    background-color: rgb(15 36 24 / 0.45);
+    backdrop-filter: blur(3px);
+    animation: harvest-backdrop-in 220ms var(--ease-soft) both;
+  }
+  html.harvest .fixed.inset-0.bg-black\/40 > div > div {
+    animation: harvest-modal-in 380ms var(--ease-harvest) both;
+  }
+}
+
+/* Smooth scrolling (Lenis, landing page) does its own easing; the browser's
+   smooth scroll on top of it would make it lag. */
+html.lenis {
+  scroll-behavior: auto !important;
+}
+
+/* The dot in the landing page's "Scroll" cue, running down and fading. */
+@keyframes harvest-scroll-cue {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+
+@keyframes harvest-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes harvest-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+}
+
+@layer components {
+  /* A fine film grain over a surface - the "rice paper" in rice-paper cream. */
+  .harvest-grain {
+    position: relative;
+    isolation: isolate;
+  }
+  .harvest-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .2 0 0 0 0 .16 0 0 0 0 .1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* The same, lighter, for dark sections. */
+  .harvest-grain-dark::after {
+    opacity: 0.09;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .95 0 0 0 0 .85 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* A surface in the farmer pages: cream, a fine dot grid like a planted
+     field seen from above, and warm light from the top corner. */
+  .harvest-field {
+    background-color: var(--color-cream);
+    background-image:
+      radial-gradient(60rem 30rem at 100% -10%, rgb(242 193 78 / 0.16), transparent 70%),
+      radial-gradient(50rem 36rem at -10% 110%, rgb(46 125 50 / 0.08), transparent 70%),
+      radial-gradient(circle at 1px 1px, rgb(92 61 46 / 0.075) 1px, transparent 1.6px);
+    background-size: auto, auto, 22px 22px;
+    background-attachment: fixed, fixed, scroll;
+  }
+
+  /* A card: warm paper, a hairline, a soft shadow that deepens on hover. */
+  .harvest-card {
+    background-color: var(--color-paper);
+    border-radius: 1.25rem;
+    box-shadow:
+      0 0 0 1px rgb(92 61 46 / 0.08),
+      0 1px 2px rgb(31 41 26 / 0.04),
+      0 14px 32px -22px rgb(31 41 26 / 0.35);
+    transition:
+      box-shadow 260ms var(--ease-soft),
+      transform 260ms var(--ease-harvest);
+  }
+  .harvest-card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 0 0 1px rgb(92 61 46 / 0.1),
+      0 2px 4px rgb(31 41 26 / 0.05),
+      0 24px 44px -24px rgb(31 41 26 / 0.45);
+  }
+
+  /* The shimmer on a loading placeholder. */
+  .harvest-shimmer {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--color-sand);
+  }
+  .harvest-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgb(255 250 235 / 0.85), rgb(247 219 143 / 0.35), transparent);
+    animation: var(--animate-shimmer);
+  }
+
+  /* Underline that grows from the left on hover (links in dark bars). */
+  .harvest-underline {
+    position: relative;
+  }
+  .harvest-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -4px;
+    height: 2px;
+    border-radius: 2px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 320ms var(--ease-harvest);
+  }
+  .harvest-underline:hover::after,
+  .harvest-underline:focus-visible::after,
+  .harvest-underline[aria-current="true"]::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+/* Someone who has asked for less movement gets every looping animation
+   stopped and every reveal shown straight away. */
+@media (prefers-reduced-motion: reduce) {
+  html.harvest *,
+  html.harvest *::before,
+  html.harvest *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  html.harvest .scroll-reveal {
+    transform: none;
+    transition: none;
+  }
+}

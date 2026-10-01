@@ -1,10 +1,11 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { MotionConfig } from "motion/react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { ChatProvider } from "./context/ChatContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
-import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -40,6 +41,11 @@ import FarmerMessages from "./pages/farmer/FarmerMessages";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 
+// The landing page is loaded on its own: its scroll animations (GSAP) and
+// smooth scrolling (Lenis) are only ever needed there, so nobody signed in
+// downloads them.
+const Landing = lazy(() => import("./pages/Landing"));
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -47,8 +53,18 @@ export default function App() {
       <AuthProvider>
         <ChatProvider>
           <CartProvider>
+            {/* Anyone who has asked their system for less motion gets the
+                harvest pages' animations without movement. */}
+            <MotionConfig reducedMotion="user">
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route
+                path="/"
+                element={
+                  <Suspense fallback={<div className="min-h-screen bg-night" />}>
+                    <Landing />
+                  </Suspense>
+                }
+              />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -295,6 +311,7 @@ export default function App() {
 
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </MotionConfig>
           </CartProvider>
         </ChatProvider>
       </AuthProvider>

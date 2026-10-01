@@ -129,6 +129,10 @@ export const getProductProfit = (id) => api.get(`/products/${id}/profit`);
 // farmer's dashboard. Nothing here is counted from sales.
 export const getTopSearchedProducts = () => sharedGet("/products/top-searched");
 
+// The landing page's counts (farmers, listings, buyers, towns) and a few
+// real reviews. Public.
+export const getPublicOverview = () => api.get("/public/overview");
+
 // The catalogue of agricultural products behind the searchable product
 // selector. A listing names its produce by one of these rows' ids.
 export const searchCrops = (q, params = {}) => api.get("/crops", { params: { q, ...params } });

@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* The landing page and farmer pages' look - off until a page turns it on. */
+@import "./theme/harvest.css";
 
 @layer base {
   /* Recharts makes its inner drawing layers focusable, so clicking a bar drew
