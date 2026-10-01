@@ -130,9 +130,9 @@ The desktop layout is the design; smaller screens adapt it with Tailwind's break
 - **Messages** shows the list and the conversation side by side from 1024px; below that, one at a time, with a back arrow.
 - Nothing scrolls sideways on any page at 360px or wider.
 
-## The "Premium Harvest" look (landing page and farmer pages)
+## The "Premium Harvest" look (landing page, log in / sign up, farmer pages)
 
-The landing page and the farmer's pages share one look: deep forest green, harvest gold and ripe-tomato accents on warm cream (never pure white), near-black green for dark sections, soil and clay for warm details, a fine film grain, and headings in **Fraunces** over **Plus Jakarta Sans** (Google Fonts - a font file is only downloaded by a page that uses it, so other pages don't pay for it).
+The landing page, Log in / Sign up and the farmer's pages share one look: deep forest green, harvest gold and ripe-tomato accents on warm cream (never pure white), near-black green for dark sections, soil and clay for warm details, a fine film grain, and headings in **Fraunces** over **Plus Jakarta Sans** (Google Fonts - a font file is only downloaded by a page that uses it, so other pages don't pay for it).
 
 - **Tokens** live in `client/src/theme/harvest.css` as Tailwind theme variables, so they are ordinary utilities (`bg-forest-800`, `text-gold-300`, `font-display`, `ease-harvest`, `shadow-lift`, `animate-float`...), and in `client/src/theme/harvest.js` for code that animates or draws in JavaScript (Motion, GSAP, Recharts). One colour per category: Vegetables green, Fruits tomato, Eggs gold, Meat deep red, Seafood ocean teal.
 - **Scoped, not global.** A page turns the look on with `useHarvestTheme()` (`theme/useHarvestTheme.js`), which puts `harvest` on `<html>` while it is showing - on `<html>` so that what it draws on `<body>` (a modal) gets it too. Only then do the overrides apply; buyer and admin pages, and a buyer's copy of shared pieces like the chat or a modal, look exactly as before. `bg-brand` / `text-brand` are the app's original green (#2f8f66) everywhere else and the harvest green under `harvest`.
@@ -152,6 +152,16 @@ Every farmer page turns the look on (through `layouts/FarmerLayout.jsx`, or itse
 - **Messages.** On the farmer's side, a message sent or received after the conversation opened springs into place (the ones it opened with just appear).
 - **Product form.** Fields glow green on focus, an error gives a small shake, and **Publish listing** / **Save changes** turns into a tick ("Saved") for a moment before the page moves on.
 - Modals rise in over a softly blurred backdrop.
+
+### Log in, Sign up and Forgot password
+
+`components/AuthShell.jsx` frames all three: on a wide screen a full-height photograph with an earthy shade and a short welcome on one side (Log in: a farmer carrying harvested rice through a golden field; Sign up: vegetables at a market stall; Forgot password shares Log in's), and the form on a clean card on the other. On a phone the photo is a short header and the card rises over its foot. Every line of text on the photos passes WCAG AA, measured on desktop, tablet and phone.
+
+- **The form** (`components/auth/AuthParts.jsx`): fields that glow green on focus with their label turning green too, a forest-green button that shows a spinner and "Logging in..." / "Creating account..." while it works, and messages that slide in - an error (`role="alert"`) with a small shake. The password fields keep their show/hide eye.
+- **Log in**: Password / Email code is a segmented control whose green slides to the one picked; each form (and each step of a code, two-step or email-verification log-in) slides in as the last slides out.
+- **Sign up**: "I'm a Buyer" / "I'm a Farmer" are photo cards (a market stall; a farmer leading a carabao). The steps are on the photo on a wide screen - done in gold, the current one ringed - and on the card itself on a phone (`Step 2 of 5` with a bar per step filling in). Each step slides in. The details step still fits a 1366×657 laptop screen without scrolling, for a buyer and for a farmer.
+- **Moving between them** (Log in ↔ Sign up ↔ Forgot password) is the app's View Transition: the photo and the card carry names (`auth-photo`, `auth-card`), so the browser cross-fades one photo into the next in place and reshapes the card, rather than swapping whole pages.
+- Every field, rule, message, request and redirect is the same as before - only how they look and move changed. Reduced motion: no shake, no slides, no zoom.
 
 ## The landing page
 

@@ -1,18 +1,26 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { KeyRound, Mail } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AuthShell from "../components/AuthShell";
+import { AuthAlert, SubmitButton, authInput, authLabel, authLink } from "../components/auth/AuthParts";
 import PasswordInput from "../components/PasswordInput";
 import SmoothLink from "../components/SmoothLink";
 import VerifyEmailForm from "../components/VerifyEmailForm";
 import { useSmoothNavigate } from "../utils/pageTransition";
 import { requestLoginOtp, loginWithOtp, verifyLoginMfa, resendLoginMfa } from "../services/api";
+import { EASE } from "../theme/harvest";
 
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+const inputClass = authInput;
+const labelClass = authLabel;
 
-const labelClass = "block text-sm font-medium text-gray-700";
+// Each way of signing in (and each step of one) slides in as the last slides out.
+const swap = {
+  initial: { opacity: 0, x: 14 },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.32, ease: EASE } },
+  exit: { opacity: 0, x: -14, transition: { duration: 0.16 } },
+};
 
 export default function Login() {
   const { login, setSession } = useAuth();
@@ -150,12 +158,12 @@ export default function Login() {
           type="checkbox"
           checked={remember}
           onChange={(e) => setRemember(e.target.checked)}
-          className="h-4 w-4 rounded accent-[#2f8f66]"
+          className="h-4 w-4 rounded accent-brand"
         />
         Remember me
       </label>
       {method === "password" && !mfa && (
-        <SmoothLink to="/forgot-password" className="text-sm font-medium text-[#2f8f66] hover:underline">
+        <SmoothLink to="/forgot-password" className={`text-sm ${authLink}`}>
           Forgot password?
         </SmoothLink>
       )}
@@ -163,239 +171,238 @@ export default function Login() {
   );
 
   const submitButton = (label, busyLabel) => (
-    <button
-      type="submit"
-      disabled={submitting}
-      className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
-    >
-      {submitting ? busyLabel : label}
-    </button>
+    <SubmitButton busy={submitting} busyLabel={busyLabel}>
+      {label}
+    </SubmitButton>
   );
+
+  // Which form is showing, for the slide between them.
+  const showing = verify ? "verify" : mfa ? "mfa" : method === "password" ? "password" : `otp-${otpStep}`;
 
   return (
     <AuthShell
       tagline="Welcome back to AniSave."
       blurb="Log in to order fresh produce, or to manage the harvest you're selling."
     >
-      <p className="text-sm text-gray-500">Welcome</p>
-      <h1 className="mt-1 text-3xl font-bold text-gray-900">{verify ? "Verify Your Email" : "Log In"}</h1>
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-clay-500">Welcome</p>
+      <h1 className="mt-2 text-[2rem] font-semibold leading-tight text-gray-900">{verify ? "Verify Your Email" : "Log In"}</h1>
 
       {!mfa && !verify && (
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => switchMethod("password")}
-            className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold transition ${
-              method === "password"
-                ? "border-[#2f8f66] bg-green-50 text-[#2f8f66]"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <KeyRound className="h-4 w-4" />
-            Password
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMethod("otp")}
-            className={`flex items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-semibold transition ${
-              method === "otp"
-                ? "border-[#2f8f66] bg-green-50 text-[#2f8f66]"
-                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <Mail className="h-4 w-4" />
-            Email code
-          </button>
+        <div className="mt-6 grid grid-cols-2 gap-1 rounded-2xl bg-gray-100 p-1 ring-1 ring-gray-200">
+          {[
+            ["password", KeyRound, "Password"],
+            ["otp", Mail, "Email code"],
+          ].map(([key, Icon, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => switchMethod(key)}
+              aria-pressed={method === key}
+              className={`relative flex items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand/25 ${
+                method === key ? "text-white" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              {method === key && (
+                <motion.span
+                  layoutId="login-method-pill"
+                  className="absolute inset-0 rounded-xl bg-brand shadow-sm"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                />
+              )}
+              <Icon className="relative h-4 w-4" />
+              <span className="relative">{label}</span>
+            </button>
+          ))}
         </div>
       )}
 
-      {error && (
-        <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-      )}
-      {notice && !error && (
-        <div className="mt-5 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>
-      )}
+      <AuthAlert>{error}</AuthAlert>
+      <AuthAlert tone="notice">{!error && notice}</AuthAlert>
 
-      {verify ? (
-        <VerifyEmailForm
-          username={verify.username}
-          email={verify.email}
-          emailSent={verify.emailSent}
-          message={verify.message}
-          onVerified={(data) => {
-            setSession(data, remember);
-            goToPortal(data);
-          }}
-          footer={
-            <button
-              type="button"
-              onClick={() => setVerify(null)}
-              className="hover:text-[#2f8f66] hover:underline"
-            >
-              Use a different account
-            </button>
-          }
-        />
-      ) : mfa ? (
-        <form onSubmit={handleVerifyMfa} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="mfaCode" className={labelClass}>
-              Verification code
-            </label>
-            <input
-              id="mfaCode"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              required
-              autoFocus
-              value={mfaCode}
-              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="------"
-              className={`mt-1 ${inputClass} text-center text-lg tracking-[0.5em]`}
-            />
-            <p className="mt-1.5 text-xs text-gray-500">
-              Your password was correct. As a second step, enter the 6-digit code we sent to{" "}
-              <span className="font-medium text-gray-700">{mfa.email}</span>. It expires in 10 minutes.
-            </p>
-          </div>
-
-          {rememberRow}
-          {submitButton("Verify and log in", "Verifying...")}
-
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <button type="button" onClick={handleResendMfa} className="hover:text-[#2f8f66] hover:underline">
-              Send a new code
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMfa(null);
-                setMfaCode("");
-                setError("");
-                setNotice("");
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div key={showing} {...swap}>
+          {verify ? (
+            <VerifyEmailForm
+              username={verify.username}
+              email={verify.email}
+              emailSent={verify.emailSent}
+              message={verify.message}
+              onVerified={(data) => {
+                setSession(data, remember);
+                goToPortal(data);
               }}
-              className="hover:text-[#2f8f66] hover:underline"
-            >
-              Use a different account
-            </button>
-          </div>
-        </form>
-      ) : method === "password" ? (
-        <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="username" className={labelClass}>
-              Your Username
-            </label>
-            <input
-              id="username"
-              name="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              type="text"
-              required
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
-              placeholder="Your username"
-              className={`mt-1 ${inputClass}`}
+              footer={
+                <button
+                  type="button"
+                  onClick={() => setVerify(null)}
+                  className="hover:text-brand hover:underline"
+                >
+                  Use a different account
+                </button>
+              }
             />
-          </div>
+          ) : mfa ? (
+            <form onSubmit={handleVerifyMfa} className="mt-6 space-y-4">
+              <div className="group">
+                <label htmlFor="mfaCode" className={labelClass}>
+                  Verification code
+                </label>
+                <input
+                  id="mfaCode"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  autoFocus
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="------"
+                  className={`mt-1 ${inputClass} text-center text-lg tracking-[0.5em]`}
+                />
+                <p className="mt-1.5 text-xs text-gray-500">
+                  Your password was correct. As a second step, enter the 6-digit code we sent to{" "}
+                  <span className="font-medium text-gray-700">{mfa.email}</span>. It expires in 10 minutes.
+                </p>
+              </div>
 
-          <div>
-            <label htmlFor="password" className={labelClass}>
-              Password
-            </label>
-            <PasswordInput
-              id="password"
-              name="password"
-              required
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="Your password"
-              className={`mt-1 ${inputClass}`}
-            />
-          </div>
+              {rememberRow}
+              {submitButton("Verify and log in", "Verifying...")}
 
-          {rememberRow}
-          {submitButton("Log in", "Logging in...")}
-        </form>
-      ) : otpStep === "request" ? (
-        <form onSubmit={handleRequestOtp} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="email" className={labelClass}>
-              Your Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="The email you registered with"
-              className={`mt-1 ${inputClass}`}
-            />
-            <p className="mt-1.5 text-xs text-gray-500">
-              We&apos;ll email you a 6-digit code - no password needed.
-            </p>
-          </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <button type="button" onClick={handleResendMfa} className="hover:text-brand hover:underline">
+                  Send a new code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMfa(null);
+                    setMfaCode("");
+                    setError("");
+                    setNotice("");
+                  }}
+                  className="hover:text-brand hover:underline"
+                >
+                  Use a different account
+                </button>
+              </div>
+            </form>
+          ) : method === "password" ? (
+            <form onSubmit={handlePasswordLogin} className="mt-6 space-y-4">
+              <div className="group">
+                <label htmlFor="username" className={labelClass}>
+                  Your Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  type="text"
+                  required
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  placeholder="Your username"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
 
-          {submitButton("Send login code", "Sending...")}
-        </form>
-      ) : (
-        <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="code" className={labelClass}>
-              Login code
-            </label>
-            <input
-              id="code"
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="------"
-              className={`mt-1 ${inputClass} text-center text-lg tracking-[0.5em]`}
-            />
-            <p className="mt-1.5 text-xs text-gray-500">
-              Sent to <span className="font-medium text-gray-700">{email}</span>. It expires in 10
-              minutes.
-            </p>
-          </div>
+              <div className="group">
+                <label htmlFor="password" className={labelClass}>
+                  Password
+                </label>
+                <PasswordInput
+                  id="password"
+                  name="password"
+                  required
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="Your password"
+                  className={`mt-1 ${inputClass}`}
+                />
+              </div>
 
-          {rememberRow}
-          {submitButton("Log in", "Logging in...")}
+              {rememberRow}
+              {submitButton("Log in", "Logging in...")}
+            </form>
+          ) : otpStep === "request" ? (
+            <form onSubmit={handleRequestOtp} className="mt-6 space-y-4">
+              <div className="group">
+                <label htmlFor="email" className={labelClass}>
+                  Your Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="The email you registered with"
+                  className={`mt-1 ${inputClass}`}
+                />
+                <p className="mt-1.5 text-xs text-gray-500">
+                  We&apos;ll email you a 6-digit code - no password needed.
+                </p>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setOtpStep("request");
-              setCode("");
-              setError("");
-              setNotice("");
-            }}
-            className="w-full text-center text-xs text-gray-500 hover:text-[#2f8f66] hover:underline"
-          >
-            Use a different email
-          </button>
-        </form>
-      )}
+              {submitButton("Send login code", "Sending...")}
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="mt-6 space-y-4">
+              <div className="group">
+                <label htmlFor="code" className={labelClass}>
+                  Login code
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="------"
+                  className={`mt-1 ${inputClass} text-center text-lg tracking-[0.5em]`}
+                />
+                <p className="mt-1.5 text-xs text-gray-500">
+                  Sent to <span className="font-medium text-gray-700">{email}</span>. It expires in 10
+                  minutes.
+                </p>
+              </div>
+
+              {rememberRow}
+              {submitButton("Log in", "Logging in...")}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpStep("request");
+                  setCode("");
+                  setError("");
+                  setNotice("");
+                }}
+                className="w-full text-center text-xs text-gray-500 hover:text-brand hover:underline"
+              >
+                Use a different email
+              </button>
+            </form>
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       <p className="mt-8 text-center text-sm text-gray-500">
         Don&apos;t have an account?{" "}
-        <SmoothLink to="/register" className="font-semibold text-[#2f8f66] hover:underline">
+        <SmoothLink to="/register" className={authLink}>
           Sign up
         </SmoothLink>
       </p>
       <p className="mt-2 text-center text-xs text-gray-400">
-        <Link to="/terms" className="hover:text-[#2f8f66] hover:underline">
+        <Link to="/terms" className="hover:text-brand hover:underline">
           Terms of Use
         </Link>
         {" · "}
-        <Link to="/privacy" className="hover:text-[#2f8f66] hover:underline">
+        <Link to="/privacy" className="hover:text-brand hover:underline">
           Privacy Policy
         </Link>
       </p>

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { MailCheck } from "lucide-react";
 import { verifyEmail, resendVerificationEmail } from "../services/api";
+import { AuthAlert, SubmitButton, authInput, authLabel } from "./auth/AuthParts";
 
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
+const inputClass = authInput;
 
 // A new account's first sign-in: the 6-digit code emailed when it was made.
 // Shown on the sign-up page straight after, and on the login page to someone
@@ -48,22 +48,22 @@ export default function VerifyEmailForm({ username, email, emailSent = true, mes
 
   return (
     <div className="mt-6" data-testid="verify-email">
-      <div className="flex items-start gap-3 rounded-xl bg-green-50 p-4">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#2f8f66] ring-1 ring-green-100">
+      <div className="flex items-start gap-3 rounded-2xl bg-brand-soft p-4 ring-1 ring-green-100">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-brand ring-1 ring-green-100">
           <MailCheck className="h-5 w-5" />
         </span>
-        <p className="text-sm leading-relaxed text-[#1f5c42]">
+        <p className="text-sm leading-relaxed text-brand-dark">
           We sent a 6-digit code to <span className="break-all font-semibold">{email}</span>. Enter it below to
           verify your email and start using AniSave.
         </p>
       </div>
 
-      {error && <div className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
-      {notice && !error && <div className="mt-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{notice}</div>}
+      <AuthAlert>{error}</AuthAlert>
+      <AuthAlert tone="notice">{!error && notice}</AuthAlert>
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-        <div>
-          <label htmlFor="verifyCode" className="block text-sm font-medium text-gray-700">
+        <div className="group">
+          <label htmlFor="verifyCode" className={authLabel}>
             Verification code
           </label>
           <input
@@ -84,20 +84,16 @@ export default function VerifyEmailForm({ username, email, emailSent = true, mes
           </p>
         </div>
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
-        >
-          {submitting ? "Verifying..." : "Verify email"}
-        </button>
+        <SubmitButton busy={submitting} busyLabel="Verifying...">
+          Verify email
+        </SubmitButton>
 
         <div className="flex items-center justify-between gap-3 text-xs text-gray-500">
           <button
             type="button"
             onClick={handleResend}
             disabled={resending}
-            className="hover:text-[#2f8f66] hover:underline disabled:opacity-60"
+            className="hover:text-brand hover:underline disabled:opacity-60"
           >
             {resending ? "Sending..." : "Send a new code"}
           </button>

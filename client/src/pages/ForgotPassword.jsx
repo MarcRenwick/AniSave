@@ -1,15 +1,14 @@
 import { useState } from "react";
 import AuthShell from "../components/AuthShell";
+import { AuthAlert, SubmitButton, authInput, authLabel, authLink } from "../components/auth/AuthParts";
 import PasswordInput from "../components/PasswordInput";
 import SmoothLink from "../components/SmoothLink";
 import { useSmoothNavigate } from "../utils/pageTransition";
 import { forgotPassword, resetPassword } from "../services/api";
 import { getPasswordError } from "../utils/password";
 
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#2f8f66] focus:outline-none focus:ring-1 focus:ring-[#2f8f66]";
-
-const labelClass = "block text-sm font-medium text-gray-700";
+const inputClass = authInput;
+const labelClass = authLabel;
 
 export default function ForgotPassword() {
   const navigate = useSmoothNavigate();
@@ -66,18 +65,18 @@ export default function ForgotPassword() {
       tagline="Locked out? It happens."
       blurb="We'll email a 6-digit code to the address on your account so you can set a new password."
     >
-      <p className="text-sm text-gray-500">{step === "request" ? "Password reset" : "Almost there"}</p>
-      <h1 className="mt-1 text-3xl font-bold text-gray-900">
+      <p className="text-xs font-bold uppercase tracking-[0.18em] text-clay-500">
+        {step === "request" ? "Password reset" : "Almost there"}
+      </p>
+      <h1 className="mt-2 text-[2rem] font-semibold leading-tight text-gray-900">
         {step === "request" ? "Forgot Password" : "Enter OTP"}
       </h1>
 
-      {error && (
-        <div className="mt-5 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
-      )}
+      <AuthAlert>{error}</AuthAlert>
 
       {step === "request" ? (
         <form onSubmit={handleRequestCode} className="mt-6 space-y-4">
-          <div>
+          <div className="group">
             <label htmlFor="email" className={labelClass}>
               Your Email
             </label>
@@ -95,17 +94,13 @@ export default function ForgotPassword() {
             </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
-          >
-            {submitting ? "Sending..." : "Send OTP"}
-          </button>
+          <SubmitButton busy={submitting} busyLabel="Sending...">
+            Send OTP
+          </SubmitButton>
         </form>
       ) : (
         <form onSubmit={handleResetPassword} className="mt-6 space-y-4">
-          <div>
+          <div className="group">
             <label htmlFor="code" className={labelClass}>
               OTP
             </label>
@@ -125,7 +120,7 @@ export default function ForgotPassword() {
             </p>
           </div>
 
-          <div>
+          <div className="group">
             <label htmlFor="password" className={labelClass}>
               New Password
             </label>
@@ -139,7 +134,7 @@ export default function ForgotPassword() {
             />
           </div>
 
-          <div>
+          <div className="group">
             <label htmlFor="confirmPassword" className={labelClass}>
               Confirm New Password
             </label>
@@ -153,18 +148,14 @@ export default function ForgotPassword() {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-[#2f8f66] py-2.5 text-sm font-semibold text-white transition hover:bg-[#267a56] disabled:opacity-60"
-          >
-            {submitting ? "Resetting..." : "Reset Password"}
-          </button>
+          <SubmitButton busy={submitting} busyLabel="Resetting...">
+            Reset Password
+          </SubmitButton>
 
           <button
             type="button"
             onClick={() => setStep("request")}
-            className="w-full text-center text-xs text-gray-500 hover:text-[#2f8f66] hover:underline"
+            className="w-full text-center text-xs text-gray-500 hover:text-brand hover:underline"
           >
             Use a different email
           </button>
@@ -172,7 +163,7 @@ export default function ForgotPassword() {
       )}
 
       <p className="mt-8 text-center text-sm text-gray-500">
-        <SmoothLink to="/login" className="font-semibold text-[#2f8f66] hover:underline">
+        <SmoothLink to="/login" className={authLink}>
           ← Back to log in
         </SmoothLink>
       </p>

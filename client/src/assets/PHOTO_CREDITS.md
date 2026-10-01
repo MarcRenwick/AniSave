@@ -15,3 +15,7 @@ as WebP at the widths the pages use (`<name>-<width>.webp`).
 | `categories/eggs-market-trays-*.webp` | Fresh eggs on trays at a market stall | Gustavo Denuncio | https://www.pexels.com/photo/31558751/ |
 | `categories/meat-pork-cuts-*.webp` | Pork cuts on a wooden board | Luis Becerra | https://www.pexels.com/photo/5774153/ |
 | `categories/seafood-fresh-fish-banana-leaves-*.webp` | Fresh fish on banana leaves at an outdoor market | Tanha Tamanna Syed | https://www.pexels.com/photo/38022656/ |
+| `auth/login-farmer-golden-rice-*.webp` | A farmer carrying harvested rice through a golden field | Tran Nam Trung | https://www.pexels.com/photo/12835129/ |
+| `auth/register-market-vegetables-*.webp` | Fresh vegetables at a market in Valenzuela, Metro Manila | Jeson Cabilic | https://www.pexels.com/photo/16248762/ |
+| `auth/role-farmer-carabao-*.webp` | A farmer leading a carabao laden with sacks, Philippines | Denniz Futalan | https://www.pexels.com/photo/13118956/ |
+| `auth/role-buyer-market-*.webp` | Shoppers choosing produce at a public market, Philippines | Denniz Futalan | https://www.pexels.com/photo/12394058/ |
