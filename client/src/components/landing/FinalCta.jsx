@@ -1,77 +1,51 @@
+import { useLayoutEffect, useRef } from "react";
+import { useReducedMotion } from "motion/react";
+import { gsap } from "gsap";
 import { ArrowUpRight } from "lucide-react";
 import SmoothLink from "../SmoothLink";
 import { FadeIn, Magnetic, TextReveal } from "../motion";
-import { RiceSheaf, Leaf } from "./Produce";
+import field960 from "../../assets/landing/cta-rice-field-dusk-960.webp";
+import field1600 from "../../assets/landing/cta-rice-field-dusk-1600.webp";
+import field2400 from "../../assets/landing/cta-rice-field-dusk-2400.webp";
 
-// A field of wheat along the bottom of the closing section: three rows, the
-// back ones paler and smaller, each leaning in the wind on its own beat.
-function buildRow({ count, minH, maxH, seed }) {
-  return Array.from({ length: count }, (_, i) => {
-    const x = (i / (count - 1)) * 1640 - 20 + (((i + seed) * 37) % 19) - 9;
-    const height = minH + (((i + seed) * 53) % (maxH - minH));
-    const lean = (((i + seed) * 29) % 24) - 12;
-    const tipX = x + lean;
-    const tipY = 320 - height;
-    // The ear: grains down both sides of the top of the stalk.
-    const angle = Math.atan2(320 - tipY, x - tipX);
-    const along = { x: Math.cos(angle), y: Math.sin(angle) };
-    const grains = Array.from({ length: 6 }, (_, k) => {
-      const t = 6 + k * 8;
-      const side = k % 2 ? 1 : -1;
-      return {
-        cx: tipX + along.x * t + -along.y * side * 3.6,
-        cy: tipY + along.y * t + along.x * side * 3.6,
-        rotate: (angle * 180) / Math.PI - 90 + side * 24,
-      };
-    });
-    return { x, tipX, tipY, grains };
-  });
-}
-const ROWS = [
-  { stalks: buildRow({ count: 26, minH: 120, maxH: 170, seed: 3 }), stem: "#8f5e10", grain: "#c98521", opacity: 0.35, wind: "2deg", duration: "7.5s" },
-  { stalks: buildRow({ count: 30, minH: 160, maxH: 220, seed: 7 }), stem: "#9c6514", grain: "#e8a33d", opacity: 0.6, wind: "2.6deg", duration: "6.4s" },
-  { stalks: buildRow({ count: 34, minH: 190, maxH: 270, seed: 11 }), stem: "#b8761a", grain: "#f2c14e", opacity: 1, wind: "3.2deg", duration: "5.4s" },
-];
-
-function WheatField() {
-  return (
-    <svg viewBox="0 0 1600 320" preserveAspectRatio="xMidYMax slice" className="absolute inset-x-0 bottom-0 h-[clamp(150px,30%,280px)] w-full" aria-hidden="true">
-      {ROWS.map(({ stalks, stem, grain, opacity, wind, duration }, r) => (
-        <g
-          key={r}
-          className="animate-wind"
-          opacity={opacity}
-          style={{ transformBox: "fill-box", transformOrigin: "50% 100%", "--wind": wind, animationDuration: duration, animationDelay: `${r * -1.7}s` }}
-        >
-          {stalks.map(({ x, tipX, tipY, grains }) => (
-            <g key={x}>
-              <path d={`M${x} 320Q${x + (tipX - x) * 0.2} ${(320 + tipY) / 2} ${tipX} ${tipY}`} stroke={stem} strokeWidth="2.2" fill="none" />
-              {grains.map(({ cx, cy, rotate }, k) => (
-                <ellipse key={k} cx={cx} cy={cy} rx="3.2" ry="6.6" fill={grain} transform={`rotate(${rotate} ${cx} ${cy})`} />
-              ))}
-            </g>
-          ))}
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-// The closing call: one line for both sides of the market, over a field of
-// wheat under a low sun.
+// The closing call: one line for both sides of the market, over a rice
+// field under the evening sky. The photo drifts slower than the page as it
+// scrolls by.
 export default function FinalCta() {
+  const root = useRef(null);
+  const reduced = useReducedMotion();
+
+  useLayoutEffect(() => {
+    if (reduced) return undefined;
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        "[data-cta-photo]",
+        { yPercent: -8 },
+        { yPercent: 6, ease: "none", scrollTrigger: { trigger: root.current, start: "top bottom", end: "bottom top", scrub: true } }
+      );
+    }, root);
+    return () => ctx.revert();
+  }, [reduced]);
+
   return (
-    <section className="harvest-grain-dark relative isolate overflow-hidden bg-night pb-64 pt-28 text-cream sm:pb-80 sm:pt-36" data-testid="final-cta" data-nav-tone="dark">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-[58%] -z-10 h-[46rem] w-[min(110vw,70rem)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(242_193_78/0.38),rgb(228_87_46/0.14)_55%,transparent)]"
-      />
-      <WheatField />
-      <div aria-hidden="true" className="pointer-events-none absolute left-[8%] top-[18%] w-14 animate-float opacity-80 max-sm:hidden" style={{ "--float-from": "-12deg", "--float-to": "8deg" }}>
-        <Leaf className="h-auto w-full" />
-      </div>
-      <div aria-hidden="true" className="pointer-events-none absolute right-[10%] top-[26%] w-12 animate-float opacity-70 max-sm:hidden" style={{ animationDelay: "-3s" }}>
-        <RiceSheaf className="h-auto w-full" />
+    <section ref={root} className="harvest-grain-dark relative isolate overflow-hidden bg-night pb-64 pt-28 text-cream sm:pb-80 sm:pt-36" data-testid="final-cta" data-nav-tone="dark">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
+        <img
+          data-cta-photo
+          data-testid="cta-photo"
+          src={field1600}
+          srcSet={`${field960} 960w, ${field1600} 1600w, ${field2400} 2400w`}
+          sizes="100vw"
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-x-0 -top-[10%] h-[120%] w-full object-cover object-[50%_62%] will-change-transform"
+        />
+        {/* Shade: deep at the top where the words are, lifting toward the
+            field at the foot, with a little warmth of the low sun. */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(15_36_24/0.9)_0%,rgb(15_36_24/0.74)_45%,rgb(31_26_18/0.42)_78%,rgb(20_17_11/0.55)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(60%_45%_at_50%_42%,rgb(15_36_24/0.45),transparent_75%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(50%_40%_at_50%_70%,rgb(242_193_78/0.14),transparent_70%)]" />
       </div>
 
       <div className="relative mx-auto max-w-4xl px-6 text-center">

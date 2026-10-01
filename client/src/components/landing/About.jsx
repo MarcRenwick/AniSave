@@ -3,8 +3,8 @@ import { useReducedMotion } from "motion/react";
 import { gsap } from "gsap";
 import { HandCoins, Leaf, Sprout, Users } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "../motion";
-import terraces from "../../assets/landing-terraces-960.webp";
-import terracesSmall from "../../assets/landing-terraces-560.webp";
+import terraces from "../../assets/landing/about-batad-terraces-farmer-960.webp";
+import terracesSmall from "../../assets/landing/about-batad-terraces-farmer-560.webp";
 
 const VALUES = [
   { icon: HandCoins, title: "Farmers keep more", text: "No middlemen between the field and the buyer, so more of every sale stays with the farm." },
@@ -12,8 +12,9 @@ const VALUES = [
   { icon: Users, title: "Neighbours, not strangers", text: "Buyers find farms near them, talk to them and pick up in person." },
 ];
 
-// "About AniSave": what it is for, beside the rice terraces - the photo drifts
-// slower than the page as it scrolls by, with a turning badge on its corner.
+// "About AniSave": what it is for, beside a farmer planting rice in the
+// Batad terraces - the photo drifts slower than the page as it scrolls by,
+// with a turning badge on its corner.
 export default function About() {
   const root = useRef(null);
   const reduced = useReducedMotion();
@@ -21,12 +22,14 @@ export default function About() {
   useLayoutEffect(() => {
     if (reduced) return undefined;
     const ctx = gsap.context(() => {
+      // Always enlarged by more than it has moved, so no edge of the frame
+      // ever shows, wherever the scroll is.
       gsap.fromTo(
         "[data-about-photo]",
-        { yPercent: -10, scale: 1.14 },
+        { yPercent: -6, scale: 1.14 },
         {
-          yPercent: 4,
-          scale: 1.04,
+          yPercent: 2,
+          scale: 1.06,
           ease: "none",
           scrollTrigger: { trigger: "[data-about-frame]", start: "top bottom", end: "bottom top", scrub: true },
         }
@@ -72,7 +75,7 @@ export default function About() {
               src={terraces}
               srcSet={`${terracesSmall} 560w, ${terraces} 960w`}
               sizes="(min-width: 1024px) 40vw, 90vw"
-              alt="Rice terraces with a small farm hut, in the morning light"
+              alt="A farmer planting rice in the Batad rice terraces, Ifugao"
               loading="lazy"
               decoding="async"
               className="h-full w-full object-cover will-change-transform"

@@ -5,27 +5,9 @@ import { ArrowUpRight, Check } from "lucide-react";
 import SmoothLink from "../SmoothLink";
 import { Magnetic, MouseParallax, ParallaxLayer, TextReveal } from "../motion";
 import { EASE } from "../../theme/harvest";
-import { FarHills, Foreground, MidHills, NearHill, Sky, Sun } from "./HeroScene";
-import { Calamansi, Chili, Leaf, Mango, RiceSheaf, Tomato } from "./Produce";
-
-// Produce drifting through the scene: where, how big, how near (nearer is
-// sharper, bigger and moves more), and whether a phone shows it too.
-const PRODUCE = [
-  { Art: Leaf, className: "left-[46%] top-[17%] w-[clamp(40px,4.6vw,76px)] max-md:left-auto max-md:right-[7%] max-md:top-[15%]", depth: 0.8, delay: 0, spin: ["-14deg", "8deg"] },
-  { Art: RiceSheaf, className: "right-[30%] top-[12%] w-[clamp(40px,4vw,64px)] blur-[1px] opacity-80", depth: 0.45, delay: -2, spin: ["10deg", "-6deg"], wide: true },
-  { Art: Mango, className: "right-[6%] top-[22%] w-[clamp(52px,5.4vw,92px)]", depth: 0.95, delay: -4, spin: ["-8deg", "10deg"], wide: true },
-  { Art: Tomato, className: "right-[23%] top-[55%] w-[clamp(40px,4vw,66px)]", depth: 0.75, delay: -1, spin: ["6deg", "-10deg"], wide: true },
-  { Art: Chili, className: "left-[58%] top-[42%] w-[clamp(30px,2.8vw,46px)] blur-[1.5px] opacity-70", depth: 0.3, delay: -3, spin: ["-20deg", "-4deg"], wide: true },
-  { Art: Calamansi, className: "left-[86%] top-[64%] w-[clamp(34px,3.2vw,54px)] blur-[0.5px]", depth: 0.6, delay: -5, spin: ["0deg", "14deg"], wide: true },
-];
-
-// Each layer's share of the scroll-away: 0 sticks to the page, 1 stays put.
-const LAYERS = [
-  { key: "sun", depth: 0.85, mouse: 0.12, Layer: Sun, wide: false },
-  { key: "far", depth: 0.7, mouse: 0.22, Layer: FarHills, wide: true },
-  { key: "mid", depth: 0.5, mouse: 0.4, Layer: MidHills, wide: true },
-  { key: "near", depth: 0.3, mouse: 0.62, Layer: NearHill, wide: true },
-];
+import field960 from "../../assets/landing/hero-rice-field-sunrise-carabao-960.webp";
+import field1600 from "../../assets/landing/hero-rice-field-sunrise-carabao-1600.webp";
+import field2400 from "../../assets/landing/hero-rice-field-sunrise-carabao-2400.webp";
 
 const appear = (delay) => ({
   initial: { opacity: 0, y: 18 },
@@ -60,8 +42,8 @@ export default function Hero({ onJump }) {
   const root = useRef(null);
   const reduced = useReducedMotion();
 
-  // Scrolling away from the hero: the far layers hang back while the near
-  // ones go with the page, and the words drift up and fade.
+  // Scrolling away from the hero: the photo hangs back while the page goes,
+  // and the words drift up and fade.
   useLayoutEffect(() => {
     if (reduced) return undefined;
     const ctx = gsap.context(() => {
@@ -95,43 +77,41 @@ export default function Hero({ onJump }) {
       data-testid="hero"
       data-nav-tone="dark"
     >
-      <Sky />
-      {LAYERS.map(({ key, depth, mouse, Layer, wide }) => (
-        <div
-          key={key}
-          data-depth={depth}
-          className={`pointer-events-none absolute inset-y-0 ${wide ? "-inset-x-[4%]" : "inset-x-0"}`}
-        >
-          <ParallaxLayer depth={mouse} className="absolute inset-0">
-            <Layer />
-          </ParallaxLayer>
-        </div>
-      ))}
-      {PRODUCE.map(({ Art, className, depth, delay, spin, wide }) => (
-        <div
-          key={className}
-          data-depth={1 - depth}
-          className={`pointer-events-none absolute ${className} ${wide ? "max-md:hidden" : ""}`}
-        >
-          <ParallaxLayer depth={depth} range={60}>
-            <div
-              className="animate-float drop-shadow-[0_12px_18px_rgb(6_18_11/0.45)]"
-              style={{ animationDelay: `${delay}s`, "--float-from": spin[0], "--float-to": spin[1] }}
-            >
-              <Art className="h-auto w-full" />
-            </div>
-          </ParallaxLayer>
-        </div>
-      ))}
-      <div data-depth="0" className="pointer-events-none absolute -inset-x-[4%] inset-y-0">
-        <ParallaxLayer depth={0.9} className="absolute inset-0">
-          <Foreground />
+      {/* The field at sunrise. It hangs back as the page scrolls away, drifts
+          a little with the mouse, and settles in from slightly closer as the
+          page opens - only its transform and opacity move. */}
+      <div data-depth="0.55" className="pointer-events-none absolute inset-0" aria-hidden="true">
+        <ParallaxLayer depth={0.3} className="absolute -inset-[3%]">
+          <motion.img
+            src={field1600}
+            srcSet={`${field960} 960w, ${field1600} 1600w, ${field2400} 2400w`}
+            sizes="106vw"
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            data-testid="hero-photo"
+            initial={reduced ? false : { opacity: 0, scale: 1.1 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 2.2, ease: EASE }}
+            className="h-full w-full object-cover object-[72%_50%] md:object-[60%_50%]"
+          />
         </ParallaxLayer>
       </div>
-      {/* Shade behind the words, so they read against any part of the sky. */}
+      {/* Shade so the words read against the bright sky: earthy and darkest
+          behind the copy, opening up toward the carabao on the right; on a
+          phone, where the words run across the whole photo, all over. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,rgb(6_18_11/0.62)_0%,rgb(6_18_11/0.28)_42%,transparent_68%)]"
+        data-testid="hero-shade"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgb(15_36_24/0.76)_0%,rgb(15_36_24/0.74)_50%,rgb(31_26_18/0.8)_100%)] md:bg-[linear-gradient(100deg,rgb(12_28_19/0.88)_0%,rgb(15_36_24/0.8)_44%,rgb(31_26_18/0.5)_64%,rgb(31_26_18/0.14)_88%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-night/60 to-transparent"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-night/70 to-transparent"
       />
 
       <div
