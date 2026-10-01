@@ -17,6 +17,15 @@ const COMMENT_MAX = 220;
 let cached = null;
 
 const firstName = (name = "") => name.trim().split(/\s+/)[0] || "A buyer";
+// A review worth putting on the front page says something: at least three real
+// words, not a test like "hghghggh". (Every review still shows on its
+// product's own ratings page as before - this only picks which are featured.)
+const MIN_WORDS = 3;
+const saysSomething = (comment = "") =>
+  comment
+    .trim()
+    .split(/\s+/)
+    .filter((word) => /\p{L}{2,}/u.test(word)).length >= MIN_WORDS;
 const shorten = (text) => (text.length > COMMENT_MAX ? `${text.slice(0, COMMENT_MAX - 1).trimEnd()}…` : text);
 
 async function overview() {
@@ -41,6 +50,7 @@ async function overview() {
 
   const reviews = ratings
     .filter((r) => r.buyer && !r.buyer.isBanned && r.farmer && !r.farmer.isBanned && r.farmer.isVerified && r.product)
+    .filter((r) => saysSomething(r.comment))
     .slice(0, REVIEWS)
     .map((r) => ({
       _id: r._id,

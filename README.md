@@ -164,7 +164,7 @@ Every farmer page turns the look on (through `layouts/FarmerLayout.jsx`, or itse
 - **Shop by category.** The market's own five categories, each a big card in its colour that tilts toward the mouse, its drawing growing and a glow coming up behind it. Each opens the market (`/buyer/home`); on a phone they swipe sideways.
 - **Why AniSave.** Six real features (verified farmers, local recommended prices, flash sales, chat with live order updates, pre-orders, profit tracking) arriving one after another on a dark section.
 - **About.** The rice-terrace photo drifting slower than the page, with a turning badge.
-- **What buyers are saying.** Real 4- and 5-star reviews with a comment - the same ones already public on each product's ratings page - by first name, with the farm and its town (nothing about where the buyer lives), in two rows passing each other that stop while one is pointed at. With fewer than three reviews the section isn't shown.
+- **What buyers are saying.** Real 4- and 5-star reviews whose comment says something (at least three real words, so a test like "hghghggh" isn't featured) - the same ones already public on each product's ratings page - by first name, with the farm and its town (nothing about where the buyer lives), in two rows passing each other that stop while one is pointed at. With fewer than three reviews the section isn't shown.
 - **Join AniSave** over a field of wheat swaying in the wind, then the footer.
 
 ## The buyer's marketplace
