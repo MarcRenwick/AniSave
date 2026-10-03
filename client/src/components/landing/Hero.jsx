@@ -130,7 +130,7 @@ export default function Hero({ onJump }) {
           as="h1"
           delay={0.25}
           className="mt-6 max-w-[14ch] font-display text-[clamp(2.9rem,7.2vw,7rem)] font-semibold leading-[0.96] tracking-[-0.025em] text-cream"
-          lines={["Fresh from the farm,", { text: "straight to you.", className: "text-gold-300", after: <BrushStroke /> }]}
+          lines={["Fresh harvest,", { text: "direct from the farmers who grow it.", className: "text-gold-300", after: <BrushStroke /> }]}
         />
 
         <motion.p {...appear(0.95)} className="mt-7 max-w-xl text-base leading-relaxed text-cream/80 sm:text-lg">

@@ -7,6 +7,7 @@ import CancelOrderModal from "../../components/buyer/CancelOrderModal";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getBuyerOrders, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { PhotoEmptyState, PhotoHeader, RowSkeletons } from "../../components/buyer/BuyerVisuals";
 import { BUYER_PHOTOS } from "../../utils/buyerPhotos";
 import { categoryPhoto } from "../../utils/categoryPhotos";
@@ -180,6 +181,15 @@ export default function BuyerOrders() {
       .catch(() => setError("Could not load your orders. Is the server running?"))
       .finally(() => setLoading(false));
   }, []);
+
+  // The farmer accepting, readying or declining an order - or this buyer
+  // ordering in another tab - shows here without a refresh.
+  useLiveRefresh(["order:changed"], () =>
+    getBuyerOrders().then(({ data }) => {
+      setOrders(data);
+      setError("");
+    })
+  );
 
   // Archived orders are tucked away everywhere except their own tab, the
   // same way an inbox hides archived mail from every other view.

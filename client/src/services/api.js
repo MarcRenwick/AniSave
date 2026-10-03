@@ -52,6 +52,9 @@ api.interceptors.response.use((response) => {
   if (response.config.method !== "get") shared.clear();
   return response;
 });
+// The same goes for a change someone else made, heard over the live
+// connection (see hooks/useLiveRefresh.js): the next fetch asks the server.
+export const forgetSharedAnswers = () => shared.clear();
 
 // When the server says the sign-in this browser is holding is no longer good
 // (logged out elsewhere, password changed, account banned, expired), go back to
@@ -89,8 +92,12 @@ export const resetPassword = (email, code, password) => api.post("/auth/reset-pa
 export const updateProfile = (data) => api.put("/auth/profile", data);
 export const uploadAvatar = (formData) =>
   api.put("/auth/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
-export const changePassword = (currentPassword, newPassword) =>
-  api.put("/auth/change-password", { currentPassword, newPassword });
+// Changing the password takes an emailed code: the passwords are checked and
+// the code sent first, and the new password is only saved once it is entered.
+export const requestPasswordChange = (currentPassword, newPassword, confirmPassword) =>
+  api.post("/auth/change-password/request-otp", { currentPassword, newPassword, confirmPassword });
+export const resendPasswordChange = () => api.post("/auth/change-password/resend-otp");
+export const confirmPasswordChange = (code) => api.post("/auth/change-password/verify-otp", { code });
 // A farmer fills in a form first, so they send { reason, description?, agreedToTerms };
 // a buyer's dialog sends nothing.
 export const requestAccountDeletion = (form) => api.post("/auth/delete-account/request-otp", form);

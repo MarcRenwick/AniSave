@@ -5,6 +5,7 @@ import AdminTopBar from "../../components/admin/AdminTopBar";
 import ReportReviewModal from "../../components/admin/ReportReviewModal";
 import { getAdminReports } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { REPORT_STATUSES, reasonLabel, statusMeta } from "../../utils/reports";
 
 const filters = [{ key: "", label: "All" }, ...REPORT_STATUSES];
@@ -25,6 +26,11 @@ export default function AdminReports() {
       .catch(() => setError("Could not load reports. Is the server running?"))
       .finally(() => setLoading(false));
   }, []);
+
+  // A new report, or another admin acting on one, shows here straight away.
+  useLiveRefresh(["admin:changed"], () => getAdminReports().then(({ data }) => setReports(data)), {
+    when: (change) => change.kind === "reports",
+  });
 
   const replaceReport = (updated) =>
     setReports((prev) => prev.map((r) => (r._id === updated._id ? updated : r)));

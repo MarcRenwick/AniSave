@@ -10,6 +10,7 @@ import SmoothLink from "../components/SmoothLink";
 import VerifyEmailForm from "../components/VerifyEmailForm";
 import { useSmoothNavigate } from "../utils/pageTransition";
 import { requestLoginOtp, loginWithOtp, verifyLoginMfa, resendLoginMfa } from "../services/api";
+import useCountdown, { clock } from "../hooks/useCountdown";
 import { EASE } from "../theme/harvest";
 
 const inputClass = authInput;
@@ -46,6 +47,14 @@ export default function Login() {
   // the emailed code is entered next.
   const [mfa, setMfa] = useState(null);
   const [mfaCode, setMfaCode] = useState("");
+  // The code lasts five minutes; another can be sent a minute after the last.
+  const [mfaExpiresIn, startMfaExpiry] = useCountdown();
+  const [mfaResendIn, startMfaResendWait] = useCountdown();
+  const mfaTimed = (data) => {
+    if (data.expiresIn !== undefined) startMfaExpiry(data.expiresIn);
+    if (data.resendIn !== undefined) startMfaResendWait(data.resendIn);
+  };
+  const mfaExpired = Boolean(mfa?.timed) && mfaExpiresIn === 0;
 
   // Set when the password was right but the account's email was never
   // verified: a fresh code has been emailed, and entering it signs them in.
@@ -76,8 +85,11 @@ export default function Login() {
         return;
       }
       if (data.mfaRequired) {
-        setMfa({ token: data.mfaToken, email: data.email });
+        // `timed`: the server said how long the code lasts (one from before
+        // that doesn't, and the page doesn't count down).
+        setMfa({ token: data.mfaToken, email: data.email, timed: data.expiresIn !== undefined });
         setMfaCode("");
+        mfaTimed(data);
         setNotice(data.message);
         return;
       }
@@ -99,8 +111,10 @@ export default function Login() {
       goToPortal(data);
     } catch (err) {
       setError(err.response?.data?.message || "That code didn't work. Please try again.");
-      // The sign-in itself timed out: nothing left to type a code into.
-      if (err.response?.status === 401) setMfa(null);
+      setMfaCode("");
+      // The sign-in timed out, or the code ran out of time or of guesses:
+      // nothing left to type a code into, so back to the password.
+      if (err.response?.status === 401 || err.response?.data?.restart) setMfa(null);
     } finally {
       setSubmitting(false);
     }
@@ -111,9 +125,13 @@ export default function Login() {
     setNotice("");
     try {
       const { data } = await resendLoginMfa(mfa.token);
+      mfaTimed(data);
       setNotice(data.message);
     } catch (err) {
-      setError(err.response?.data?.message || "Could not send a new code. Please try again.");
+      const data = err.response?.data;
+      setError(data?.message || "Could not send a new code. Please try again.");
+      if (data?.retryIn) startMfaResendWait(data.retryIn);
+      if (err.response?.status === 401 || data?.restart) setMfa(null);
     }
   };
 
@@ -262,7 +280,14 @@ export default function Login() {
                 />
                 <p className="mt-1.5 text-xs text-gray-500">
                   Your password was correct. As a second step, enter the 6-digit code we sent to{" "}
-                  <span className="font-medium text-gray-700">{mfa.email}</span>. It expires in 10 minutes.
+                  <span className="font-medium text-gray-700">{mfa.email}</span>.{" "}
+                  {mfa.timed ? (
+                    <span role="timer" className={mfaExpired ? "font-semibold text-red-600" : undefined}>
+                      {mfaExpired ? "It has expired - log in again for a new one." : `It expires in ${clock(mfaExpiresIn)}.`}
+                    </span>
+                  ) : (
+                    "It expires in 5 minutes."
+                  )}
                 </p>
               </div>
 
@@ -270,8 +295,13 @@ export default function Login() {
               {submitButton("Verify and log in", "Verifying...")}
 
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <button type="button" onClick={handleResendMfa} className="hover:text-brand hover:underline">
-                  Send a new code
+                <button
+                  type="button"
+                  onClick={handleResendMfa}
+                  disabled={mfaResendIn > 0 || mfaExpired}
+                  className="hover:text-brand hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                >
+                  {mfaResendIn > 0 ? `Send a new code in ${clock(mfaResendIn)}` : "Send a new code"}
                 </button>
                 <button
                   type="button"

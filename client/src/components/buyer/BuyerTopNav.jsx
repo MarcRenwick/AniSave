@@ -45,7 +45,9 @@ function ActivePill({ id }) {
   );
 }
 
-export default function BuyerTopNav() {
+// orderUpdates: how many orders have changed since the buyer last looked at
+// them (see useBuyerOrderNotifications) - counted on My Orders.
+export default function BuyerTopNav({ orderUpdates = 0 }) {
   const { user } = useAuth();
   const { count } = useCart();
   const { unreadTotal } = useChat();
@@ -102,15 +104,15 @@ export default function BuyerTopNav() {
     { to: "/buyer/home", label: "Home" },
     ...(user
       ? [
-          { to: "/buyer/orders", label: "My Orders" },
-          { to: "/buyer/messages", label: "Messages", badge: unreadTotal },
+          { to: "/buyer/orders", label: "My Orders", badge: orderUpdates, badgeLabel: "order updates" },
+          { to: "/buyer/messages", label: "Messages", badge: unreadTotal, badgeLabel: "unread" },
           { to: "/buyer/settings", label: "Profile" },
         ]
       : []),
   ];
 
   const links = (onClick, pillId) =>
-    navItems.map(({ to, label, badge }) => (
+    navItems.map(({ to, label, badge, badgeLabel }) => (
       <NavLink key={to} to={to} onClick={onClick} className={linkClass}>
         {({ isActive }) => (
           <>
@@ -119,7 +121,7 @@ export default function BuyerTopNav() {
             {badge > 0 && (
               <span
                 className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-tomato-600 px-1 text-[11px] font-semibold text-white ring-2 ring-night"
-                aria-label={`${badge} unread`}
+                aria-label={`${badge} ${badgeLabel}`}
               >
                 {badge > 99 ? "99+" : badge}
               </span>

@@ -6,6 +6,7 @@ import BanConfirmModal from "../../components/admin/BanConfirmModal";
 import VerificationReviewModal from "../../components/admin/VerificationReviewModal";
 import { getAdminUsers, banUser, unbanUser } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { activeAgo } from "../../utils/activity";
 import {
   VERIFICATION_META,
@@ -50,6 +51,12 @@ export default function AdminUsers() {
     }, REFRESH_MS);
     return () => clearInterval(timer);
   }, [role]);
+
+  // A new account, a farmer sending documents, or another admin's decision
+  // shows here as soon as it happens, not at the next quiet fetch.
+  useLiveRefresh(["admin:changed"], () => getAdminUsers(role).then(({ data }) => setUsers(data)), {
+    when: (change) => change.kind === "users",
+  });
 
   const replaceUser = (updated) =>
     setUsers((prev) => prev.map((u) => (u._id === updated._id ? updated : u)));

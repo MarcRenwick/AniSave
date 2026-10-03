@@ -19,17 +19,20 @@ const { resolveAddress } = require("../utils/locations");
 const { TERMS_VERSION } = require("../utils/privacy");
 const validate = require("../utils/validate");
 const otp = require("../utils/otp");
+const emailOtp = require("../utils/emailOtp");
+const { adminChanged, shopChanged } = require("../utils/liveUpdates");
 
 const { escapeHtml, trySend, EMAIL_FAILED_MESSAGE } = sendEmail;
 const { generateMfaToken } = generateToken;
-const { LOGIN_CODE, RESET_CODE, DELETE_CODE, MFA_CODE, VERIFY_EMAIL_CODE, selectCode } = otp;
+const { LOGIN_CODE, RESET_CODE, DELETE_CODE, VERIFY_EMAIL_CODE, selectCode } = otp;
+const { PASSWORD_CHANGE, LOGIN: TWO_STEP } = emailOtp;
 
 // Five wrong passwords in a row lock the account for a quarter of an hour.
 const MAX_FAILED_LOGINS = 5;
 const LOCK_MS = 15 * 60 * 1000;
 
 const LOGIN_CODE_MS = 10 * 60 * 1000;
-const MFA_CODE_MS = 10 * 60 * 1000;
+const OTP_MINUTES = emailOtp.OTP_LIFETIME_MS / 60000;
 const RESET_CODE_MS = 15 * 60 * 1000;
 const DELETE_CODE_MS = 15 * 60 * 1000;
 const VERIFY_EMAIL_MS = 15 * 60 * 1000;
@@ -286,34 +289,68 @@ const registerUser = asyncHandler(async (req, res) => {
   res.status(201).json(verificationReply(user, sent));
 });
 
-// Emails a fresh two-step code to someone who has just proved their password
-// (unless one went out a moment ago), and says whether it went.
-//
-// This one is waited for, unlike the codes asked for by email address alone.
-// Those can't admit a failure without revealing the address is registered;
-// this person has already proved their password, so there is nothing left to
-// reveal - and being told "we emailed you a code" when nothing was sent left
-// them waiting at the code box for an email that was never coming. Every
-// administrator signs in this way, so it is also the difference between an
-// admin being able to get in and not.
-const sendTwoStepCode = async (user) => {
-  if (otp.sentRecently(user, MFA_CODE, MFA_CODE_MS)) return true;
-  const code = otp.issueCode(user, MFA_CODE, MFA_CODE_MS);
-  await user.save();
-  return trySend(
-    {
-      to: user.email,
-      subject: "Your AniSave sign-in code",
-      html: codeEmail(user, {
-        intro: "Use this code to finish signing in to AniSave.",
-        code,
-        minutes: 10,
-        outro: "If this wasn't you, someone knows your password - change it right away.",
-      }),
-    },
-    { onFailure: forgetCode(user, MFA_CODE) }
-  );
+// Codes for someone already known to be who they say - signed in, or past the
+// password - are kept in utils/emailOtp.js: five minutes each, five guesses,
+// a new one a minute after the last. These are the emails they go out in.
+const TWO_STEP_EMAIL = {
+  subject: "Your AniSave sign-in code",
+  intro: "Use this code to finish signing in to AniSave.",
+  outro: "If this wasn't you, someone knows your password - change it right away.",
 };
+const PASSWORD_CHANGE_EMAIL = {
+  subject: "Confirm your new AniSave password",
+  intro: "Enter this code in AniSave to confirm changing your password. Your password stays as it is until you do.",
+  outro:
+    "If you didn't ask to change your password, don't share this code with anyone - and as whoever asked knew your current password, change it yourself as soon as you can.",
+};
+
+// Emails the code from a request just started or renewed, and says whether it
+// went. These are waited for, unlike the codes asked for by email address
+// alone: those can't admit a failure without revealing the address is
+// registered, but this person has already proved their password, so there is
+// nothing left to reveal - and being told "we emailed you a code" when nothing
+// was sent would leave them waiting for an email that was never coming. (Every
+// administrator signs in with two steps, so for them it is also the difference
+// between getting in and not.) If it didn't go, the resend cooldown is taken
+// back so asking again works straight away. Why it failed is only logged.
+const emailCode = (user, issued, { subject, intro, outro }) =>
+  trySend(
+    { to: user.email, subject, html: codeEmail(user, { intro, code: issued.code, minutes: OTP_MINUTES, outro }) },
+    { onFailure: emailOtp.forgetSend(issued.request) }
+  );
+
+// Emails a two-step code to someone who has just proved their password, and
+// says whether it went - unless one went out less than a minute ago, which
+// stands. Either way the request is returned, for the page's countdown.
+const sendTwoStepCode = async (user) => {
+  const live = await emailOtp.liveRequest(user._id, TWO_STEP);
+  if (live && emailOtp.resendWait(live) > 0) return { sent: true, request: live };
+  const issued = await emailOtp.startRequest(user._id, TWO_STEP);
+  return { sent: await emailCode(user, issued, TWO_STEP_EMAIL), request: issued.request };
+};
+
+// "Send a new code" for a request that is still going: once a minute has
+// passed since the last code, a new one replaces it. Answers the request.
+// `startOver` is what the person is told to do when it has expired.
+async function resendCode(res, user, purpose, email, startOver) {
+  const live = await emailOtp.liveRequest(user._id, purpose);
+  if (!live) {
+    return res.status(400).json({ message: `That code has expired. ${startOver}`, restart: true, reason: "expired" });
+  }
+  const wait = emailOtp.resendWait(live);
+  const issued = wait > 0 ? null : await emailOtp.renewCode(live);
+  if (!issued) {
+    // Asked again too soon - or another tab asked a moment before this one.
+    const retryIn = wait || emailOtp.resendWait(await emailOtp.liveRequest(user._id, purpose)) || 1;
+    return res
+      .status(429)
+      .json({ message: `A code was just sent. You can ask for another in ${retryIn} seconds.`, retryIn });
+  }
+  if (!(await emailCode(user, issued, email))) {
+    return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
+  }
+  res.json({ message: `We emailed a new code to ${maskEmail(user.email)}.`, ...emailOtp.timing(issued.request) });
+}
 
 // @desc    Authenticate user & get token. Accounts with two-step sign-in (all
 //          admins) get a code emailed and finish at /login/mfa instead.
@@ -332,7 +369,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   // Exactly as it was registered, capitals included.
   const user = await User.findOne({ username: body.username.trim() }).select(
-    `+password +failedLoginAttempts +lockUntil ${selectCode(MFA_CODE)} ${selectCode(VERIFY_EMAIL_CODE)}`
+    `+password +failedLoginAttempts +lockUntil ${selectCode(VERIFY_EMAIL_CODE)}`
   );
 
   // A locked account isn't tried at all - not even with the right password.
@@ -377,7 +414,8 @@ const loginUser = asyncHandler(async (req, res) => {
   if (needsTwoStep(user)) {
     // Sent directly rather than thrown: the error handler replaces every 5xx
     // message with a generic apology, and this one is worth reading.
-    if (!(await sendTwoStepCode(user))) {
+    const { sent, request } = await sendTwoStepCode(user);
+    if (!sent) {
       return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
     }
     return res.json({
@@ -385,14 +423,14 @@ const loginUser = asyncHandler(async (req, res) => {
       mfaToken: generateMfaToken(user._id),
       email: maskEmail(user.email),
       message: `We emailed a 6-digit code to ${maskEmail(user.email)}.`,
+      ...emailOtp.timing(request),
     });
   }
 
   res.json(sessionPayload(user));
 });
 
-// Reads the two-step token from a request and loads the user it names, with
-// their two-step code fields.
+// Reads the two-step token from a request and loads the user it names.
 const userForMfaToken = async (res, mfaToken) => {
   let decoded;
   try {
@@ -400,7 +438,7 @@ const userForMfaToken = async (res, mfaToken) => {
   } catch {
     decoded = null;
   }
-  const user = decoded?.purpose === "mfa" ? await User.findById(decoded.id).select(selectCode(MFA_CODE)) : null;
+  const user = decoded?.purpose === "mfa" ? await User.findById(decoded.id) : null;
   if (!user) {
     res.status(401);
     throw new Error("Your sign-in timed out. Please log in again.");
@@ -416,19 +454,15 @@ const verifyLoginMfa = asyncHandler(async (req, res) => {
   const code = validate.codeInput(body.code);
   const user = await userForMfaToken(res, body.mfaToken);
 
-  if (!(await otp.checkCode(user, MFA_CODE, code))) {
-    res.status(400);
-    throw new Error("That code is invalid or has expired");
-  }
+  // A code is good for exactly one sign-in: the right one uses the request up,
+  // and the fifth wrong one ends it - back to the password.
+  const outcome = await emailOtp.checkCode(user._id, TWO_STEP, code);
+  if (outcome.result !== "ok") return emailOtp.sendCodeFailure(res, outcome, "Please log in again.");
 
   if (user.isBanned) {
     res.status(403);
     throw new Error(restrictionMessage(user));
   }
-
-  // A code is good for exactly one sign-in.
-  otp.clearCode(user, MFA_CODE);
-  await user.save();
 
   res.json(sessionPayload(user));
 });
@@ -439,16 +473,7 @@ const verifyLoginMfa = asyncHandler(async (req, res) => {
 const resendLoginMfa = asyncHandler(async (req, res) => {
   const body = validate.plainBody(req.body);
   const user = await userForMfaToken(res, body.mfaToken);
-
-  if (otp.sentRecently(user, MFA_CODE, MFA_CODE_MS)) {
-    res.status(429);
-    throw new Error("A code was just sent. Please wait a minute before asking for another.");
-  }
-
-  if (!(await sendTwoStepCode(user))) {
-    return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
-  }
-  res.json({ message: `We emailed a new code to ${maskEmail(user.email)}.` });
+  await resendCode(res, user, TWO_STEP, TWO_STEP_EMAIL, "Please log in again.");
 });
 
 // The unverified account a verification request names, with its code fields.
@@ -478,6 +503,8 @@ const verifyEmail = asyncHandler(async (req, res) => {
   user.emailVerified = true;
   otp.clearCode(user, VERIFY_EMAIL_CODE);
   await user.save();
+  // A real account now - and, for a farmer, documents waiting on an admin.
+  adminChanged("users");
 
   res.json(sessionPayload(user));
 });
@@ -563,8 +590,10 @@ const loginWithOtp = asyncHandler(async (req, res) => {
   // A code is good for exactly one login. It came to the account's inbox, so
   // it verifies the email too if that step was never finished.
   otp.clearCode(user, LOGIN_CODE);
-  if (isUnverified(user)) user.emailVerified = true;
+  const verifiedNow = isUnverified(user);
+  if (verifiedNow) user.emailVerified = true;
   await user.save();
+  if (verifiedNow) adminChanged("users");
 
   res.json(sessionPayload(user));
 });
@@ -625,9 +654,13 @@ const resetPassword = asyncHandler(async (req, res) => {
   user.failedLoginAttempts = 0;
   user.lockUntil = undefined;
   // The code came to the account's inbox, which verifies it as well.
-  if (isUnverified(user)) user.emailVerified = true;
+  const verifiedNow = isUnverified(user);
+  if (verifiedNow) user.emailVerified = true;
   await user.save();
   disconnectUser(user._id);
+  // A sign-in or password change half-done with the old password ends here too.
+  await emailOtp.cancelAll(user._id);
+  if (verifiedNow) adminChanged("users");
 
   res.json({ message: "Password has been reset. You can now log in." });
 });
@@ -703,32 +736,103 @@ const uploadAvatar = asyncHandler(async (req, res) => {
   res.json(req.user);
 });
 
-// @desc    Change the logged-in user's password
-// @route   PUT /api/auth/change-password
+// Changing a password takes two steps (Privacy and Protection (MFA) in the
+// settings): the current and new passwords are checked and a code is emailed;
+// only once the code is entered does the new password become the account's.
+
+// "13 Oct 2026, 9:41 pm" in the Philippines, where AniSave is used.
+const whenInManila = (date) =>
+  `${date.toLocaleString("en-PH", { timeZone: "Asia/Manila", dateStyle: "medium", timeStyle: "short" })} (Philippine time)`;
+
+const passwordChangedEmail = (user) => `
+  <p>Hi ${escapeHtml(user.name)},</p>
+  <p>The password for your AniSave account <strong>${escapeHtml(user.username)}</strong> was changed on ${whenInManila(new Date())}. Every other device that was signed in to your account has been signed out.</p>
+  <p>If this was you, there is nothing else to do.</p>
+  <p>If it wasn't, reset your password straight away with "Forgot password" on the AniSave login page, then turn on two-step sign-in under Privacy and Protection (MFA) in your settings.</p>
+`;
+
+// @desc    Step 1 of changing the password: check the current one, check the
+//          new one, and email a code. Nothing about the account changes yet.
+// @route   POST /api/auth/change-password/request-otp   { currentPassword, newPassword, confirmPassword }
 // @access  Private
-const changePassword = asyncHandler(async (req, res) => {
+const requestPasswordChange = asyncHandler(async (req, res) => {
   const body = validate.plainBody(req.body);
   const currentPassword = validate.password(body.currentPassword, "Current password");
-  const newPassword = validate.newPassword(body.newPassword, "New password");
+  const newPassword = validate.strongPassword(body.newPassword, "New password");
+  if (body.confirmPassword !== newPassword) {
+    res.status(400);
+    throw new Error("New passwords do not match");
+  }
 
   const user = await User.findById(req.user._id).select("+password");
-
   if (!(await user.matchPassword(currentPassword))) {
     res.status(401);
     throw new Error("Current password is incorrect");
   }
+  if (newPassword === currentPassword || (await bcrypt.compare(newPassword, user.password))) {
+    res.status(400);
+    throw new Error("Your new password must be different from your current password");
+  }
 
-  user.password = newPassword;
-  // Every other session - including anyone who had got hold of the old
-  // password - is signed out; this device gets a fresh token so it isn't.
-  user.tokenVersion = (user.tokenVersion || 0) + 1;
-  await user.save();
-  // Before answering, so this device's chat reconnects with its new token
-  // rather than being cut off along with the old ones.
-  disconnectUser(user._id);
+  // One email a minute, however the form is sent.
+  const wait = emailOtp.resendWait(await emailOtp.liveRequest(user._id, PASSWORD_CHANGE));
+  if (wait > 0) {
+    return res
+      .status(429)
+      .json({ message: `A code was just sent. You can ask for another in ${wait} seconds.`, retryIn: wait });
+  }
+
+  // The new password waits with the code, already hashed - it is never kept
+  // as typed - and replaces any change asked for before it.
+  const issued = await emailOtp.startRequest(user._id, PASSWORD_CHANGE, {
+    newPasswordHash: await bcrypt.hash(newPassword, 10),
+  });
+  if (!(await emailCode(user, issued, PASSWORD_CHANGE_EMAIL))) {
+    return res.status(503).json({ message: EMAIL_FAILED_MESSAGE });
+  }
 
   res.json({
-    message: "Password changed successfully.",
+    message: `We emailed a 6-digit code to ${maskEmail(user.email)}.`,
+    email: maskEmail(user.email),
+    ...emailOtp.timing(issued.request),
+  });
+});
+
+// @desc    Email a new code for the password change in progress (a minute
+//          after the last one). The old code stops working.
+// @route   POST /api/auth/change-password/resend-otp
+// @access  Private
+const resendPasswordChange = asyncHandler(async (req, res) => {
+  await resendCode(res, req.user, PASSWORD_CHANGE, PASSWORD_CHANGE_EMAIL, "Please start again.");
+});
+
+// @desc    Step 2: the emailed code. Only now is the new password saved.
+// @route   POST /api/auth/change-password/verify-otp   { code }
+// @access  Private
+const confirmPasswordChange = asyncHandler(async (req, res) => {
+  const code = validate.codeInput(validate.plainBody(req.body).code);
+
+  const outcome = await emailOtp.checkCode(req.user._id, PASSWORD_CHANGE, code);
+  if (outcome.result !== "ok") return emailOtp.sendCodeFailure(res, outcome, "Please start again.");
+
+  // The hash made in step 1 goes on as it is (save() would hash it again).
+  // Every other session - including anyone who had got hold of the old
+  // password - is signed out; this device gets a fresh token so it isn't.
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { password: outcome.request.newPasswordHash }, $inc: { tokenVersion: 1 } },
+    { new: true }
+  );
+  // Before answering, so this device's live connection comes back with its
+  // new token rather than being cut off along with the old ones.
+  disconnectUser(user._id);
+  // A two-step sign-in someone began with the old password can't finish now.
+  await emailOtp.cancelAll(user._id);
+
+  sendInBackground({ to: user.email, subject: "Your AniSave password was changed", html: passwordChangedEmail(user) });
+
+  res.json({
+    message: "Your password has been changed. Every other device has been signed out.",
     token: generateToken(user._id, user.role, user.tokenVersion),
   });
 });
@@ -847,6 +951,7 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   );
   await Message.deleteMany({ conversation: { $in: conversationIds } });
   await Conversation.deleteMany({ _id: { $in: conversationIds } });
+  await emailOtp.cancelAll(user._id);
   disconnectUser(user._id);
   if (user.avatar) deleteImageFile(user.avatar);
   // A farmer's ID and farm documents are the most sensitive thing kept about
@@ -854,6 +959,8 @@ const confirmAccountDeletion = asyncHandler(async (req, res) => {
   if (user.governmentId) deleteImageFile(user.governmentId);
   (user.farmDocuments || []).forEach(deleteImageFile);
   await user.deleteOne();
+  adminChanged("users");
+  if (user.role === "farmer") shopChanged(user._id);
 
   res.json({ message: "Your account has been permanently deleted." });
 });
@@ -901,6 +1008,9 @@ const submitVerification = asyncHandler(async (req, res) => {
   await req.user.save();
 
   replaced.forEach(deleteImageFile);
+  // Waiting on an admin again - and, until they decide, not selling.
+  adminChanged("users");
+  shopChanged(req.user._id);
 
   res.json(req.user);
 });
@@ -1002,7 +1112,9 @@ module.exports = {
   resetPassword,
   updateProfile,
   uploadAvatar,
-  changePassword,
+  requestPasswordChange,
+  resendPasswordChange,
+  confirmPasswordChange,
   logoutUser,
   setMfa,
   requestAccountDeletion,

@@ -3,6 +3,14 @@ const User = require("../models/User");
 const validate = require("../utils/validate");
 const { effectiveVerificationStatus } = require("../utils/verification");
 const { disconnectUser, isOnline } = require("../utils/realtime");
+const { adminChanged, shopChanged, accountChanged } = require("../utils/liveUpdates");
+
+// After a decision on an account: the other admins' lists, and - for a farmer,
+// whose listings come or go with it - every buyer's marketplace.
+const announceDecision = (user) => {
+  adminChanged("users");
+  if (user.role === "farmer") shopChanged(user._id);
+};
 
 // An account as the Users page shows it: with its verification status, and
 // whether the person has AniSave open right now - the same live connection
@@ -59,6 +67,7 @@ const banUser = asyncHandler(async (req, res) => {
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   await user.save();
   disconnectUser(user._id);
+  announceDecision(user);
   res.json(withStatus(user));
 });
 
@@ -77,6 +86,7 @@ const unbanUser = asyncHandler(async (req, res) => {
   user.suspendedAt = undefined;
   user.suspensionReason = undefined;
   await user.save();
+  announceDecision(user);
   res.json(withStatus(user));
 });
 
@@ -125,6 +135,14 @@ const reviewFarmerVerification = asyncHandler(async (req, res) => {
   user.verificationNote = approved ? undefined : note.trim();
   user.verificationReviewedAt = Date.now();
   await user.save();
+
+  announceDecision(user);
+  // The farmer's pages drop (or update) their "pending" banner straight away.
+  accountChanged(user._id, {
+    isVerified: user.isVerified,
+    verificationStatus: user.verificationStatus,
+    verificationNote: user.verificationNote || null,
+  });
 
   res.json(withStatus(user));
 });

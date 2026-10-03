@@ -7,6 +7,12 @@ const { effectivePrice } = require("../utils/pricing");
 const { hasBlocked } = require("../utils/blocks");
 const { unitOf, amountOf } = require("../utils/units");
 const { postOrderUpdate, retractOrderUpdate } = require("./chatController");
+const { orderChanged, productChanged } = require("../utils/liveUpdates");
+
+// A completed order takes its quantity off the listing's stock, and a declined
+// or cancelled one can give some back (see giveStockBack) - either way buyers'
+// marketplaces are told the listing changed.
+const STOCK_MOVES = ["done", "cancelled"];
 
 // Every reply about a single order sends the whole order: the buyer, the
 // farmer and the product it is for, not just their ids. A status change that
@@ -98,6 +104,9 @@ const createOrder = asyncHandler(async (req, res) => {
     // Taken off the stock when the order is completed, not before.
     stockTaken: false,
   });
+
+  // The farmer's order list, dashboard and bell pick it up straight away.
+  orderChanged(order, { action: "placed", by: "buyer", buyerName: req.user.name });
 
   res.status(201).json(order);
 });
@@ -352,6 +361,9 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
   // The buyer finds where their order stands in their chat with the farmer.
   await postOrderUpdate(order, req.user);
+  // ...and their order pages, and the farmer's other tabs, update straight away.
+  orderChanged(order, { action: "status", by: "farmer", previousStatus: from });
+  if (STOCK_MOVES.includes(status)) productChanged({ _id: order.product, farmer: order.farmer }, "stock");
 
   res.json(await withDetails(order._id));
 });
@@ -408,6 +420,7 @@ const undoOrderStatus = asyncHandler(async (req, res) => {
   order[TIMESTAMP_FIELD[undone]] = undefined;
   await order.save();
   await retractOrderUpdate(order, undone, req.user);
+  orderChanged(order, { action: "undone", by: "farmer", previousStatus: undone });
 
   res.json(await withDetails(order._id));
 });
@@ -433,9 +446,13 @@ const cancelOrder = asyncHandler(async (req, res) => {
   // Nothing was taken off the stock yet - except by an order placed before
   // stock was only taken on completion, which gives it back.
   await giveStockBack(order);
+  const previousStatus = order.status;
   order.status = "cancelled";
   order.cancelledAt = Date.now();
   await order.save();
+
+  orderChanged(order, { action: "cancelled", by: "buyer", previousStatus, buyerName: req.user.name });
+  productChanged({ _id: order.product, farmer: order.farmer }, "stock");
 
   res.json(await withDetails(order._id));
 });
@@ -466,6 +483,9 @@ const archiveOrder = asyncHandler(async (req, res) => {
 
   order.archived = archived;
   await order.save();
+
+  // Only the buyer keeps an archive, so this is for their other tabs.
+  orderChanged(order, { action: "archived", by: "buyer", to: ["buyer"] });
 
   res.json(await withDetails(order._id));
 });

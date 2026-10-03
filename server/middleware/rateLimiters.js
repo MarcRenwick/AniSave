@@ -30,6 +30,18 @@ const guessLimiter = limiter({ limit: 20, skipSuccessfulRequests: true });
 // Anything that sends an email: a handful per quarter-hour.
 const emailLimiter = limiter({ limit: 8 });
 
+// Codes emailed to a signed-in account (confirming a new password): a few per
+// quarter-hour for each account, from wherever they are asked for - on top of
+// emailLimiter's per-address limit. Only codes that were actually sent count
+// (a mistyped current password is guessLimiter's business). Goes after
+// `protect`, which says whose account it is.
+const accountOtpLimiter = limiter({
+  limit: 5,
+  skipFailedRequests: true,
+  keyGenerator: (req) => `account:${req.user._id}`,
+  message: { message: "Too many codes requested. Please wait a few minutes and try again." },
+});
+
 // Creating accounts: a few per hour from one address.
 const registerLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 20 });
 
@@ -39,4 +51,12 @@ const reportLimiter = limiter({ windowMs: 60 * 60 * 1000, limit: 10 });
 // Chat messages: plenty for a real conversation, not enough to flood one.
 const chatLimiter = limiter({ windowMs: 60 * 1000, limit: 30 });
 
-module.exports = { apiLimiter, guessLimiter, emailLimiter, registerLimiter, reportLimiter, chatLimiter };
+module.exports = {
+  apiLimiter,
+  guessLimiter,
+  emailLimiter,
+  accountOtpLimiter,
+  registerLimiter,
+  reportLimiter,
+  chatLimiter,
+};

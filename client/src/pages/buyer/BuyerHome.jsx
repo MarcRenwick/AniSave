@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Star, Sparkles, MapPin, LayoutGrid, Zap } from "lucide-react";
@@ -11,6 +11,7 @@ import { EASE } from "../../theme/harvest";
 import { useAuth } from "../../context/AuthContext";
 import { getAllProducts, getFarmers } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { cityAndProvince, formatDistance, hasAddressPoint } from "../../utils/address";
 
 // The filter row. Flash Sale is reachable from the tile beside the banner as
@@ -129,46 +130,63 @@ export default function BuyerHome() {
       return next;
     });
 
-  useEffect(() => {
-    setLoading(true);
-    setError("");
+  // Only the newest fetch is shown: typing a search, or a listing changing,
+  // can start another before the last one has answered.
+  const latestFetch = useRef(0);
+
+  // `refresh`: fetching what is already on screen again because a listing
+  // changed - which isn't the buyer searching again (see getAllProducts).
+  const fetchListings = ({ refresh = false } = {}) => {
+    const ticket = ++latestFetch.current;
+    const isLatest = () => ticket === latestFetch.current;
 
     if (browsing) {
-      const params = {};
+      const params = refresh ? { refresh: true } : {};
       if (search.trim()) params.search = search.trim();
       // "recommended", "flash-sale" and "nearest" are ranked server-side -
       // nearest by real distance in km between registered addresses.
       // "newest" and "all" both just want the full, unfiltered catalog.
       if (sort === "recommended" || sort === "flash-sale" || sort === "nearest") params.sort = sort;
 
-      getAllProducts(params)
-        .then(({ data }) => setProducts(data))
-        .catch(() => setError("Could not load products. Is the server running?"))
-        .finally(() => setLoading(false));
-      return;
+      return getAllProducts(params).then(({ data }) => {
+        if (isLatest()) setProducts(data);
+      });
     }
 
     // Flash Sale feeds the banner at the top; Recommended is its own section
     // further down the page.
-    Promise.all([
+    return Promise.all([
       getAllProducts(),
       getAllProducts({ sort: "flash-sale" }),
       getAllProducts({ sort: "recommended" }),
       getFarmers({ sort: "nearest" }),
-    ])
-      .then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
-        setNewestProducts(newestRes.data.slice(0, 4));
-        // The same fetch, kept whole for the "All Products" section at the
-        // bottom of the page - already newest-first, no extra request.
-        setAllProducts(newestRes.data);
-        setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
-        setRecommendedProducts(recommendedRes.data.slice(0, 4));
-        setFarmers(farmersRes.data);
-      })
-      .catch(() => setError("Could not load the home page. Is the server running?"))
+    ]).then(([newestRes, flashSaleRes, recommendedRes, farmersRes]) => {
+      if (!isLatest()) return;
+      setNewestProducts(newestRes.data.slice(0, 4));
+      // The same fetch, kept whole for the "All Products" section at the
+      // bottom of the page - already newest-first, no extra request.
+      setAllProducts(newestRes.data);
+      setFlashSaleProducts(flashSaleRes.data.slice(0, 4));
+      setRecommendedProducts(recommendedRes.data.slice(0, 4));
+      setFarmers(farmersRes.data);
+    });
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    setError("");
+    fetchListings()
+      .catch(() =>
+        setError(browsing ? "Could not load products. Is the server running?" : "Could not load the home page. Is the server running?")
+      )
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, sort]);
+
+  // A listing added, restocked, sold out, rated or taken down shows here
+  // without a refresh. Every buyer hears of it at once, so their tabs spread
+  // their fetches over a moment rather than all asking together.
+  useLiveRefresh(["product:changed"], () => fetchListings({ refresh: true }), { spread: 1500 });
 
   // Already nearest-first from the server when this account has a registered
   // address, so it's just the top of the list.
@@ -332,7 +350,10 @@ export default function BuyerHome() {
                         />
                         <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-night/45 to-transparent" />
                       </span>
-                      <div className="-mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-forest-700 font-display text-lg font-semibold text-cream ring-4 ring-paper">
+                      {/* Positioned so it paints over the photo it overlaps
+                          (the photo's wrapper is positioned, and would
+                          otherwise cover the top of the circle). */}
+                      <div className="relative z-10 -mt-8 flex h-14 w-14 items-center justify-center rounded-full bg-forest-700 font-display text-lg font-semibold text-cream ring-4 ring-paper">
                         {initials(farmer.farmName || farmer.name)}
                       </div>
                       <p className="truncate text-sm font-semibold text-gray-900">

@@ -8,6 +8,7 @@ import { EmptyState, SproutLoader, Stagger, StaggerItem } from "../../components
 import { getFarmerOrders, SERVER_URL } from "../../services/api";
 import { formatDateTime } from "../../utils/orderStatus";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { amountOf, unitOf } from "../../utils/units";
 import { SPRING } from "../../theme/harvest";
 
@@ -37,6 +38,14 @@ export default function FarmerOrders() {
       .catch(() => setError("Could not load your orders. Is the server running?"))
       .finally(() => setLoading(false));
   }, []);
+
+  // A buyer ordering, pre-ordering or cancelling shows here without a refresh.
+  useLiveRefresh(["order:changed"], () =>
+    getFarmerOrders().then(({ data }) => {
+      setOrders(data);
+      setError("");
+    })
+  );
 
   const countFor = (key) => orders.filter((o) => o.status === key).length;
   const visible = orders.filter((o) => o.status === tab);

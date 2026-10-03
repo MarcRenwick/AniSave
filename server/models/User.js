@@ -241,7 +241,10 @@ const userSchema = new mongoose.Schema(
     },
 
     // Two-step sign-in: after the password, an emailed code. Always on for
-    // admins; anyone else can switch it on in their settings.
+    // admins; anyone else can switch it on in their settings. The codes are in
+    // their own collection now (models/UserOtp.js). The three fields below are
+    // where they used to be kept: nothing writes them any more, and they stay
+    // here only so whatever an older account still has in them stays hidden.
     mfaEnabled: {
       type: Boolean,
       default: false,

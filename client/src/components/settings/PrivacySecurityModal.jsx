@@ -9,8 +9,9 @@ import { setTwoStep } from "../../services/api";
 const inputClass =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 
-// Two-step sign-in: after the password, a code is emailed to the address the
-// account was registered with.
+// Two-step sign-in, from Privacy and Protection (MFA): after the password, a
+// code is emailed to the address the account was registered with - the same
+// kind of code that confirms a password change (five minutes, five tries).
 export default function PrivacySecurityModal({ onClose }) {
   const { user, updateUser } = useAuth();
   const enabled = Boolean(user?.mfaEnabled);
@@ -38,7 +39,7 @@ export default function PrivacySecurityModal({ onClose }) {
   };
 
   return (
-    <Modal title="Privacy & Security" onClose={onClose} maxWidth="max-w-md">
+    <Modal title="Two-step sign-in (MFA)" onClose={onClose} maxWidth="max-w-md">
       {error && <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>}
       {message && <div className="mb-4 rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">{message}</div>}
 
@@ -46,7 +47,7 @@ export default function PrivacySecurityModal({ onClose }) {
         <div className="flex items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
             <ShieldCheck className="h-4 w-4 text-brand" />
-            Two-step sign-in
+            Email code at login
           </p>
           <span
             className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -57,8 +58,8 @@ export default function PrivacySecurityModal({ onClose }) {
           </span>
         </div>
         <p className="mt-1 text-xs text-gray-500">
-          After your password, we email a 6-digit code to {user?.email}. Even if someone learns your
-          password, they can&apos;t log in without that inbox.
+          After your password, we email a 6-digit code to {user?.email}. It lasts 5 minutes. Even if
+          someone learns your password, they can&apos;t log in without that inbox.
         </p>
 
         <form onSubmit={handleTwoStep} className="mt-3 space-y-3">

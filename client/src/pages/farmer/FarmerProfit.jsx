@@ -6,6 +6,7 @@ import FarmerLayout from "../../layouts/FarmerLayout";
 import FarmerTopBar from "../../components/farmer/FarmerTopBar";
 import ProfitTable from "../../components/farmer/ProfitTable";
 import { getMyProfit, SERVER_URL } from "../../services/api";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { money } from "../../utils/profit";
 import { amountOf } from "../../utils/units";
 import { CountUp, SproutLoader } from "../../components/motion";
@@ -197,6 +198,14 @@ export default function FarmerProfit() {
       .catch(() => setError("Could not load your profit figures. Is the server running?"))
       .finally(() => setLoading(false));
   }, []);
+
+  // Each completed sale adds to income and profit without a refresh.
+  useLiveRefresh(["order:changed", "product:changed"], () =>
+    getMyProfit().then(({ data: answer }) => {
+      setData(answer);
+      setError("");
+    })
+  );
 
   const totals = data?.totals;
   const rows = data?.products || [];

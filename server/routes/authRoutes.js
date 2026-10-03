@@ -13,7 +13,9 @@ const {
   forgotPassword,
   resetPassword,
   updateProfile,
-  changePassword,
+  requestPasswordChange,
+  resendPasswordChange,
+  confirmPasswordChange,
   logoutUser,
   setMfa,
   requestAccountDeletion,
@@ -22,7 +24,7 @@ const {
   exportMyData,
 } = require("../controllers/authController");
 const { protect, authorize } = require("../middleware/authMiddleware");
-const { guessLimiter, emailLimiter, registerLimiter } = require("../middleware/rateLimiters");
+const { guessLimiter, emailLimiter, accountOtpLimiter, registerLimiter } = require("../middleware/rateLimiters");
 const upload = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
@@ -58,7 +60,11 @@ router.post("/forgot-password", emailLimiter, forgotPassword);
 router.post("/reset-password", guessLimiter, resetPassword);
 router.put("/profile", protect, updateProfile);
 router.put("/avatar", protect, upload.single("avatar"), uploadAvatar);
-router.put("/change-password", protect, guessLimiter, changePassword);
+// Changing the password is confirmed with a code emailed to the account: the
+// new password is only saved once the code is entered.
+router.post("/change-password/request-otp", protect, guessLimiter, emailLimiter, accountOtpLimiter, requestPasswordChange);
+router.post("/change-password/resend-otp", protect, emailLimiter, accountOtpLimiter, resendPasswordChange);
+router.post("/change-password/verify-otp", protect, guessLimiter, confirmPasswordChange);
 router.post("/delete-account/request-otp", protect, emailLimiter, requestAccountDeletion);
 router.post("/delete-account/confirm", protect, guessLimiter, confirmAccountDeletion);
 

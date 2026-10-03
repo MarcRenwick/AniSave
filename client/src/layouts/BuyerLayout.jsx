@@ -13,14 +13,14 @@ import { EASE } from "../theme/harvest";
 // to (useScrollReveal, a little fuller here than on the farmer's pages).
 export default function BuyerLayout({ children }) {
   useHarvestTheme();
-  const { toast, dismiss } = useBuyerOrderNotifications();
+  const { toast, dismiss, unseen } = useBuyerOrderNotifications();
   const mainRef = useRef(null);
   useScrollReveal(mainRef);
   const reduced = useReducedMotion();
 
   return (
     <div className="buyer-field harvest-grain flex min-h-screen flex-col bg-cream" data-testid="buyer-layout">
-      <BuyerTopNav />
+      <BuyerTopNav orderUpdates={unseen} />
       {/* The page fades up as it opens - opacity only: a transform here would
           become the containing block for every modal on the page while it
           played. Its own sections are still main's children, so they reveal
@@ -34,7 +34,7 @@ export default function BuyerLayout({ children }) {
       >
         {children}
       </motion.main>
-      <AnimatePresence>{toast && <Toast key={toast} message={toast} onClose={dismiss} />}</AnimatePresence>
+      <AnimatePresence>{toast && <Toast key={toast.id} message={toast.message} onClose={dismiss} />}</AnimatePresence>
     </div>
   );
 }

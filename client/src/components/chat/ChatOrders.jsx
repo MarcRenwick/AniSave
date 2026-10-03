@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown, Package } from "lucide-react";
 import { SERVER_URL, getConversationOrders } from "../../services/api";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { BUYER_ORDER_STATUS } from "../../utils/orderStatus";
 import { amountOf, unitOf } from "../../utils/units";
 
@@ -53,6 +54,11 @@ export default function ChatOrders({ conversationId, reloadKey }) {
       cancelled = true;
     };
   }, [conversationId, reloadKey]);
+
+  // An order placed, moved on or cancelled updates here too.
+  useLiveRefresh(["order:changed"], () =>
+    getConversationOrders(conversationId).then(({ data: result }) => setData(result))
+  );
 
   if (!data || data.orders.length === 0) return null;
   const [latest, ...older] = data.orders;

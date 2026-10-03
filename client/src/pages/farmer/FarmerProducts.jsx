@@ -10,6 +10,7 @@ import RestockModal from "../../components/farmer/products/RestockModal";
 import DeleteConfirmModal from "../../components/farmer/products/DeleteConfirmModal";
 import { getMyProducts, restockProduct, deleteProduct } from "../../services/api";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { useAuth } from "../../context/AuthContext";
 import { categoryFilters } from "../../utils/categories";
 import { EmptyState, SproutLoader, Stagger, StaggerItem } from "../../components/motion";
@@ -38,6 +39,15 @@ export default function FarmerProducts() {
       .catch(() => setError("Could not load your products. Is the server running?"))
       .finally(() => setLoading(false));
   }, []);
+
+  // Stock going down as orders are completed (or changing in another tab)
+  // shows here without a refresh.
+  useLiveRefresh(["product:changed"], () =>
+    getMyProducts().then(({ data }) => {
+      setProducts(data);
+      setError("");
+    })
+  );
 
   const visible = filter === "all" ? products : products.filter((p) => p.category === filter);
   const closeModal = () => setModal(null);

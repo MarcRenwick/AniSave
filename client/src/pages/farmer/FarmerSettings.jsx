@@ -179,7 +179,7 @@ export default function FarmerSettings() {
                     }}
                     className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50"
                   >
-                    <Lock className="h-4 w-4 text-brand" /> Privacy &amp; Security
+                    <Lock className="h-4 w-4 text-brand" /> Two-step sign-in (MFA)
                   </button>
                   <button
                     type="button"
@@ -323,6 +323,46 @@ export default function FarmerSettings() {
             {user?.farmDescription || "No shop description yet. Tell buyers about your farm!"}
           </p>
         </div>
+
+        <section className="farm-card farm-card-sprout rounded-xl bg-white p-5" aria-labelledby="mfa-heading">
+          <p id="mfa-heading" className="flex items-center gap-2 font-semibold text-gray-900">
+            <Lock className="h-4 w-4 text-brand" /> Privacy and Protection (MFA)
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Codes sent to {user?.email || "your email"} protect your password and how you sign in.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setShowPassword(true)}
+              className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition hover:border-brand hover:bg-green-50"
+            >
+              <KeyRound className="h-5 w-5 shrink-0 text-brand" />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-gray-900">Change Password</span>
+                <span className="block text-xs text-gray-500">Confirmed with a code sent to your email.</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPrivacy(true)}
+              className="flex items-center gap-3 rounded-lg border border-gray-200 px-4 py-3 text-left transition hover:border-brand hover:bg-green-50"
+            >
+              <ShieldCheck className="h-5 w-5 shrink-0 text-brand" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-gray-900">Two-step sign-in</span>
+                <span className="block text-xs text-gray-500">An emailed code each time you log in.</span>
+              </span>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  user?.mfaEnabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {user?.mfaEnabled ? "On" : "Off"}
+              </span>
+            </button>
+          </div>
+        </section>
       </div>
 
       {showEdit && (

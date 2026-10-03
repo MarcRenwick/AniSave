@@ -5,6 +5,7 @@ const ReviewReport = require("../models/ReviewReport");
 const User = require("../models/User");
 const validate = require("../utils/validate");
 const { disconnectUser } = require("../utils/realtime");
+const { adminChanged, productChanged, shopChanged } = require("../utils/liveUpdates");
 
 const { REASONS } = ReviewReport;
 
@@ -98,6 +99,7 @@ const createReviewReport = asyncHandler(async (req, res) => {
     }
     throw err;
   }
+  adminChanged("review-reports");
 
   res.status(201).json({
     _id: report._id,
@@ -144,6 +146,7 @@ const markReviewed = asyncHandler(async (req, res) => {
     report.reviewedAt = new Date();
     report.reviewedBy = req.user._id;
     await report.save();
+    adminChanged("review-reports");
   }
 
   res.json(await withPeople(ReviewReport.findById(report._id)));
@@ -191,13 +194,19 @@ const decideReviewReport = asyncHandler(async (req, res) => {
       author.tokenVersion = (author.tokenVersion || 0) + 1;
       await author.save();
       disconnectUser(author._id);
+      adminChanged("users");
+      if (author.role === "farmer") shopChanged(author._id);
     }
   }
 
   // Taking a review down hides it and stops it counting towards the product's
   // and the farmer's rating.
   if (body.action !== "dismiss") {
-    await Rating.updateOne({ _id: report.rating, removedAt: null }, { $set: { removedAt: new Date() } });
+    const removed = await Rating.findOneAndUpdate(
+      { _id: report.rating, removedAt: null },
+      { $set: { removedAt: new Date() } }
+    );
+    if (removed) productChanged({ _id: removed.product, farmer: removed.farmer }, "rated");
   }
 
   report.status = DECISIONS[body.action];
@@ -209,6 +218,7 @@ const decideReviewReport = asyncHandler(async (req, res) => {
     report.reviewedBy = req.user._id;
   }
   await report.save();
+  adminChanged("review-reports");
 
   res.json(await withPeople(ReviewReport.findById(report._id)));
 });

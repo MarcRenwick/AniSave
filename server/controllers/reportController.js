@@ -6,6 +6,7 @@ const User = require("../models/User");
 const validate = require("../utils/validate");
 const { reportEvidencePath, deleteImageFile, sendStoredFile } = require("../utils/fileUtils");
 const { disconnectUser } = require("../utils/realtime");
+const { adminChanged, shopChanged } = require("../utils/liveUpdates");
 
 const { REASONS } = Report;
 
@@ -73,6 +74,7 @@ const createReport = asyncHandler(async (req, res) => {
       description,
       evidence: files.map(reportEvidencePath),
     });
+    adminChanged("reports");
 
     res.status(201).json({
       _id: report._id,
@@ -122,6 +124,7 @@ const markReviewed = asyncHandler(async (req, res) => {
     report.reviewedAt = new Date();
     report.reviewedBy = req.user._id;
     await report.save();
+    adminChanged("reports");
   }
 
   res.json(await withPeople(Report.findById(report._id)));
@@ -165,6 +168,8 @@ const decideReport = asyncHandler(async (req, res) => {
       farmer.tokenVersion = (farmer.tokenVersion || 0) + 1;
       await farmer.save();
       disconnectUser(farmer._id);
+      adminChanged("users");
+      shopChanged(farmer._id);
     }
   }
 
@@ -177,6 +182,7 @@ const decideReport = asyncHandler(async (req, res) => {
     report.reviewedBy = req.user._id;
   }
   await report.save();
+  adminChanged("reports");
 
   res.json(await withPeople(Report.findById(report._id)));
 });

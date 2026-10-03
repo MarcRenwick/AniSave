@@ -5,6 +5,7 @@ const Rating = require("../models/Rating");
 const Product = require("../models/Product");
 const ReviewReport = require("../models/ReviewReport");
 const { blockedIdsFor, hasBlocked } = require("../utils/blocks");
+const { productChanged } = require("../utils/liveUpdates");
 
 // @desc    Rate a completed order's product
 // @route   POST /api/ratings
@@ -57,6 +58,9 @@ const createRating = asyncHandler(async (req, res) => {
     stars,
     comment,
   });
+
+  // A listing's stars, and where it ranks under Recommended, have moved.
+  productChanged({ _id: order.product, farmer: order.farmer }, "rated");
 
   res.status(201).json(rating);
 });

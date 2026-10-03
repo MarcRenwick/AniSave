@@ -14,6 +14,7 @@ const { recordView, recordSearchHits, forgetProducts } = require("../utils/inter
 const { productProfit, profitTotals, salesByProduct } = require("../utils/profit");
 const { recommendationsFor } = require("./marketPriceController");
 const { batchQuantity } = require("../utils/expenseMigration");
+const { productChanged } = require("../utils/liveUpdates");
 
 // The numbers on a listing, checked before they reach the database. A form
 // sends text, and a browser's own number field still lets things like "100e+"
@@ -157,6 +158,7 @@ const createProduct = asyncHandler(async (req, res) => {
       images,
       image: images[0],
     });
+    productChanged(product, "created");
     res.status(201).json(product);
   } catch (err) {
     discardUploads(req);
@@ -196,9 +198,11 @@ const getAllProducts = asyncHandler(async (req, res) => {
 
   // What buyers search for is demand, whether or not it ends in a sale, so
   // the listings a search actually turned up are counted on the way out.
-  // Every answer below goes through here, so no route misses it.
+  // Every answer below goes through here, so no route misses it. A page
+  // fetching the same search again to stay current (refresh=true, after a
+  // listing changed) isn't someone searching again, so that isn't counted.
   const answer = (list) => {
-    if (search) recordSearchHits(list, req);
+    if (search && req.query.refresh !== "true") recordSearchHits(list, req);
     return res.json(list);
   };
 
@@ -533,6 +537,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 
   // Old photos only come off disk once the listing no longer points at them.
   removedImages.forEach(deleteImageFile);
+  productChanged(product, "updated");
   res.json(product);
 });
 
@@ -554,6 +559,7 @@ const restockProduct = asyncHandler(async (req, res) => {
 
   product.stock += Number(amount);
   await product.save();
+  productChanged(product, "stock");
   res.json(product);
 });
 
@@ -572,6 +578,7 @@ const deleteProduct = asyncHandler(async (req, res) => {
   // A listing that is gone shouldn't keep its place in the demand ranking.
   await forgetProducts([product._id]);
   photos.forEach(deleteImageFile);
+  productChanged(product, "deleted");
   res.json({ message: "Product deleted" });
 });
 

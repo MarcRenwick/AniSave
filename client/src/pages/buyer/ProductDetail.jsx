@@ -15,6 +15,7 @@ import { categoryLabel } from "../../utils/categories";
 import { EASE } from "../../theme/harvest";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getProduct, getFarmerProfile } from "../../services/api";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import { activeAgo, timeAgo } from "../../utils/activity";
@@ -79,6 +80,23 @@ export default function ProductDetail() {
     // Both hold still for as long as this history entry is on screen, so this
     // fetches once per listing opened and not once per render.
   }, [id, isFreshOpen]);
+
+  // Stock, price and stars stay current while the buyer looks - fetched again
+  // without counting as another visit. A listing taken down (or a shop that
+  // can no longer sell) says so instead of staying orderable on screen.
+  useLiveRefresh(
+    ["product:changed"],
+    () =>
+      getProduct(id)
+        .then(({ data }) => {
+          setProduct(data);
+          setError("");
+        })
+        .catch((err) => {
+          if (err.response?.status === 404) setError("This product is no longer available.");
+        }),
+    { when: (change) => change.productId === id || change.farmerId === product?.farmer?._id, spread: 1000 }
+  );
 
   const handleConfirmAddToCart = (qty) => {
     addToCart(product, qty);

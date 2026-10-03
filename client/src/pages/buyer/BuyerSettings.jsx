@@ -253,31 +253,35 @@ export default function BuyerSettings() {
 
             <Group icon={ShieldCheck} title="Account & Security" blurb="Keep your account safe and secure.">
               <Row
-                icon={KeyRound}
-                title="Change Password"
-                blurb="Update your password regularly."
-                onClick={() => setShowPassword(true)}
-              />
-              <Row
                 icon={Ban}
                 title="Blocked Users"
                 blurb="Manage the shops you've blocked."
                 onClick={() => setShowBlocked(true)}
-              />
-            </Group>
-
-            <Group icon={Lock} title="Privacy & Safety" blurb="Control how you sign in.">
-              <Row
-                icon={ShieldCheck}
-                title="Privacy & Security"
-                blurb="Two-step sign-in with a code sent to your email."
-                onClick={() => setShowPrivacy(true)}
               />
               <Row
                 icon={LogOut}
                 title="Log Out"
                 blurb="Sign out of AniSave on this device."
                 onClick={() => setShowLogout(true)}
+              />
+            </Group>
+
+            <Group
+              icon={Lock}
+              title="Privacy and Protection (MFA)"
+              blurb="Codes sent to your email protect your password and how you sign in."
+            >
+              <Row
+                icon={KeyRound}
+                title="Change Password"
+                blurb="Confirmed with a code sent to your email."
+                onClick={() => setShowPassword(true)}
+              />
+              <Row
+                icon={ShieldCheck}
+                title="Two-step sign-in"
+                blurb={`An emailed code each time you log in - ${user?.mfaEnabled ? "on" : "off"}.`}
+                onClick={() => setShowPrivacy(true)}
               />
             </Group>
 

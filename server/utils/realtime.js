@@ -3,14 +3,18 @@ const { userForToken } = require("../middleware/authMiddleware");
 const User = require("../models/User");
 const Conversation = require("../models/Conversation");
 
-// Real-time delivery for chat (Socket.IO). A message is sent through the API
-// like any other request - POST /api/chats/:id/messages, where it is checked
-// and saved - and this only pushes it to the two people in that conversation
-// the moment it is saved, so it appears without a refresh.
+// Real-time delivery (Socket.IO). Everything is still done through the API -
+// a message is sent with POST /api/chats/:id/messages, an order accepted with
+// PATCH /api/orders/:id/status, and that is where it is checked and saved.
+// This only pushes the news to whoever it concerns the moment it is saved, so
+// their pages catch up without a refresh: chat here, and orders, listings and
+// the admin's lists through utils/liveUpdates.js.
 //
-// A connection has to present the same login token an API request would, and
-// each person only ever joins their own room, so an event sent to someone's
-// room reaches that person's open tabs and nobody else's.
+// A connection has to present the same login token an API request would. Each
+// person joins their own room, and one for everyone with their role (so a
+// listing that changes can reach every buyer at once). Nobody can ask to join
+// any other room, so an event sent to someone's room reaches that person's
+// open tabs and nobody else's.
 //
 // It is also how "Active now" is known: someone with the site open has a live
 // connection. When their first tab connects or their last one closes, the
@@ -23,6 +27,8 @@ let io = null;
 const clientEvents = new Map();
 
 const roomOf = (userId) => `user:${userId}`;
+const roleRoom = (role) => `role:${role}`;
+const ROLES = ["buyer", "farmer", "admin"];
 
 // Has this person got the site open right now?
 const isOnline = (userId) => Boolean(io && userId && io.sockets.adapter.rooms.get(roomOf(userId))?.size);
@@ -61,8 +67,9 @@ function attachRealtime(httpServer, isAllowedOrigin) {
       // current (not logged out or replaced), for an account that isn't banned.
       const { user, error } = await userForToken(token);
       if (error) return next(new Error(error));
-      if (!["buyer", "farmer"].includes(user.role)) return next(new Error("Chat is for buyers and farmers"));
+      if (!ROLES.includes(user.role)) return next(new Error("Not authorized"));
       socket.data.userId = user._id.toString();
+      socket.data.role = user.role;
       next();
     } catch {
       next(new Error("Not authorized"));
@@ -70,10 +77,12 @@ function attachRealtime(httpServer, isAllowedOrigin) {
   });
 
   io.on("connection", (socket) => {
-    const { userId } = socket.data;
-    socket.join(roomOf(userId));
+    const { userId, role } = socket.data;
+    socket.join([roomOf(userId), roleRoom(role)]);
+    // Only buyers and farmers have conversations to show "Active now" in.
+    const inChat = role !== "admin";
     // Their first open tab: they have just come online.
-    if (io.sockets.adapter.rooms.get(roomOf(userId))?.size === 1) {
+    if (inChat && io.sockets.adapter.rooms.get(roomOf(userId))?.size === 1) {
       announcePresence(userId, true).catch(() => {});
     }
 
@@ -83,7 +92,7 @@ function attachRealtime(httpServer, isAllowedOrigin) {
 
     socket.on("disconnect", () => {
       // Their last tab has closed: they went offline just now.
-      if (!isOnline(userId)) announcePresence(userId, false).catch(() => {});
+      if (inChat && !isOnline(userId)) announcePresence(userId, false).catch(() => {});
     });
   });
   return io;
@@ -100,6 +109,12 @@ const emitToUser = (userId, event, payload) => {
   if (io) io.to(roomOf(userId)).emit(event, payload);
 };
 
+// Sends an event to every open tab of everyone with this role ("buyer",
+// "farmer" or "admin").
+const emitToRole = (role, event, payload) => {
+  if (io) io.to(roleRoom(role)).emit(event, payload);
+};
+
 // Closes this person's live connections - when they are banned, log out,
 // change their password or delete their account - so a connection opened with
 // a login that no longer works doesn't go on receiving their messages.
@@ -107,4 +122,4 @@ const disconnectUser = (userId) => {
   if (io) io.in(roomOf(userId)).disconnectSockets(true);
 };
 
-module.exports = { attachRealtime, emitToUser, disconnectUser, isOnline, onClientEvent };
+module.exports = { attachRealtime, emitToUser, emitToRole, disconnectUser, isOnline, onClientEvent };

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { EASE, SPRING } from "../../theme/harvest";
 import { getFarmerAnalytics, getMyDemand } from "../../services/api";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import useMediaQuery, { PHONE } from "../../hooks/useMediaQuery";
 import Segmented from "./Segmented";
 import { COLORS, FONT, METRICS, PERIODS, addDays, buildRange, timeZone, toInputDate } from "./charts/analytics";
@@ -98,6 +99,11 @@ export default function DemandChart({ orders }) {
       .then(({ data }) => setDemand({ data, error: false }))
       .catch(() => setDemand({ data: null, error: true }));
   }, [view, demandAttempt]);
+
+  // A completed sale, or stock changing, redraws the charts without a refresh:
+  // the same fetches again, with the old figures on screen until they answer.
+  useLiveRefresh(["order:changed"], () => setAttempt((n) => n + 1));
+  useLiveRefresh(["order:changed", "product:changed"], () => setDemandAttempt((n) => n + 1));
 
   const chooseView = (key) => {
     setView(key);

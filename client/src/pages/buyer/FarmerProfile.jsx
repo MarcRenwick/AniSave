@@ -21,6 +21,7 @@ import {
 import { activeAgo, timeAgo } from "../../utils/activity";
 import { onFlashSale, discountPercent } from "../../utils/pricing";
 import usePreserveScroll from "../../hooks/usePreserveScroll";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { formatDistance } from "../../utils/address";
 import { forgetReportSent, reportJustSent } from "../../utils/reports";
 import { usePageSettled, useSmoothNavigate } from "../../utils/pageTransition";
@@ -204,6 +205,21 @@ export default function FarmerProfile() {
       .catch(() => setError("Could not load this farmer's shop."))
       .finally(() => setLoading(false));
   }, [id, reloadKey]);
+
+  // This shop's listings - their stock, prices and stars - stay current while
+  // the buyer looks.
+  useLiveRefresh(
+    ["product:changed"],
+    () =>
+      Promise.all([
+        getAllProducts({ farmer: id, includeOutOfStock: true }),
+        getAllProducts({ farmer: id, sort: "recommended" }),
+      ]).then(([productsRes, recommendedRes]) => {
+        setProducts(productsRes.data);
+        setRecommended(recommendedRes.data);
+      }),
+    { when: (change) => change.farmerId === id, spread: 1000 }
+  );
 
   useEffect(() => {
     if (!menuOpen) return;

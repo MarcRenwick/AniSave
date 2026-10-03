@@ -15,3 +15,22 @@ export function getPasswordError(password) {
   }
   return "";
 }
+
+// What a new password needs in Privacy and Protection (MFA) - more than
+// signing up asks for. The form ticks each one off as it is typed; the server
+// checks the same (server/utils/validate.js, strongPassword).
+export const STRONG_PASSWORD_RULES = [
+  { label: "8-12 characters", test: (p) => p.length >= 8 && p.length <= 12 },
+  { label: "An uppercase letter", test: (p) => /[A-Z]/.test(p) },
+  { label: "A lowercase letter", test: (p) => /[a-z]/.test(p) },
+  { label: "A number", test: (p) => /[0-9]/.test(p) },
+  { label: "A symbol", test: (p) => /[^A-Za-z0-9]/.test(p) },
+];
+
+export function getStrongPasswordError(password) {
+  if (/\s/.test(password)) return "Password can't contain spaces";
+  if (STRONG_PASSWORD_RULES.some((rule) => !rule.test(password))) {
+    return "New password must be 8-12 characters, with an uppercase letter, a lowercase letter, a number and a symbol";
+  }
+  return "";
+}

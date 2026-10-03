@@ -1,5 +1,7 @@
-// One-time codes (verifying a new account's email, login, two-step sign-in,
-// password reset, account deletion).
+// One-time codes kept on the user (verifying a new account's email, signing in
+// by email, password reset, account deletion). Codes for two-step sign-in and
+// for confirming a password change live in their own collection instead - see
+// utils/emailOtp.js.
 //
 //  - Generated with crypto.randomInt: Math.random() is a predictable generator.
 //  - Stored as an HMAC keyed with the server secret, so a leaked database
@@ -73,7 +75,6 @@ const clearCode = (user, fields) => {
 const LOGIN_CODE = { code: "loginCode", expires: "loginCodeExpires", attempts: "loginCodeAttempts" };
 const RESET_CODE = { code: "resetPasswordCode", expires: "resetPasswordExpires", attempts: "resetPasswordAttempts" };
 const DELETE_CODE = { code: "deleteAccountCode", expires: "deleteAccountExpires", attempts: "deleteAccountAttempts" };
-const MFA_CODE = { code: "mfaCode", expires: "mfaCodeExpires", attempts: "mfaCodeAttempts" };
 const VERIFY_EMAIL_CODE = { code: "verifyEmailCode", expires: "verifyEmailExpires", attempts: "verifyEmailAttempts" };
 
 // The "+field" selects that load a kind of code along with its user.
@@ -81,6 +82,7 @@ const selectCode = (fields) => `+${fields.code} +${fields.expires} +${fields.att
 
 module.exports = {
   MAX_ATTEMPTS,
+  RESEND_COOLDOWN_MS,
   generateCode,
   hashCode,
   codeMatches,
@@ -92,6 +94,5 @@ module.exports = {
   LOGIN_CODE,
   RESET_CODE,
   DELETE_CODE,
-  MFA_CODE,
   VERIFY_EMAIL_CODE,
 };

@@ -21,6 +21,7 @@ import RateProductModal from "../../components/buyer/RateProductModal";
 import OrderStatusTracker from "../../components/orders/OrderStatusTracker";
 import MessageFarmerButton from "../../components/chat/MessageFarmerButton";
 import { getOrder, cancelOrder, archiveOrder, SERVER_URL } from "../../services/api";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { BlockSkeleton } from "../../components/buyer/BuyerVisuals";
 import { categoryPhoto } from "../../utils/categoryPhotos";
 import { EASE } from "../../theme/harvest";
@@ -91,6 +92,11 @@ export default function OrderDetail() {
       .catch(() => setError("Could not load this order."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // The tracker moves the moment the farmer moves the order on.
+  useLiveRefresh(["order:changed"], () => getOrder(id).then(({ data }) => setOrder(data)), {
+    when: (change) => change.orderId === id,
+  });
 
   const handleConfirmCancel = async () => {
     setCancelError("");

@@ -24,6 +24,7 @@ import { money } from "../../utils/profit";
 import { amountOf, totalAmounts, unitOf } from "../../utils/units";
 import { ShimmerRows, Stagger, StaggerItem } from "../../components/motion";
 import { EASE } from "../../theme/harvest";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 
 // The Analytical Demands card draws its charts with Recharts, which is large -
 // so it is fetched when a farmer opens the dashboard, not with every page.
@@ -132,6 +133,25 @@ export default function FarmerDashboard() {
       .then(({ data }) => setProfit(data.totals))
       .catch(() => setProfitFailed(true));
   }, []);
+
+  // New orders, completed sales and changes to their listings move the totals
+  // - sales, income, profit, stock - without a refresh. (A farmer only hears
+  // of their own orders and listings.)
+  useLiveRefresh(["order:changed", "product:changed"], () =>
+    Promise.all([
+      Promise.all([getMyProducts(), getFarmerOrders(), getTopSearchedProducts()]).then(
+        ([productsRes, ordersRes, searchedRes]) => {
+          setProducts(productsRes.data);
+          setOrders(ordersRes.data);
+          setTopSearched(searchedRes.data);
+        }
+      ),
+      getMyProfit().then(({ data }) => {
+        setProfit(data.totals);
+        setProfitFailed(false);
+      }),
+    ])
+  );
 
   const lowStock = useMemo(
     () => products.filter((p) => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD),

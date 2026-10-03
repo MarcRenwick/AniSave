@@ -6,6 +6,7 @@ import ProductGallery from "../../components/products/ProductGallery";
 import { getProduct, getProductProfit } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import useScrollReveal from "../../hooks/useScrollReveal";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { categoryLabel } from "../../utils/categories";
 import { discountPercent, effectivePrice, onFlashSale } from "../../utils/pricing";
 import { money, productFinancials } from "../../utils/profit";
@@ -234,6 +235,20 @@ export default function FarmerProductDetail() {
       .then(({ data }) => setProfit(data))
       .catch(() => setProfitError("Could not work out this product's expense and profit."));
   }, [id]);
+
+  // Its stock, and the income and profit its sales bring in, stay current.
+  useLiveRefresh(
+    ["product:changed"],
+    () =>
+      Promise.all([
+        getProduct(id).then(({ data }) => setProduct(data)),
+        getProductProfit(id).then(({ data }) => {
+          setProfit(data);
+          setProfitError("");
+        }),
+      ]),
+    { when: (change) => change.productId === id }
+  );
 
   const isPreOrder = product?.productType === "preorder";
   const fin = profit ? productFinancials(profit) : null;

@@ -14,6 +14,7 @@ import {
   previousStatusOf,
 } from "../../utils/orderStatus";
 import { amountOf, unitOf, unitWord } from "../../utils/units";
+import useLiveRefresh from "../../hooks/useLiveRefresh";
 import { AnimatePresence, motion } from "motion/react";
 import { SproutLoader, SuccessCheck } from "../../components/motion";
 
@@ -45,6 +46,12 @@ export default function FarmerOrderDetail() {
       .catch(() => setError("Could not load this order."))
       .finally(() => setLoading(false));
   }, [id]);
+
+  // The buyer cancelling it - or this farmer moving it on in another tab -
+  // shows here without a refresh.
+  useLiveRefresh(["order:changed"], () => getOrder(id).then(({ data }) => setOrder(data)), {
+    when: (change) => change.orderId === id,
+  });
 
   const handleTransition = async (status) => {
     setActionError("");

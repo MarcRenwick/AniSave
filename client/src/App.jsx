@@ -4,6 +4,7 @@ import { MotionConfig } from "motion/react";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { ChatProvider } from "./context/ChatContext";
+import { RealtimeProvider } from "./context/RealtimeContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import Login from "./pages/Login";
@@ -51,6 +52,7 @@ export default function App() {
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
+        <RealtimeProvider>
         <ChatProvider>
           <CartProvider>
             {/* Anyone who has asked their system for less motion gets the
@@ -314,6 +316,7 @@ export default function App() {
             </MotionConfig>
           </CartProvider>
         </ChatProvider>
+        </RealtimeProvider>
       </AuthProvider>
     </BrowserRouter>
   );
